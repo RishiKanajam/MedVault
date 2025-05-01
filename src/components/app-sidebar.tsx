@@ -24,6 +24,9 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarTrigger, // Import trigger for mobile
+  SidebarMenuSub, // Import Submenu container
+  SidebarMenuSubButton, // Import Submenu button
+  SidebarMenuSubItem, // Import Submenu item
   useSidebar, // Hook to get sidebar state
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
@@ -76,7 +79,7 @@ const useModules = () => {
         rxAI: true,
         pharmaNet: true,
         patientHistory: true,
-        reports: false, // Example: Reports module initially disabled
+        reports: true, // Example: Enable reports module
     });
     const [loading, setLoading] = useState(true);
 
@@ -140,13 +143,13 @@ export function AppSidebar() {
          <Link href="/dashboard" className="flex items-center gap-2 flex-grow overflow-hidden">
             <Pill className="w-6 h-6 text-primary shrink-0" />
             {sidebarState === 'expanded' && (
-               <h1 className="text-xl font-semibold truncate">MediSync Pro</h1>
+               <h1 className="text-xl font-semibold truncate text-sidebar-foreground">MediSync Pro</h1>
             )}
          </Link>
          {/* Mobile Trigger - Handled by Sidebar component internally now */}
          {/* <SidebarTrigger className="md:hidden" />  */}
       </SidebarHeader>
-      <Separator className="mb-2" />
+      <Separator className="mb-2 bg-sidebar-border" />
 
       <SidebarContent className="flex-1 overflow-y-auto px-2">
         <SidebarMenu>
@@ -158,8 +161,8 @@ export function AppSidebar() {
                    "flex items-center gap-2 p-2 rounded-md h-10",
                    sidebarState === 'collapsed' && 'justify-center w-10 h-10' // Adjust for collapsed state
                  )}>
-                   <Skeleton className={cn("h-5 w-5 rounded", sidebarState === 'collapsed' && 'h-6 w-6')} />
-                   {sidebarState === 'expanded' && <Skeleton className="h-4 w-24 rounded" />}
+                   <Skeleton className={cn("h-5 w-5 rounded bg-sidebar-accent/30", sidebarState === 'collapsed' && 'h-6 w-6')} />
+                   {sidebarState === 'expanded' && <Skeleton className="h-4 w-24 rounded bg-sidebar-accent/30" />}
                  </div>
                </SidebarMenuItem>
              ))
@@ -183,26 +186,26 @@ export function AppSidebar() {
                             )}
                           </SidebarMenuButton>
                       </CollapsibleTrigger>
-                      {/* Apply background color to the CollapsibleContent */}
-                      <CollapsibleContent className="bg-sidebar-submenu rounded-md">
+                      {/* Apply background color and shadow to the CollapsibleContent */}
+                      <CollapsibleContent className="bg-sidebar-submenu text-sidebar-submenu-foreground rounded-md shadow-md mt-1">
                          <div className="overflow-hidden transition-all duration-300 ease-in-out data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
-                           <SidebarMenu className="pl-6 py-1"> {/* Indent submenu */}
+                           <SidebarMenuSub> {/* Use SidebarMenuSub for styling */}
                              {item.submenu.map(subItem => (
-                               <SidebarMenuItem key={subItem.label}>
-                                  <SidebarMenuButton asChild variant="ghost" size="sm" tooltip={sidebarState === 'collapsed' ? subItem.label : undefined}>
+                               <SidebarMenuSubItem key={subItem.label}>
+                                  <SidebarMenuSubButton asChild isActive={router.pathname === subItem.href}> {/* Use SubButton */}
                                      <Link href={subItem.href}>
                                         {/* Optionally add a sub-icon or indent further */}
-                                       {sidebarState === 'expanded' && <span>{subItem.label}</span>}
+                                        {subItem.label}
                                       </Link>
-                                  </SidebarMenuButton>
-                               </SidebarMenuItem>
+                                  </SidebarMenuSubButton>
+                               </SidebarMenuSubItem>
                               ))}
-                           </SidebarMenu>
+                           </SidebarMenuSub>
                          </div>
                       </CollapsibleContent>
                    </Collapsible>
                 ) : (
-                   <SidebarMenuButton asChild tooltip={sidebarState === 'collapsed' ? item.label : undefined}>
+                   <SidebarMenuButton asChild tooltip={sidebarState === 'collapsed' ? item.label : undefined} isActive={router.pathname === item.href}>
                       <Link href={item.href}>
                          <item.icon />
                          {sidebarState === 'expanded' && <span>{item.label}</span>}
@@ -215,13 +218,13 @@ export function AppSidebar() {
         </SidebarMenu>
       </SidebarContent>
 
-      <Separator className="mt-auto" />
+      <Separator className="mt-auto bg-sidebar-border" />
 
       <SidebarFooter className="p-2 space-y-2">
           {/* Settings Link */}
           <SidebarMenu>
             <SidebarMenuItem>
-               <SidebarMenuButton asChild tooltip={sidebarState === 'collapsed' ? "Settings" : undefined}>
+               <SidebarMenuButton asChild tooltip={sidebarState === 'collapsed' ? "Settings" : undefined} isActive={router.pathname === '/settings'}>
                   <Link href="/settings">
                     <Settings />
                     {sidebarState === 'expanded' && <span>Settings</span>}
@@ -232,25 +235,25 @@ export function AppSidebar() {
 
            {/* User Info & Logout */}
            <div className={cn(
-             "flex items-center gap-2 p-2 rounded-md hover:bg-muted",
+             "flex items-center gap-2 p-2 rounded-md hover:bg-sidebar-accent", // Use accent for hover
              sidebarState === 'collapsed' ? 'justify-center' : 'justify-between'
             )}>
              <Link href="#" onClick={(e) => { e.preventDefault(); /* Open Profile Modal via Layout state? */ console.log("Avatar clicked - open profile modal");}} className="flex items-center gap-2 overflow-hidden">
                  <Avatar className="h-8 w-8">
                      <AvatarImage src={user?.photoURL || undefined} alt={user?.displayName || 'User'} data-ai-hint="user avatar placeholder" />
-                     <AvatarFallback>
+                     <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground">
                          {user?.displayName ? user.displayName.charAt(0).toUpperCase() : <User className="h-5 w-5" />}
                      </AvatarFallback>
                  </Avatar>
                  {sidebarState === 'expanded' && (
-                     <div className="flex flex-col text-xs truncate">
+                     <div className="flex flex-col text-xs truncate text-sidebar-foreground">
                          <span className="font-medium">{user?.displayName || 'User'}</span>
                          <span className="text-muted-foreground">{user?.email || ''}</span>
                      </div>
                  )}
               </Link>
               {sidebarState === 'expanded' && (
-                 <Button variant="ghost" size="icon" onClick={handleLogout} className="h-8 w-8">
+                 <Button variant="ghost" size="icon" onClick={handleLogout} className="h-8 w-8 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
                      <LogOut className="h-4 w-4" />
                      <span className="sr-only">Logout</span>
                  </Button>
