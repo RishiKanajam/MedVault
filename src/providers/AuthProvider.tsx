@@ -10,7 +10,7 @@ interface UserProfile {
   name: string | null;
   email: string | null;
   photoURL?: string | null;
-  clinicId?: string;
+  clinicId?: string; // Keep clinicId if used elsewhere
   settings?: {
     theme?: string | null;
     // modules removed
@@ -96,8 +96,9 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   // Display a loading spinner while the initial auth check is in progress
   if (loading) {
     return (
-      <div className="fixed inset-0 z-[200] flex items-center justify-center bg-background">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      <div className="flex items-center justify-center h-screen bg-background"> {/* Added bg-background */}
+        {/* Use Loader2 from lucide-react */}
+        <Loader2 className="animate-spin h-12 w-12 text-primary" />
       </div>
     );
   }

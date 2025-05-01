@@ -1,4 +1,5 @@
-// src/app/(app)/history/page.tsx
+
+// src/app/(protected)/history/page.tsx
 'use client';
 
 import React, { useState } from 'react';
@@ -19,15 +20,19 @@ import { Textarea } from '@/components/ui/textarea';
 import { Search, PlusCircle, Upload, Download, Loader2, User, Calendar, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useAuth } from '@/providers/AuthProvider'; // Import useAuth
+import { Skeleton } from '@/components/ui/skeleton'; // Import Skeleton
 
-// TODO: Replace with Firestore data fetching (clinics/{clinicId}/patients)
+// TODO: Replace with Firestore data fetching using React Query based on clinicId from profile
+// clinics/{profile.clinicId}/patients
 const mockPatients = [
   { id: 'pat1', name: 'Alice Johnson', dob: '1985-03-12', lastVisit: '2024-07-20' },
   { id: 'pat2', name: 'Bob Williams', dob: '1972-11-05', lastVisit: '2024-06-15' },
   { id: 'pat3', name: 'Charlie Brown', dob: '1998-01-30', lastVisit: '2024-08-01' },
 ];
 
-// TODO: Replace with Firestore data fetching (clinics/{clinicId}/patients/{patientId}/records)
+// TODO: Replace with Firestore data fetching using React Query
+// clinics/{profile.clinicId}/patients/{patientId}/records
 const mockRecords = {
   pat1: [
     { id: 'rec1a', date: '2024-07-20', type: 'Consultation', summary: 'Routine checkup, prescribed Vitamin D.', files: [{ name: 'ConsultNote_200724.pdf', url: '#' }] },
@@ -46,11 +51,12 @@ type Patient = typeof mockPatients[0];
 type RecordEntry = typeof mockRecords.pat1[0]; // Infer type from mock data structure
 
 export default function PatientHistoryPage() {
+  const { profile, authLoading } = useAuth(); // Use profile and loading state
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [patientRecords, setPatientRecords] = useState<RecordEntry[]>([]);
-  const [isLoadingPatients, setIsLoadingPatients] = useState(false);
-  const [isLoadingRecords, setIsLoadingRecords] = useState(false);
+  const [isLoadingPatients, setIsLoadingPatients] = useState(false); // TODO: Replace with React Query isLoading
+  const [isLoadingRecords, setIsLoadingRecords] = useState(false); // TODO: Replace with React Query isLoading
   const [isAddRecordSheetOpen, setIsAddRecordSheetOpen] = useState(false);
   const [newRecordData, setNewRecordData] = useState({ date: '', type: '', summary: '' });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -64,11 +70,12 @@ export default function PatientHistoryPage() {
   );
 
   const handleSelectPatient = (patient: Patient) => {
+    if (authLoading) return; // Prevent selection while auth is loading
     setSelectedPatient(patient);
     setIsLoadingRecords(true);
-    // TODO: Fetch records for patient.id from Firestore
-    // `clinics/{clinicId}/patients/{patient.id}/records`
-    console.log(`Fetching records for ${patient.name}`);
+    // TODO: Fetch records for patient.id from Firestore based on profile.clinicId
+    // `clinics/${profile?.clinicId}/patients/${patient.id}/records`
+    console.log(`Fetching records for ${patient.name} in clinic ${profile?.clinicId}`);
     setTimeout(() => { // Simulate fetch delay
       setPatientRecords(mockRecords[patient.id as keyof typeof mockRecords] || []);
       setIsLoadingRecords(false);
@@ -82,40 +89,41 @@ export default function PatientHistoryPage() {
   };
 
   const handleAddRecordSubmit = async () => {
-    if (!selectedPatient || !newRecordData.date || !newRecordData.type || !newRecordData.summary) {
-      toast({ title: "Missing Information", description: "Please fill all record details.", variant: "destructive" });
+    if (!selectedPatient || !profile?.clinicId || !newRecordData.date || !newRecordData.type || !newRecordData.summary) {
+      toast({ title: "Missing Information", description: "Please ensure clinic, patient, and record details are filled.", variant: "destructive" });
       return;
     }
     setIsUploading(true);
 
     try {
-      // TODO: 1. Upload file to Firebase Storage (if selectedFile exists)
+      // TODO: 1. Upload file to Firebase Storage
+      // `clinics/${profile.clinicId}/patients/${selectedPatient.id}/records/${selectedFile.name}`
       let fileUrl = '#'; // Placeholder
       let fileName = '';
       if (selectedFile) {
-        console.log(`Simulating upload of ${selectedFile.name}`);
-        // const storageRef = ref(storage, `clinics/${clinicId}/patients/${selectedPatient.id}/${selectedFile.name}`);
-        // const uploadTask = uploadBytesResumable(storageRef, selectedFile);
-        // await uploadTask; // Wait for upload completion
-        // fileUrl = await getDownloadURL(uploadTask.snapshot.ref);
+        console.log(`Simulating upload of ${selectedFile.name} to clinics/${profile.clinicId}/patients/${selectedPatient.id}/records/`);
+        // const storageRef = ref(storage, `clinics/${profile.clinicId}/patients/${selectedPatient.id}/records/${selectedFile.name}`);
+        // ... upload logic ...
+        // fileUrl = await getDownloadURL(...);
         fileName = selectedFile.name;
         await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate upload delay
          fileUrl = `https://example.com/path/to/${fileName}`; // Simulated URL
         toast({ title: "File Uploaded", description: `${fileName} uploaded successfully.` });
       }
 
-      // TODO: 2. Add record data (including fileUrl if applicable) to Firestore
+      // TODO: 2. Add record data to Firestore
+      // `clinics/${profile.clinicId}/patients/${selectedPatient.id}/records`
       const newRecord: RecordEntry = {
-        id: `rec_${Date.now()}`, // Generate a temporary ID or get from Firestore
+        id: `rec_${Date.now()}`, // Replace with Firestore generated ID
         date: newRecordData.date,
         type: newRecordData.type,
         summary: newRecordData.summary,
         files: selectedFile ? [{ name: fileName, url: fileUrl }] : [],
       };
-      console.log("Adding record to Firestore (simulated):", newRecord);
-      // await addDoc(collection(db, `clinics/${clinicId}/patients/${selectedPatient.id}/records`), newRecord);
+      console.log(`Adding record to Firestore in clinics/${profile.clinicId}/patients/${selectedPatient.id}/records :`, newRecord);
+      // await addDoc(collection(db, `clinics/${profile.clinicId}/patients/${selectedPatient.id}/records`), newRecord);
 
-      // Update local state optimistically or re-fetch
+      // Update local state or refetch
       setPatientRecords(prev => [...prev, newRecord]);
 
       toast({ title: "Record Added", description: "Patient record saved successfully." });
@@ -131,12 +139,16 @@ export default function PatientHistoryPage() {
     }
   };
 
+  // Display loading skeletons if auth or data is loading
+  if (authLoading) {
+     return <div className="p-6"><Skeleton className="h-[70vh] w-full" /></div>;
+  }
 
   return (
     <div className="grid gap-6 lg:grid-cols-3">
       {/* Patient List Column */}
       <div className="lg:col-span-1 flex flex-col gap-6">
-        <Card>
+        <Card className="panel-primary">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <User className="w-5 h-5 text-primary" /> Patients
@@ -156,9 +168,13 @@ export default function PatientHistoryPage() {
                 />
               </div>
             </div>
-            <ScrollArea className="h-[calc(100vh-250px)]"> {/* Adjust height as needed */}
+            <ScrollArea className="h-[calc(100vh-250px)]">
               {isLoadingPatients ? (
-                <div className="p-6 text-center text-muted-foreground">Loading patients...</div>
+                <div className="p-4 space-y-2">
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                </div>
               ) : filteredPatients.length > 0 ? (
                 <Table>
                   <TableBody>
@@ -189,7 +205,7 @@ export default function PatientHistoryPage() {
 
       {/* Patient Records Column */}
       <div className="lg:col-span-2">
-        <Card className="sticky top-[60px]"> {/* Adjust top position if header height changes */}
+        <Card className="panel-primary sticky top-[76px]"> {/* Adjust top position */}
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
@@ -201,11 +217,11 @@ export default function PatientHistoryPage() {
             </div>
             <Sheet open={isAddRecordSheetOpen} onOpenChange={setIsAddRecordSheetOpen}>
               <SheetTrigger asChild>
-                <Button size="sm" disabled={!selectedPatient} onClick={() => setIsAddRecordSheetOpen(true)}>
+                <Button size="sm" disabled={!selectedPatient || !profile?.clinicId} onClick={() => setIsAddRecordSheetOpen(true)}>
                   <PlusCircle className="mr-2 h-4 w-4" /> Add Record
                 </Button>
               </SheetTrigger>
-              <SheetContent>
+              <SheetContent className="overlay-secondary"> {/* Use secondary overlay */}
                 <SheetHeader>
                   <SheetTitle>Add New Record for {selectedPatient?.name}</SheetTitle>
                   <SheetDescription>Fill in the details and upload any relevant files.</SheetDescription>
@@ -241,17 +257,17 @@ export default function PatientHistoryPage() {
               </SheetContent>
             </Sheet>
           </CardHeader>
-          <CardContent className="min-h-[60vh]"> {/* Ensure content area is tall enough */}
+          <CardContent className="min-h-[60vh]">
             {isLoadingRecords && (
               <div className="flex justify-center items-center h-full">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
             )}
             {!isLoadingRecords && selectedPatient && patientRecords.length > 0 && (
-              <ScrollArea className="h-[calc(100vh-200px)]">
+              <ScrollArea className="h-[calc(100vh - 200px)]">
                  <div className="space-y-4 p-1">
-                    {patientRecords.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((record) => ( // Sort by date desc
-                    <Card key={record.id} className="overflow-hidden">
+                    {patientRecords.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((record) => (
+                    <Card key={record.id} className="overflow-hidden panel-primary"> {/* Use panel-primary for consistency */}
                         <CardHeader className="p-4 bg-muted/30 border-b flex flex-row justify-between items-center">
                             <div>
                                 <CardTitle className="text-base flex items-center gap-2"><Calendar className="w-4 h-4" /> {record.date}</CardTitle>
@@ -261,6 +277,7 @@ export default function PatientHistoryPage() {
                                 <Button variant="outline" size="sm" asChild>
                                     <a href={record.files[0].url} target="_blank" rel="noopener noreferrer" download={record.files[0].name}>
                                         <Download className="mr-2 h-3 w-3" />
+                                        View File
                                     </a>
                                 </Button>
                             )}
@@ -271,7 +288,6 @@ export default function PatientHistoryPage() {
                                <p className="text-xs text-muted-foreground mt-2">File: {record.files[0].name}</p>
                            )}
                         </CardContent>
-                         {/* TODO: Add Re-order Prescription Button if applicable */}
                     </Card>
                     ))}
                  </div>

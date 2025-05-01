@@ -3,11 +3,8 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
-import { SidebarProvider } from '@/components/ui/sidebar';
 import { Toaster } from '@/components/ui/toaster';
-import Providers from './providers'; // React Query Provider
-import { ThemeProvider } from "@/components/theme-provider"; // Theme Provider
-import AuthProvider from '@/providers/AuthProvider'; // Import the AuthProvider
+import Providers from './providers'; // Keep React Query Provider if needed
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
@@ -27,20 +24,11 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       {/* Add suppressHydrationWarning to body as well */}
       <body className={`${inter.variable} font-sans antialiased`} suppressHydrationWarning>
-        <ThemeProvider
-            attribute="class"
-            defaultTheme="system" // Default to system theme preference
-            enableSystem
-            disableTransitionOnChange
-        >
-           <Providers> {/* React Query */}
-             <AuthProvider> {/* Wrap content with AuthProvider */}
-               {/* SidebarProvider removed from here as AppLayout handles it */}
-               {children}
-               <Toaster />
-             </AuthProvider>
-           </Providers>
-         </ThemeProvider>
+         {/* Removed ThemeProvider and AuthProvider from root */}
+         <Providers> {/* React Query */}
+             {children}
+             <Toaster />
+         </Providers>
       </body>
     </html>
   );

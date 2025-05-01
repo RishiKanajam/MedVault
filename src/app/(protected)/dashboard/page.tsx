@@ -1,27 +1,17 @@
+
 'use client';
 
 import React from 'react';
 import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Boxes, AlertTriangle, CalendarOff, Truck, ThermometerSnowflake, Activity, BrainCircuit, BarChart3, LineChart, ClipboardList } from 'lucide-react'; // Use BarChart3, LineChart, Added ClipboardList
+import { Boxes, AlertTriangle, CalendarOff, Truck, ThermometerSnowflake, Activity, BrainCircuit, BarChart3, LineChart, ClipboardList } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-// Import chart components
-import { Bar, BarChart, Line, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, Legend, LineChart as RechartsLineChart, Cell } from 'recharts'; // Added Cell
+import { Bar, BarChart, Line, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, Legend, LineChart as RechartsLineChart, Cell } from 'recharts';
 import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from "@/components/ui/chart";
+import { useAuth } from '@/providers/AuthProvider'; // Import useAuth to get user info
 
-// Placeholder hook for user data
-const useUser = () => {
-    const [user, setUser] = React.useState<{ name: string } | null>(null);
-    const [loading, setLoading] = React.useState(true);
-    React.useEffect(() => {
-        const timer = setTimeout(() => { setUser({ name: "Dr. Anya Sharma" }); setLoading(false); }, 500);
-        return () => clearTimeout(timer);
-    }, []);
-    return { user, loading };
-};
-
-// Placeholder hook for dashboard metrics
+// Placeholder hook for dashboard metrics (keep as is or replace with actual data fetching)
 const useDashboardMetrics = () => {
      const [metrics, setMetrics] = React.useState({
         totalMeds: 0, expiringSoon: 0, expired: 0, coldChainBreaches: 0, activeShipments: 0,
@@ -37,7 +27,7 @@ const useDashboardMetrics = () => {
      return { metrics, loading };
 };
 
-// Mock chart data
+// Mock chart data (keep as is or replace)
 const expiryChartData = [
   { status: 'Expired', count: 3, fill: 'hsl(var(--danger-hsl))' }, // Red
   { status: 'Expiring', count: 5, fill: 'hsl(var(--warning-hsl))' }, // Warning Orange/Yellow
@@ -45,52 +35,50 @@ const expiryChartData = [
 ];
 const expiryChartConfig = {
   count: { label: "Count" },
-  Expired: { label: "Expired", color: "hsl(var(--danger-hsl))" }, // Match key to data status
+  Expired: { label: "Expired", color: "hsl(var(--danger-hsl))" },
   Expiring: { label: "Expiring Soon", color: "hsl(var(--warning-hsl))" },
   Safe: { label: "Safe", color: "hsl(var(--primary-hsl))" },
 } satisfies ChartConfig;
-
 
 const recordsTrendData = [
   { month: 'Jan', count: 15 }, { month: 'Feb', count: 20 }, { month: 'Mar', count: 18 },
   { month: 'Apr', count: 25 }, { month: 'May', count: 22 }, { month: 'Jun', count: 30 },
 ];
 const recordsChartConfig = {
-  count: { label: "Records Added", color: "hsl(var(--primary-hsl))" }, // Teal
+  count: { label: "Records Added", color: "hsl(var(--primary-hsl))" },
 } satisfies ChartConfig;
 
 export default function DashboardPage() {
-  const { user, loading: userLoading } = useUser();
+  // Use profile from AuthContext
+  const { profile, authLoading } = useAuth(); // Use profile from context
   const { metrics, loading: metricsLoading } = useDashboardMetrics();
-  const isLoading = userLoading || metricsLoading;
+  const isLoading = authLoading || metricsLoading; // Loading depends on auth and metrics
 
   const metricCards = [
-    { title: "Total Medicines", value: metrics.totalMeds, icon: Boxes, href: "/inventory", color: "text-primary", iconColor: "text-primary" }, // Teal
-    { title: "Expiring Soon", value: metrics.expiringSoon, icon: AlertTriangle, href: "/inventory?filter=expiring", color: "text-warning", iconColor: "text-warning" }, // Warning Orange/Yellow
-    { title: "Expired Medicines", value: metrics.expired, icon: CalendarOff, href: "/inventory?filter=expired", color: "text-danger", iconColor: "text-danger" }, // Danger Red
-    { title: "Cold-Chain Breaches", value: metrics.coldChainBreaches, icon: ThermometerSnowflake, href: "/inventory?filter=coldchain", color: "text-danger", iconColor: "text-danger" }, // Danger Red
-    { title: "Active Shipments", value: metrics.activeShipments, icon: Truck, href: "/shipments", color: "text-info", iconColor: "text-info" }, // Info Purple
-    // Optional Patient Records Card
-    { title: "Patient Records Added (6 mo)", value: recordsTrendData.reduce((sum, d) => sum + d.count, 0), icon: ClipboardList, href: "/history", color: "text-info", iconColor: "text-info" }, // Info Purple
+    { title: "Total Medicines", value: metrics.totalMeds, icon: Boxes, href: "/inventory", color: "text-primary", iconColor: "text-primary" },
+    { title: "Expiring Soon", value: metrics.expiringSoon, icon: AlertTriangle, href: "/inventory?filter=expiring", color: "text-warning", iconColor: "text-warning" },
+    { title: "Expired Medicines", value: metrics.expired, icon: CalendarOff, href: "/inventory?filter=expired", color: "text-danger", iconColor: "text-danger" },
+    { title: "Cold-Chain Breaches", value: metrics.coldChainBreaches, icon: ThermometerSnowflake, href: "/inventory?filter=coldchain", color: "text-danger", iconColor: "text-danger" },
+    { title: "Active Shipments", value: metrics.activeShipments, icon: Truck, href: "/shipments", color: "text-info", iconColor: "text-info" },
+    { title: "Patient Records Added (6 mo)", value: recordsTrendData.reduce((sum, d) => sum + d.count, 0), icon: ClipboardList, href: "/history", color: "text-info", iconColor: "text-info" },
  ];
 
    const quickActions = [
      { title: "Manage Inventory", icon: Boxes, href: "/inventory", label: "Inventory" },
      { title: "Track Shipments", icon: Truck, href: "/shipments", label: "Shipments" },
      { title: "RxAI Support", icon: BrainCircuit, href: "/rxai", label: "RxAI" },
-     // Add more actions if needed
+     // Add more actions if needed based on enabled modules (though module logic is removed for now)
    ];
 
   return (
-    // Increased spacing between sections (space-y-12 = 48px)
     <div className="space-y-12 animate-fadeIn">
-       {/* Welcome Banner - Use surface bg, primary accent */}
+       {/* Welcome Banner */}
        <Card className="bg-surface text-foreground shadow-card relative overflow-hidden">
-         {/* Decorative accent bar */}
           <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>
-         <CardHeader className="pl-8 pt-6 pb-6"> {/* Adjusted padding */}
-           <CardTitle className="text-2xl text-primary"> {/* Title uses primary color */}
-             {isLoading ? <Skeleton className="h-8 w-48 bg-gray-200" /> : `Welcome back, ${user?.name || 'User'}!`}
+         <CardHeader className="pl-8 pt-6 pb-6">
+           <CardTitle className="text-2xl text-primary">
+              {/* Use profile name */}
+             {isLoading ? <Skeleton className="h-8 w-48 bg-muted" /> : `Welcome back, ${profile?.name || 'User'}!`}
            </CardTitle>
            <CardDescription className="text-muted-foreground">
              Here's a quick overview of your MediSync Pro workspace.
@@ -98,19 +86,18 @@ export default function DashboardPage() {
          </CardHeader>
        </Card>
 
-       {/* Metric Cards - Responsive grid (3 cols on desktop, 1 on mobile) */}
+       {/* Metric Cards */}
        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
          {metricCards.map((metric, index) => (
-           <Card key={index} className="shadow-card bg-surface border-border rounded-lg"> {/* White bg, custom shadow, rounded */}
+           <Card key={index} className="shadow-card bg-surface border-border rounded-lg">
              <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 pt-4 px-4">
                <CardTitle className="text-sm font-medium text-muted-foreground">{metric.title}</CardTitle>
                <metric.icon className={`h-5 w-5 ${metric.iconColor}`} />
              </CardHeader>
              <CardContent className="pb-4 px-4">
                {isLoading ? (
-                  <Skeleton className="h-10 w-20 mt-1 mb-1 bg-gray-200" />
+                  <Skeleton className="h-10 w-20 mt-1 mb-1 bg-muted" />
                ) : (
-                 // Larger font size for value
                  <div className={`text-2xl font-bold ${metric.color}`}>{metric.value}</div>
                )}
                <p className="text-xs text-muted-foreground">
@@ -123,7 +110,6 @@ export default function DashboardPage() {
                </p>
              </CardContent>
              <CardFooter className="pt-0 pb-4 px-4">
-                {/* Link uses primary color */}
                <Button variant="link" size="sm" className="p-0 h-auto text-xs text-primary" asChild>
                  <Link href={metric.href}>View Details</Link>
                </Button>
@@ -132,7 +118,7 @@ export default function DashboardPage() {
          ))}
        </div>
 
-       {/* Charts Section - Use ChartContainer */}
+       {/* Charts Section */}
        <div className="grid gap-6 lg:grid-cols-2">
          {/* Expiry Status Bar Chart */}
          <Card className="shadow-card bg-surface border-border rounded-lg col-span-1">
@@ -142,7 +128,7 @@ export default function DashboardPage() {
            </CardHeader>
            <CardContent className="h-[300px] p-4">
              {isLoading ? (
-                <div className="flex items-center justify-center h-full"><Skeleton className="w-full h-full bg-gray-200" /></div>
+                <div className="flex items-center justify-center h-full"><Skeleton className="w-full h-full bg-muted" /></div>
              ) : (
                <ChartContainer config={expiryChartConfig} className="h-full w-full">
                  <ResponsiveContainer width="100%" height="100%">
@@ -153,7 +139,7 @@ export default function DashboardPage() {
                      <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="line" hideLabel />} />
                      <Bar dataKey="count" radius={5}>
                         {expiryChartData.map((entry) => (
-                             <Cell key={`cell-${entry.status}`} fill={entry.fill} /> // Use Cell for individual bar colors
+                             <Cell key={`cell-${entry.status}`} fill={entry.fill} />
                         ))}
                      </Bar>
                    </BarChart>
@@ -171,7 +157,7 @@ export default function DashboardPage() {
            </CardHeader>
            <CardContent className="h-[300px] p-4">
               {isLoading ? (
-                 <div className="flex items-center justify-center h-full"><Skeleton className="w-full h-full bg-gray-200" /></div>
+                 <div className="flex items-center justify-center h-full"><Skeleton className="w-full h-full bg-muted" /></div>
               ) : (
                 <ChartContainer config={recordsChartConfig} className="h-full w-full">
                    <ResponsiveContainer width="100%" height="100%">
@@ -179,12 +165,9 @@ export default function DashboardPage() {
                        <CartesianGrid strokeDasharray="3 3" />
                        <XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fill: 'hsl(var(--foreground-hsl))' }}/>
                        <YAxis tickLine={false} axisLine={false} tick={{ fill: 'hsl(var(--foreground-hsl))' }} />
-                       <ChartTooltip
-                          cursor={false}
-                          content={<ChartTooltipContent indicator="line" />}
-                        />
+                       <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="line" />} />
                        <Line type="monotone" dataKey="count" stroke="hsl(var(--primary-hsl))" strokeWidth={2} dot={{ fill: 'hsl(var(--primary-hsl))', r: 4 }} activeDot={{ r: 6 }}/>
-                        <ChartLegend content={<ChartLegendContent />} />
+                       <ChartLegend content={<ChartLegendContent />} />
                      </RechartsLineChart>
                    </ResponsiveContainer>
                  </ChartContainer>
@@ -193,17 +176,14 @@ export default function DashboardPage() {
          </Card>
        </div>
 
-
-       {/* Quick Actions - 3 columns */}
+       {/* Quick Actions */}
        <div>
           <h2 className="text-xl font-semibold mb-4 text-foreground">Quick Actions</h2>
-           {/* flex-wrap container for responsiveness */}
           <div className="grid gap-6 md:grid-cols-3">
              {quickActions.map((action, index) => (
                 <Card key={index} className="shadow-card bg-surface border border-border rounded-lg hover:border-primary hover:scale-[1.02] transition-all duration-200">
                  <Link href={action.href} className="block h-full">
                     <CardContent className="pt-8 pb-6 flex flex-col items-center justify-center text-center h-full">
-                       {/* Icon uses primary color */}
                         <action.icon className="h-10 w-10 text-primary mb-4" />
                         <p className="font-medium text-foreground">{action.title}</p>
                         <p className="text-xs text-muted-foreground mt-1">Access the {action.label} section.</p>
@@ -216,7 +196,6 @@ export default function DashboardPage() {
 
        {/* Optional: Recent Activity Feed */}
        <Card className="shadow-card bg-surface border-border rounded-lg">
-          {/* Decorative accent bar */}
           <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>
          <CardHeader className="pl-8">
            <CardTitle className="flex items-center gap-2 text-lg"><Activity className="h-5 w-5 text-primary" /> Recent Activity</CardTitle>
@@ -225,8 +204,8 @@ export default function DashboardPage() {
          <CardContent className="pl-8">
            {isLoading ? (
                <div className="space-y-2">
-                 <Skeleton className="h-4 w-3/4 bg-gray-200" />
-                 <Skeleton className="h-4 w-1/2 bg-gray-200" />
+                 <Skeleton className="h-4 w-3/4 bg-muted" />
+                 <Skeleton className="h-4 w-1/2 bg-muted" />
                </div>
            ) : (
               <p className="text-sm text-muted-foreground">No recent activity to display.</p>
@@ -237,11 +216,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-// Helper component for BarChart Cell - Recharts v2 requires this approach for individual bar colors if not using 'fill' directly in data
-// Or you can directly add 'fill' property to expiryChartData items as done above. If that works, this helper is not needed.
-// const CustomizedBar = (props: any) => {
-//   const { fill, x, y, width, height } = props;
-//   return <rect x={x} y={y} width={width} height={height} fill={fill} />;
-// };
-

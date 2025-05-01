@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -9,7 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { PlusCircle, Search, MoreHorizontal, Edit, Trash2, Truck, QrCode as QrCodeIcon } from 'lucide-react';
@@ -44,98 +45,128 @@ import { format } from "date-fns"
 import { Calendar as CalendarIcon } from "lucide-react"
 import QRCode from 'qrcode.react'; // Import QR Code component
 import { cn } from "@/lib/utils";
-
-// TODO: Replace with actual Firestore hook using React Query
-// Example structure (replace with your actual implementation)
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/providers/AuthProvider'; // Import useAuth
 
-// --- Mock Data & Types (Replace with Firestore/React Query) ---
+// --- Types (Assuming Firestore structure) ---
 interface Medicine {
-  id: string;
+  id: string; // Firestore document ID
   name: string;
   manufacturer: string;
   batch: string;
   qty: number;
-  expiry: string; // Store as ISO string or Timestamp ideally
-  // Add other fields like lastTemp, lastHum, createdAt, updatedAt if needed
+  expiry: string; // Store as ISO string 'YYYY-MM-DD'
+  createdAt?: any; // Firestore Timestamp
+  updatedAt?: any; // Firestore Timestamp
+  // Add other fields like lastTemp, lastHum if needed for cold chain
 }
 
-// Mock fetch function - replace with actual Firestore call via React Query
-const fetchMedicines = async (): Promise<Medicine[]> => {
-  console.log("Fetching medicines (simulated)...");
-  await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate network delay
+// --- Mock API Functions (Replace with Actual Firestore Calls via React Query) ---
+// These should interact with Firestore, using the clinicId from the profile
+const fetchMedicines = async (clinicId: string | undefined): Promise<Medicine[]> => {
+  if (!clinicId) return []; // Return empty if no clinicId
+  console.log(`Fetching medicines for clinic ${clinicId} (simulated)...`);
+  // TODO: Implement Firestore query: collection(db, `clinics/${clinicId}/medicines`)
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  // Replace with actual fetched data
   return [
     { id: 'med1', name: 'Aspirin 81mg', manufacturer: 'Bayer', batch: 'B12345', qty: 150, expiry: '2025-12-31' },
-    { id: 'med2', name: 'Metformin 500mg', manufacturer: 'Genericorp', batch: 'M67890', qty: 45, expiry: '2024-11-15' }, // Expiring soon (within 7 days assumption)
-    { id: 'med3', name: 'Atorvastatin 20mg', manufacturer: 'Pfizer', batch: 'A11223', qty: 200, expiry: '2024-06-30' }, // Expired
-    { id: 'med4', name: 'Amoxicillin 250mg', manufacturer: 'Sandoz', batch: 'X44556', qty: 0, expiry: '2025-01-01' }, // Out of stock
+    { id: 'med2', name: 'Metformin 500mg', manufacturer: 'Genericorp', batch: 'M67890', qty: 45, expiry: '2024-11-15' },
+    { id: 'med3', name: 'Atorvastatin 20mg', manufacturer: 'Pfizer', batch: 'A11223', qty: 200, expiry: '2024-06-30' },
+    { id: 'med4', name: 'Amoxicillin 250mg', manufacturer: 'Sandoz', batch: 'X44556', qty: 0, expiry: '2025-01-01' },
     { id: 'med5', name: 'Insulin Glargine', manufacturer: 'Sanofi', batch: 'I99887', qty: 25, expiry: '2025-02-28' },
- ];
+  ];
 };
 
-// Mock mutation functions - replace with Firestore calls
-const addMedicine = async (newMedicine: Omit<Medicine, 'id'>): Promise<Medicine> => {
-  console.log("Adding medicine (simulated):", newMedicine);
+const addMedicine = async (clinicId: string | undefined, newMedicine: Omit<Medicine, 'id'>): Promise<Medicine> => {
+  if (!clinicId) throw new Error("Clinic ID is required to add medicine.");
+  console.log(`Adding medicine to clinic ${clinicId} (simulated):`, newMedicine);
+  // TODO: Implement Firestore addDoc: addDoc(collection(db, `clinics/${clinicId}/medicines`), { ...newMedicine, createdAt: serverTimestamp(), updatedAt: serverTimestamp() })
   await new Promise(resolve => setTimeout(resolve, 500));
-  return { ...newMedicine, id: `med${Math.random().toString(16).slice(2)}` };
+  const addedDoc = { ...newMedicine, id: `med${Math.random().toString(16).slice(2)}`, createdAt: new Date(), updatedAt: new Date() }; // Simulate added doc
+  return addedDoc;
 };
 
-const updateMedicine = async (updatedMedicine: Medicine): Promise<Medicine> => {
-  console.log("Updating medicine (simulated):", updatedMedicine);
+const updateMedicine = async (clinicId: string | undefined, updatedMedicine: Medicine): Promise<Medicine> => {
+  if (!clinicId) throw new Error("Clinic ID is required to update medicine.");
+  console.log(`Updating medicine ${updatedMedicine.id} in clinic ${clinicId} (simulated):`, updatedMedicine);
+  // TODO: Implement Firestore updateDoc: updateDoc(doc(db, `clinics/${clinicId}/medicines`, updatedMedicine.id), { ...updatedMedicine, updatedAt: serverTimestamp() })
   await new Promise(resolve => setTimeout(resolve, 500));
-  return updatedMedicine;
+  return { ...updatedMedicine, updatedAt: new Date() }; // Simulate updated doc
 };
 
-const deleteMedicine = async (medicineId: string): Promise<void> => {
-  console.log("Deleting medicine (simulated):", medicineId);
+const deleteMedicine = async (clinicId: string | undefined, medicineId: string): Promise<void> => {
+  if (!clinicId) throw new Error("Clinic ID is required to delete medicine.");
+  console.log(`Deleting medicine ${medicineId} from clinic ${clinicId} (simulated)...`);
+  // TODO: Implement Firestore deleteDoc: deleteDoc(doc(db, `clinics/${clinicId}/medicines`, medicineId))
   await new Promise(resolve => setTimeout(resolve, 500));
 };
-// --- End Mock Data & Types ---
+
+const createShipment = async (clinicId: string | undefined, shipmentData: { medicineId: string; courier: string; pickupDate: string }): Promise<void> => {
+    if (!clinicId) throw new Error("Clinic ID is required to create shipment.");
+    console.log(`Creating shipment in clinic ${clinicId} (simulated):`, shipmentData);
+    // TODO: Implement Firestore addDoc: addDoc(collection(db, `clinics/${clinicId}/shipments`), { ...shipmentData, status: 'Pre-Transit', createdAt: serverTimestamp() })
+    await new Promise(resolve => setTimeout(resolve, 500));
+};
+// --- End Mock API Functions ---
 
 
+// Helper function to determine badge status
 function getStatusInfo(expiry: string, qty: number): { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; color: string } {
-  const now = new Date();
-  const expiryDate = new Date(expiry);
-  const sevenDaysFromNow = new Date();
-  sevenDaysFromNow.setDate(now.getDate() + 7);
+  try {
+    const now = new Date();
+    const expiryDate = new Date(expiry); // Ensure expiry is a valid date string
+    const sevenDaysFromNow = new Date();
+    sevenDaysFromNow.setDate(now.getDate() + 7);
 
-  if (expiryDate < now) {
-    return { label: 'Expired', variant: 'destructive', color: 'text-destructive' };
+    if (isNaN(expiryDate.getTime())) { // Handle invalid date format
+       return { label: 'Invalid Date', variant: 'destructive', color: 'text-destructive' };
+    }
+
+    if (expiryDate < now) {
+      return { label: 'Expired', variant: 'destructive', color: 'text-destructive' };
+    }
+    if (qty <= 0) {
+       return { label: 'Out of Stock', variant: 'secondary', color: 'text-yellow-600' };
+    }
+    if (expiryDate < sevenDaysFromNow) {
+      return { label: 'Expiring Soon', variant: 'outline', color: 'text-orange-500' };
+    }
+    return { label: 'In Stock', variant: 'default', color: 'text-green-600' };
+  } catch (e) {
+      console.error("Error parsing expiry date:", expiry, e);
+      return { label: 'Date Error', variant: 'destructive', color: 'text-destructive' };
   }
-  if (qty <= 0) {
-     return { label: 'Out of Stock', variant: 'secondary', color: 'text-yellow-600' }; // Changed to yellowish
-  }
-  if (expiryDate < sevenDaysFromNow) {
-    return { label: 'Expiring Soon', variant: 'outline', color: 'text-orange-500' }; // Accent Orange
-  }
-  return { label: 'In Stock', variant: 'default', color: 'text-green-600' }; // Teal (Primary is teal, maybe use green?)
 }
 
 
 export default function InventoryPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { profile, authLoading } = useAuth(); // Use profile to get clinicId
+  const clinicId = profile?.clinicId; // Extract clinicId
+
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isShipModalOpen, setIsShipModalOpen] = useState(false); // State for Ship modal
+  const [isShipModalOpen, setIsShipModalOpen] = useState(false);
   const [selectedMedicine, setSelectedMedicine] = useState<Medicine | null>(null);
   const [formData, setFormData] = useState<Omit<Medicine, 'id'>>({ name: '', manufacturer: '', batch: '', qty: 0, expiry: '' });
   const [expiryDate, setExpiryDate] = React.useState<Date | undefined>(undefined);
 
 
   // --- React Query ---
-   const { data: medicines = [], isLoading, isError, error } = useQuery<Medicine[], Error>({
-     queryKey: ['medicines'],
-     queryFn: fetchMedicines,
-     // Add Firestore listener options if using real-time updates
-     // refetchOnWindowFocus: false,
+   const { data: medicines = [], isLoading: isLoadingMedicines, isError, error } = useQuery<Medicine[], Error>({
+     queryKey: ['medicines', clinicId], // Include clinicId in the query key
+     queryFn: () => fetchMedicines(clinicId),
+     enabled: !!clinicId && !authLoading, // Only fetch if clinicId exists and auth is loaded
+     staleTime: 1000 * 60 * 5, // 5 minutes
    });
 
    const addMutation = useMutation({
-     mutationFn: addMedicine,
+     mutationFn: (newMedicine: Omit<Medicine, 'id'>) => addMedicine(clinicId, newMedicine),
      onSuccess: (data) => {
-       queryClient.invalidateQueries({ queryKey: ['medicines'] }); // Refetch or update cache
+       queryClient.invalidateQueries({ queryKey: ['medicines', clinicId] });
        toast({ title: "Medicine Added", description: `${data.name} added successfully.` });
        setIsAddModalOpen(false);
        resetForm();
@@ -146,9 +177,9 @@ export default function InventoryPage() {
    });
 
    const updateMutation = useMutation({
-     mutationFn: updateMedicine,
+     mutationFn: (updatedMedicine: Medicine) => updateMedicine(clinicId, updatedMedicine),
      onSuccess: (data) => {
-       queryClient.invalidateQueries({ queryKey: ['medicines'] });
+       queryClient.invalidateQueries({ queryKey: ['medicines', clinicId] });
        toast({ title: "Medicine Updated", description: `${data.name} updated successfully.` });
        setIsEditModalOpen(false);
        resetForm();
@@ -159,19 +190,34 @@ export default function InventoryPage() {
    });
 
    const deleteMutation = useMutation({
-     mutationFn: deleteMedicine,
-     onSuccess: (_, deletedId) => {
-        // Optimistic update or invalidate
-       queryClient.setQueryData(['medicines'], (oldData: Medicine[] | undefined) =>
-           oldData ? oldData.filter(med => med.id !== deletedId) : []
-       );
-       // queryClient.invalidateQueries({ queryKey: ['medicines'] }); // Or invalidate
-       toast({ title: "Medicine Deleted", description: "Item removed from inventory." });
-     },
-     onError: (error) => {
-       toast({ title: "Error Deleting", description: error.message, variant: "destructive" });
-     },
+      mutationFn: (medicineId: string) => deleteMedicine(clinicId, medicineId),
+      onSuccess: (_, deletedId) => {
+          // Optimistic update: remove the item immediately from the cache
+          queryClient.setQueryData(['medicines', clinicId], (oldData: Medicine[] | undefined) =>
+              oldData ? oldData.filter(med => med.id !== deletedId) : []
+          );
+          toast({ title: "Medicine Deleted", description: "Item removed from inventory." });
+          // Invalidate query to ensure consistency if optimistic update fails
+          queryClient.invalidateQueries({ queryKey: ['medicines', clinicId] });
+      },
+      onError: (error) => {
+          toast({ title: "Error Deleting", description: error.message, variant: "destructive" });
+      },
    });
+
+    const shipmentMutation = useMutation({
+        mutationFn: (shipmentData: { medicineId: string; courier: string; pickupDate: string }) => createShipment(clinicId, shipmentData),
+        onSuccess: (_, variables) => {
+            // Optionally invalidate shipments query if you have one
+            // queryClient.invalidateQueries({ queryKey: ['shipments', clinicId] });
+            toast({ title: "Shipment Created", description: `Shipment initiated for Medicine ID ${variables.medicineId}.` });
+            setIsShipModalOpen(false);
+            setSelectedMedicine(null);
+        },
+        onError: (error) => {
+            toast({ title: "Error Creating Shipment", description: error.message, variant: "destructive" });
+        },
+    });
 
    // --- End React Query ---
 
@@ -214,13 +260,20 @@ export default function InventoryPage() {
       qty: medicine.qty,
       expiry: medicine.expiry,
     });
-    setExpiryDate(medicine.expiry ? new Date(medicine.expiry) : undefined);
+    // Ensure expiry date is parsed correctly, handle potential invalid format
+    try {
+        const parsedDate = medicine.expiry ? new Date(medicine.expiry) : undefined;
+         setExpiryDate(parsedDate && !isNaN(parsedDate.getTime()) ? parsedDate : undefined);
+    } catch (e) {
+        console.error("Error parsing expiry date for edit modal:", medicine.expiry, e);
+        setExpiryDate(undefined);
+         toast({ title: "Date Error", description: `Invalid expiry date format for ${medicine.name}.`, variant: "destructive" });
+    }
     setIsEditModalOpen(true);
   };
 
    const handleOpenShipModal = (medicine: Medicine) => {
     setSelectedMedicine(medicine);
-    // TODO: Populate ship form if needed, or just pass ID
     setIsShipModalOpen(true);
   };
 
@@ -250,19 +303,20 @@ export default function InventoryPage() {
    const handleCreateShipment = (e: React.FormEvent) => {
      e.preventDefault();
      if (!selectedMedicine) return;
-     // TODO: Get courier and pickup date from ship modal form
      const courier = (e.target as HTMLFormElement).courier.value;
      const pickupDate = (e.target as HTMLFormElement).pickupDate.value;
-     console.log(`Creating shipment for ${selectedMedicine.name} (ID: ${selectedMedicine.id}) with ${courier} on ${pickupDate}`);
-     // TODO: Call Firestore mutation to create shipment doc
-     // shipmentMutation.mutate({ medicineId: selectedMedicine.id, courier, pickupDate });
-     toast({ title: "Shipment Created", description: `Shipment initiated for ${selectedMedicine.name}.` });
-     setIsShipModalOpen(false);
-     setSelectedMedicine(null);
+
+     if (!courier || !pickupDate) {
+         toast({ title: "Missing Shipment Info", description: "Please provide courier and pickup date.", variant: "destructive" });
+         return;
+     }
+
+     shipmentMutation.mutate({ medicineId: selectedMedicine.id, courier, pickupDate });
    }
 
 
   const filteredMedicines = useMemo(() => {
+    if (!medicines) return [];
     if (!searchTerm) return medicines;
     return medicines.filter(med =>
       med.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -272,12 +326,15 @@ export default function InventoryPage() {
   }, [medicines, searchTerm]);
 
   const generateQRValue = (medicine: Medicine): string => {
-     // Simple example: combine key fields. Customize as needed.
-     return `MedID:${medicine.id}|Name:${medicine.name}|Batch:${medicine.batch}|Expiry:${medicine.expiry}`;
+     // Customize QR value as needed (e.g., include clinicId)
+     return `MedID:${medicine.id}|Clinic:${clinicId || 'N/A'}|Name:${medicine.name}|Batch:${medicine.batch}|Expiry:${medicine.expiry}`;
    };
 
+   // Loading state for the whole page based on auth and initial data fetch
+   const pageLoading = authLoading || (isLoadingMedicines && !medicines?.length);
+
   return (
-    <Card className="animate-fadeIn">
+    <Card className="panel-primary animate-fadeIn"> {/* Use primary panel */}
       <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <CardTitle>Medicine Inventory</CardTitle>
@@ -294,25 +351,20 @@ export default function InventoryPage() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          {/* TODO: Implement QR Scan Button using react-qr-reader or @zxing/browser */}
-          {/* <Button variant="outline" size="icon" className="shrink-0" onClick={() => alert("QR Scanner not implemented")}>
-            <QrCodeIcon className="h-4 w-4" />
-             <span className="sr-only">Scan QR Code</span>
-          </Button> */}
+          {/* TODO: Implement QR Scan Button */}
           <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
             <DialogTrigger asChild>
-                <Button onClick={handleOpenAddModal}>
+                <Button onClick={handleOpenAddModal} disabled={!clinicId}>
                     <PlusCircle className="mr-2 h-4 w-4" /> Add Medicine
                 </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[450px]">
+            <DialogContent className="panel-primary sm:max-w-[450px]"> {/* Use primary panel */}
                 <DialogHeader>
                     <DialogTitle>Add New Medicine</DialogTitle>
                     <DialogDescription>Fill in the details for the new medicine.</DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleAddSubmit}>
                     <div className="grid gap-4 py-4">
-                        {/* Form Fields */}
                          <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="name" className="text-right">Name*</Label>
                             <Input id="name" value={formData.name} onChange={handleInputChange} required className="col-span-3" />
@@ -327,7 +379,7 @@ export default function InventoryPage() {
                          </div>
                          <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="qty" className="text-right">Quantity</Label>
-                            <Input id="qty" type="number" value={formData.qty} onChange={handleInputChange} className="col-span-3" />
+                            <Input id="qty" type="number" min="0" value={formData.qty} onChange={handleInputChange} className="col-span-3" />
                         </div>
                          <div className="grid grid-cols-4 items-center gap-4">
                            <Label htmlFor="expiry" className="text-right">Expiry Date*</Label>
@@ -344,7 +396,7 @@ export default function InventoryPage() {
                                     {expiryDate ? format(expiryDate, "PPP") : <span>Pick a date</span>}
                                 </Button>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0">
+                                <PopoverContent className="overlay-tertiary w-auto p-0"> {/* Use tertiary overlay */}
                                 <Calendar
                                     mode="single"
                                     selected={expiryDate}
@@ -354,12 +406,13 @@ export default function InventoryPage() {
                                 </PopoverContent>
                             </Popover>
                          </div>
-                         {/* QR Code Preview */}
+                         {/* QR Code Preview (Ensure formData has necessary fields) */}
                          {formData.name && formData.batch && formData.expiry && (
                              <div className="grid grid-cols-4 items-center gap-4">
                                 <Label className="text-right">QR Code</Label>
                                 <div className="col-span-3 p-2 border rounded-md bg-white flex justify-center">
-                                     <QRCode value={generateQRValue(formData as Medicine)} size={100} level="M" />
+                                     {/* Pass a temporary ID or structure for QR generation */}
+                                     <QRCode value={generateQRValue({...formData, id: 'temp-id'} as Medicine)} size={100} level="M" />
                                 </div>
                              </div>
                          )}
@@ -367,7 +420,7 @@ export default function InventoryPage() {
                     <DialogFooter>
                         <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>
                         <Button type="submit" disabled={addMutation.isPending}>
-                         {addMutation.isPending ? 'Adding...' : 'Add Medicine'}
+                         {addMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Add Medicine'}
                         </Button>
                     </DialogFooter>
                 </form>
@@ -389,7 +442,7 @@ export default function InventoryPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading && Array.from({ length: 5 }).map((_, index) => (
+            {pageLoading && Array.from({ length: 5 }).map((_, index) => (
                 <TableRow key={`skel-${index}`}>
                     <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                     <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
@@ -400,21 +453,21 @@ export default function InventoryPage() {
                     <TableCell className="text-right"><Skeleton className="h-8 w-8 rounded-full" /></TableCell>
                 </TableRow>
             ))}
-            {!isLoading && isError && (
+            {!pageLoading && isError && (
                 <TableRow>
                     <TableCell colSpan={7} className="h-24 text-center text-destructive">
                       Error loading inventory: {error?.message || 'Unknown error'}
                     </TableCell>
                 </TableRow>
              )}
-            {!isLoading && !isError && filteredMedicines.length === 0 && (
+            {!pageLoading && !isError && filteredMedicines.length === 0 && (
                 <TableRow>
-                    <TableCell colSpan={7} className="h-24 text-center">
+                    <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
                     No inventory items found{searchTerm ? ' matching your search' : ''}.
                     </TableCell>
                 </TableRow>
              )}
-            {!isLoading && !isError && filteredMedicines.map((med) => {
+            {!pageLoading && !isError && filteredMedicines.map((med) => {
               const status = getStatusInfo(med.expiry, med.qty);
               return (
                 <TableRow key={med.id}>
@@ -436,7 +489,8 @@ export default function InventoryPage() {
                                     <span className="sr-only">Actions</span>
                                 </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-40 p-1">
+                             {/* Use tertiary overlay for popover */}
+                            <PopoverContent className="overlay-tertiary w-40 p-1">
                                 <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => handleOpenEditModal(med)}>
                                 <Edit className="mr-2 h-4 w-4" /> Edit
                                 </Button>
@@ -445,11 +499,12 @@ export default function InventoryPage() {
                                 </Button>
                                 <AlertDialog>
                                     <AlertDialogTrigger asChild>
-                                         <Button variant="ghost" size="sm" className="w-full justify-start text-destructive hover:text-destructive">
+                                         <Button variant="ghost" size="sm" className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10">
                                             <Trash2 className="mr-2 h-4 w-4" /> Delete
                                         </Button>
                                     </AlertDialogTrigger>
-                                    <AlertDialogContent>
+                                    {/* Use primary panel for alert dialog */}
+                                    <AlertDialogContent className="panel-primary">
                                         <AlertDialogHeader>
                                         <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                                         <AlertDialogDescription>
@@ -460,15 +515,14 @@ export default function InventoryPage() {
                                         <AlertDialogCancel>Cancel</AlertDialogCancel>
                                         <AlertDialogAction
                                             onClick={() => handleDeleteConfirm(med.id)}
-                                            className={buttonVariants({ variant: "destructive" })} // Use buttonVariants here
-                                             disabled={deleteMutation.isPending}
+                                            className={buttonVariants({ variant: "destructive" })}
+                                            disabled={deleteMutation.isPending}
                                         >
-                                             {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+                                             {deleteMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Delete'}
                                         </AlertDialogAction>
                                         </AlertDialogFooter>
                                     </AlertDialogContent>
                                 </AlertDialog>
-                                {/* QR Code Download Trigger */}
                                 <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => {
                                     const canvas = document.getElementById(`qr-${med.id}`) as HTMLCanvasElement;
                                     if (canvas) {
@@ -487,7 +541,6 @@ export default function InventoryPage() {
                                 <div style={{ display: 'none' }}>
                                     <QRCode id={`qr-${med.id}`} value={generateQRValue(med)} size={256} level="M" />
                                 </div>
-
                             </PopoverContent>
                         </Popover>
                     </TableCell>
@@ -499,14 +552,13 @@ export default function InventoryPage() {
       </CardContent>
        {/* Edit Modal */}
         <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-            <DialogContent className="sm:max-w-[450px]">
+            <DialogContent className="panel-primary sm:max-w-[450px]"> {/* Use primary panel */}
                 <DialogHeader>
                     <DialogTitle>Edit Medicine</DialogTitle>
                     <DialogDescription>Update the details for {selectedMedicine?.name}.</DialogDescription>
                 </DialogHeader>
                  <form onSubmit={handleEditSubmit}>
                      <div className="grid gap-4 py-4">
-                         {/* Form Fields - same structure as Add Modal */}
                          <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="edit-name" className="text-right">Name*</Label>
                             <Input id="name" value={formData.name} onChange={handleInputChange} required className="col-span-3" />
@@ -521,7 +573,7 @@ export default function InventoryPage() {
                          </div>
                          <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="edit-qty" className="text-right">Quantity</Label>
-                            <Input id="qty" type="number" value={formData.qty} onChange={handleInputChange} className="col-span-3" />
+                            <Input id="qty" type="number" min="0" value={formData.qty} onChange={handleInputChange} className="col-span-3" />
                         </div>
                          <div className="grid grid-cols-4 items-center gap-4">
                            <Label htmlFor="edit-expiry" className="text-right">Expiry Date*</Label>
@@ -538,7 +590,7 @@ export default function InventoryPage() {
                                     {expiryDate ? format(expiryDate, "PPP") : <span>Pick a date</span>}
                                 </Button>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0">
+                                <PopoverContent className="overlay-tertiary w-auto p-0"> {/* Use tertiary overlay */}
                                 <Calendar
                                     mode="single"
                                     selected={expiryDate}
@@ -561,7 +613,7 @@ export default function InventoryPage() {
                      <DialogFooter>
                          <DialogClose asChild><Button type="button" variant="outline" onClick={resetForm}>Cancel</Button></DialogClose>
                          <Button type="submit" disabled={updateMutation.isPending}>
-                            {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
+                            {updateMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : 'Save Changes'}
                          </Button>
                      </DialogFooter>
                  </form>
@@ -570,7 +622,7 @@ export default function InventoryPage() {
 
        {/* Ship Modal */}
         <Dialog open={isShipModalOpen} onOpenChange={setIsShipModalOpen}>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="panel-primary sm:max-w-[425px]"> {/* Use primary panel */}
                 <DialogHeader>
                     <DialogTitle>Create Shipment</DialogTitle>
                      <DialogDescription>Initiate a shipment for {selectedMedicine?.name} (Batch: {selectedMedicine?.batch}).</DialogDescription>
@@ -578,29 +630,23 @@ export default function InventoryPage() {
                 <form onSubmit={handleCreateShipment}>
                      <div className="grid gap-4 py-4">
                          <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="courier" className="text-right">Courier</Label>
-                            {/* Replace with Select component if needed */}
+                            <Label htmlFor="courier" className="text-right">Courier*</Label>
                             <Input id="courier" placeholder="e.g., FedEx, UPS" required className="col-span-3" />
                          </div>
                          <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="pickupDate" className="text-right">Pickup Date</Label>
+                            <Label htmlFor="pickupDate" className="text-right">Pickup Date*</Label>
                             <Input id="pickupDate" type="date" required className="col-span-3" />
                          </div>
-                         {/* Add more fields like destination address etc. */}
                      </div>
                      <DialogFooter>
                          <DialogClose asChild><Button type="button" variant="outline" onClick={() => setSelectedMedicine(null)}>Cancel</Button></DialogClose>
-                         {/* TODO: Disable button while mutation is pending */}
-                         <Button type="submit" >Create Shipment</Button>
+                         <Button type="submit" disabled={shipmentMutation.isPending}>
+                            {shipmentMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : 'Create Shipment'}
+                         </Button>
                      </DialogFooter>
                  </form>
             </DialogContent>
         </Dialog>
-
-      {/* Optional: Add Pagination if list grows large */}
     </Card>
   );
 }
-
-// Helper to use buttonVariants in AlertDialogAction (if needed)
-import { buttonVariants } from "@/components/ui/button";

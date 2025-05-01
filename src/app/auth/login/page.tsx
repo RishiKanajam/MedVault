@@ -1,9 +1,8 @@
 
-'use client'; // Required for hooks and event handlers
+'use client'; // Mark as client component
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation'; // Import useRouter for navigation
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -16,13 +15,13 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Pill, Loader2 } from 'lucide-react';
-import { auth } from '@/firebase'; // Ensure Firebase is correctly initialized
-import { signInWithEmailAndPassword } from 'firebase/auth'; // Import sign-in function
+import { auth } from '@/firebase'; // Use correct firebase path
+import { signInWithEmailAndPassword } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/providers/AuthProvider'; // Import useAuth
+import Link from 'next/link'; // Import Link
 
 export default function LoginPage() {
-  const router = useRouter(); // Initialize useRouter
+  const router = useRouter();
   const { toast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -35,15 +34,9 @@ export default function LoginPage() {
     setIsLoading(true); // Show spinner for login action
 
     try {
-      console.log('[Login] Attempting sign-in...');
       await signInWithEmailAndPassword(auth, email, password); // Sign in
-      console.log('[Login] Sign-in successful.');
-
       toast({ title: "Login Successful", description: `Welcome back!` });
-
-      console.log('[Login] Redirecting to /dashboard');
       router.push('/dashboard'); // Redirect to dashboard on success
-      // Keep isLoading true as the component will unmount/redirect
 
     } catch (err: any) {
       console.error('[Login] Error:', err);
@@ -52,34 +45,21 @@ export default function LoginPage() {
           switch (err.code) {
             case 'auth/user-not-found':
             case 'auth/wrong-password':
-            case 'auth/invalid-credential':
-               message = 'Invalid email or password.';
-               break;
-            case 'auth/invalid-email':
-               message = 'Please enter a valid email address.';
-               break;
-             case 'auth/network-request-failed':
-                message = 'Network error. Please check your connection.';
-                break;
-            default:
-               message = err.message || message;
-               break;
+            case 'auth/invalid-credential': message = 'Invalid email or password.'; break;
+            case 'auth/invalid-email': message = 'Please enter a valid email address.'; break;
+            case 'auth/network-request-failed': message = 'Network error. Please check your connection.'; break;
+            default: message = err.message || message; break;
           }
-       } else if (err.message) {
-          message = err.message;
-       }
+       } else if (err.message) { message = err.message; }
       setError(message);
       toast({ title: "Login Failed", description: message, variant: "destructive" });
       setIsLoading(false); // Stop spinner only on error
     }
   };
 
-  // Note: The main loading indicator is handled by AuthProvider in the root layout.
-  // The isLoading state here is specifically for the login button action.
-
   return (
-    // The parent layout already handles centering
-      <Card className="panel-primary w-full max-w-sm"> {/* Use primary panel */}
+    // Centering handled by parent layout src/app/auth/layout.tsx
+      <Card className="panel-primary w-full max-w-sm">
         <CardHeader className="text-center">
            <div className="flex justify-center mb-4">
              <Pill className="w-10 h-10 text-primary" />
@@ -96,17 +76,13 @@ export default function LoginPage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Password</Label>
-                {/* Implement password reset later if needed */}
                 {/* <Button variant="link" asChild className="p-0 h-auto text-sm text-primary">
-                    <Link href="#">
-                    Forgot your password?
-                    </Link>
+                    <Link href="#">Forgot your password?</Link>
                 </Button> */}
               </div>
               <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required disabled={isLoading}/>
             </div>
              {error && <p className="text-sm text-destructive text-center">{error}</p>}
-            {/* Disable button based on the login action's loading state */}
             <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                 {isLoading ? 'Logging In...' : 'Login'}
@@ -115,15 +91,11 @@ export default function LoginPage() {
         </CardContent>
          <CardFooter className="text-center text-sm">
            Don't have an account?{' '}
-            {/* Use standard button with onClick for navigation */}
-            <Button
-              variant="link"
-              className="p-0 h-auto ml-1 text-primary"
-              onClick={() => router.push('/auth/signup')} // Use onClick for navigation
-              disabled={isLoading} // Optionally disable during login
-            >
-              Sign up
-            </Button>
+            <Button variant="link" asChild className="p-0 h-auto ml-1 text-primary">
+              <Link href="/auth/signup">
+                Sign up
+              </Link>
+           </Button>
          </CardFooter>
       </Card>
   );

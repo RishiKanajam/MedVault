@@ -1,45 +1,35 @@
+
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-// List of public authentication-related paths
-const AUTH_PATHS = ['/auth/login', '/auth/signup'];
+export function middleware(req: NextRequest) {
+  const { pathname } = req.nextUrl;
 
-export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+  // Allow public auth pages (and potentially API routes, static files etc. if matcher doesn't exclude them)
+  if (pathname.startsWith('/auth')) {
+    console.log(`[Middleware] Allowing access to public auth path: ${pathname}`);
+    return NextResponse.next();
+  }
 
-  // Check for Firebase Auth token in cookies (adapt cookie name if needed)
-  // Note: This assumes your Firebase Auth session handling sets a cookie named '__session'.
-  // If using client-side persistence only, this cookie check might not be reliable on the server.
-  // Consider using server-side session verification if needed.
-  const sessionCookie = request.cookies.get('__session'); // Or your specific session cookie name
+  // Check for Firebase Auth token in cookies
+  // Adjust 'your_auth_cookie_name' if you use a different name or method
+  const sessionCookie = req.cookies.get('__session'); // Default Firebase cookie name
   const isAuthenticated = !!sessionCookie;
 
   console.log(`[Middleware] Path: ${pathname}, Authenticated (via cookie check): ${isAuthenticated}`);
 
-  // Allow access to auth paths (/auth/login, /auth/signup) regardless of authentication state
-  if (AUTH_PATHS.some(authPath => pathname.startsWith(authPath))) {
-     console.log(`[Middleware] Allowing access to public auth path: ${pathname}`);
-    return NextResponse.next();
-  }
 
-  // If the user is authenticated (based on cookie), allow access to any other path
-  if (isAuthenticated) {
-    console.log(`[Middleware] Authenticated user accessing allowed path: ${pathname}. Allowing.`);
-    return NextResponse.next();
-  }
-
-  // If the user is NOT authenticated (based on cookie) and trying to access a protected path, redirect to login
-  // All paths except the explicit AUTH_PATHS are considered protected here.
-  if (!isAuthenticated && !AUTH_PATHS.some(authPath => pathname.startsWith(authPath))) {
+  // If NOT authenticated and trying to access a non-auth path, redirect to login
+  if (!isAuthenticated) {
     console.log(`[Middleware] Unauthenticated user accessing protected path ${pathname}. Redirecting to /auth/login.`);
-    const loginUrl = new URL('/auth/login', request.url);
-    // Optionally preserve the original path for redirect after login
+    const loginUrl = new URL('/auth/login', req.url);
+    // Optional: Add redirect query param
     // loginUrl.searchParams.set('redirectedFrom', pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  // Fallback: Allow access if none of the above conditions were met (should be rare)
-   console.log(`[Middleware] Default fallback for path: ${pathname}. Allowing.`);
+  // If authenticated, allow access to the requested path
+  console.log(`[Middleware] Authenticated user accessing allowed path: ${pathname}. Allowing.`);
   return NextResponse.next();
 }
 
@@ -53,11 +43,14 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      * - logo-*.png (logo files)
-     * - / (Root path - potentially public landing page, handled by redirect logic if needed)
+     * - /auth/* (Public auth routes - explicitly excluded from protection)
+     * - / (Root path - if it should be public, otherwise remove from negative lookahead)
+     *
+     * This negative lookahead ensures the middleware ONLY runs on paths
+     * NOT matching these patterns. Auth paths are handled by the explicit check above.
      */
-    '/((?!api|_next/static|_next/image|favicon.ico|logo-light.png|logo-dark.png).*)',
-    // Explicitly include root '/' if it should be protected by this middleware.
-    // If '/' is a public landing page, it will be allowed by the logic above (if not authenticated).
-    // '/'
+    '/((?!api|_next/static|_next/image|favicon.ico|logo-light.png|logo-dark.png|auth/).*)',
+    // If your root '/' path should also be protected, include it separately or adjust the matcher
+    // '/',
   ],
 };
