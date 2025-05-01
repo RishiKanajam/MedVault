@@ -1,89 +1,167 @@
+'use client'; // Needed for hooks and client-side interactions
+
 import React from 'react';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
-import { Boxes, AlertTriangle, CalendarOff, Truck, ThermometerSnowflake } from 'lucide-react';
+import Link from 'next/link';
+import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Boxes, AlertTriangle, CalendarOff, Truck, ThermometerSnowflake, Activity, FlaskConical, BrainCircuit } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton'; // For loading state
+
+// Placeholder hook for user data - Replace with actual auth context/hook
+const useUser = () => {
+    // Simulate loading user data
+    const [user, setUser] = React.useState<{ name: string } | null>(null);
+    const [loading, setLoading] = React.useState(true);
+
+    React.useEffect(() => {
+        const timer = setTimeout(() => {
+            setUser({ name: "Dr. Anya Sharma" }); // Example user
+            setLoading(false);
+        }, 500);
+        return () => clearTimeout(timer);
+    }, []);
+
+    return { user, loading };
+};
+
+// Placeholder hook for dashboard metrics - Replace with React Query fetch
+const useDashboardMetrics = () => {
+     // Simulate loading metrics data
+     const [metrics, setMetrics] = React.useState({
+        totalMeds: 0,
+        expiringSoon: 0,
+        expired: 0,
+        coldChainBreaches: 0,
+        activeShipments: 0,
+     });
+     const [loading, setLoading] = React.useState(true);
+
+     React.useEffect(() => {
+         const timer = setTimeout(() => {
+             // TODO: Fetch actual data from Firestore using React Query
+             setMetrics({
+                 totalMeds: 138,
+                 expiringSoon: 5, // Within 7 days
+                 expired: 3,
+                 coldChainBreaches: 1,
+                 activeShipments: 4,
+             });
+             setLoading(false);
+         }, 700); // Simulate fetch delay
+         return () => clearTimeout(timer);
+     }, []);
+
+     return { metrics, loading };
+};
+
 
 export default function DashboardPage() {
-  // TODO: Fetch actual data from Firestore
-  const metrics = {
-    totalMeds: 125,
-    expiringSoon: 8,
-    expired: 2,
-    coldChainOk: true,
-    shipmentsInTransit: 3,
-  };
+  const { user, loading: userLoading } = useUser();
+  const { metrics, loading: metricsLoading } = useDashboardMetrics();
+
+  const isLoading = userLoading || metricsLoading;
+
+  const metricCards = [
+    { title: "Total Medicines", value: metrics.totalMeds, icon: Boxes, href: "/inventory", color: "text-primary" },
+    { title: "Expiring Soon", value: metrics.expiringSoon, icon: AlertTriangle, href: "/inventory?filter=expiring", color: "text-orange-500" }, // Accent color
+    { title: "Expired Medicines", value: metrics.expired, icon: CalendarOff, href: "/inventory?filter=expired", color: "text-destructive" },
+    { title: "Cold-Chain Breaches", value: metrics.coldChainBreaches, icon: ThermometerSnowflake, href: "/inventory?filter=coldchain", color: "text-blue-500" }, // Or another distinct color
+    { title: "Active Shipments", value: metrics.activeShipments, icon: Truck, href: "/shipments", color: "text-purple-500" }, // Example color
+  ];
+
+   const quickActions = [
+     { title: "Manage Inventory", icon: Boxes, href: "/inventory" },
+     { title: "Track Shipments", icon: Truck, href: "/shipments" },
+     { title: "RxAI Support", icon: BrainCircuit, href: "/rxai" },
+     { title: "PharmaNet", icon: FlaskConical, href: "/pharmanet"},
+   ];
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Total Medicines</CardTitle>
-          <Boxes className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{metrics.totalMeds}</div>
-          <p className="text-xs text-muted-foreground">Items in inventory</p>
-        </CardContent>
-      </Card>
+    <div className="space-y-6 animate-fadeIn">
+       {/* Welcome Banner */}
+       <Card className="bg-gradient-to-r from-primary to-teal-600 text-primary-foreground shadow">
+         <CardHeader>
+           <CardTitle className="text-2xl">
+             {isLoading ? (
+               <Skeleton className="h-8 w-48 bg-white/30" />
+             ) : (
+               `Welcome back, ${user?.name || 'User'}!`
+             )}
+           </CardTitle>
+           <CardDescription className="text-primary-foreground/80">
+             Here's a quick overview of your MediSync Pro workspace.
+           </CardDescription>
+         </CardHeader>
+       </Card>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Expiring Soon</CardTitle>
-          <AlertTriangle className="h-4 w-4 text-yellow-500" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{metrics.expiringSoon}</div>
-          <p className="text-xs text-muted-foreground">Items expiring within 30 days</p>
-        </CardContent>
-      </Card>
+       {/* Metric Cards */}
+       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+         {metricCards.map((metric, index) => (
+           <Card key={index}>
+             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+               <CardTitle className="text-sm font-medium">{metric.title}</CardTitle>
+               <metric.icon className={`h-4 w-4 text-muted-foreground ${metric.color}`} />
+             </CardHeader>
+             <CardContent className="pb-4">
+               {isLoading ? (
+                  <Skeleton className="h-8 w-16" />
+               ) : (
+                 <div className={`text-2xl font-bold ${metric.value > 0 ? metric.color : ''}`}>{metric.value}</div>
+               )}
+               <p className="text-xs text-muted-foreground">
+                 {metric.title === 'Expiring Soon' ? 'Within 7 days' :
+                  metric.title === 'Cold-Chain Breaches' ? 'Incidents recorded' :
+                  metric.title === 'Total Medicines' ? 'Items in stock' :
+                  metric.title === 'Expired Medicines' ? 'Items past date' :
+                  metric.title === 'Active Shipments' ? 'Currently tracked' : ''}
+               </p>
+             </CardContent>
+             <CardFooter className="pt-0 pb-4 px-6">
+               <Button variant="link" size="sm" className="p-0 h-auto text-xs" asChild>
+                 <Link href={metric.href}>View Details</Link>
+               </Button>
+             </CardFooter>
+           </Card>
+         ))}
+       </div>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Expired Medicines</CardTitle>
-          <CalendarOff className="h-4 w-4 text-destructive" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{metrics.expired}</div>
-          <p className="text-xs text-muted-foreground">Items past expiry date</p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Cold Chain Status</CardTitle>
-          <ThermometerSnowflake className={`h-4 w-4 ${metrics.coldChainOk ? 'text-blue-500' : 'text-red-500'}`} />
-        </CardHeader>
-        <CardContent>
-          <div className={`text-2xl font-bold ${metrics.coldChainOk ? 'text-blue-500' : 'text-red-500'}`}>
-            {metrics.coldChainOk ? 'Stable' : 'Alert'}
+       {/* Quick Actions */}
+       <div>
+          <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+             {quickActions.map((action, index) => (
+                <Card key={index} className="hover:shadow-md transition-shadow hover:border-primary/50">
+                 <Link href={action.href} className="block h-full">
+                    <CardContent className="pt-6 flex flex-col items-center justify-center text-center h-full">
+                        <action.icon className="h-10 w-10 text-primary mb-3" />
+                        <p className="font-medium">{action.title}</p>
+                        <p className="text-xs text-muted-foreground mt-1">Access the {action.label || action.title.toLowerCase()} section.</p>
+                    </CardContent>
+                 </Link>
+                </Card>
+             ))}
           </div>
-           <p className="text-xs text-muted-foreground">
-            {metrics.coldChainOk ? 'Temperatures within range' : 'Check monitored items'}
-          </p>
-        </CardContent>
-      </Card>
+       </div>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Shipments In Transit</CardTitle>
-          <Truck className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{metrics.shipmentsInTransit}</div>
-           <p className="text-xs text-muted-foreground">Active deliveries being tracked</p>
-        </CardContent>
-      </Card>
-
-       {/* Add more cards/widgets as needed */}
-        <Card className="md:col-span-2 lg:col-span-1 xl:col-span-2">
-        <CardHeader>
-          <CardTitle>Recent Activity</CardTitle>
+       {/* Optional: Recent Activity Feed */}
+       <Card>
+         <CardHeader>
+           <CardTitle className="flex items-center gap-2"><Activity className="h-5 w-5" /> Recent Activity</CardTitle>
            <CardDescription>Overview of recent inventory changes and alerts.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {/* Placeholder for activity feed */}
-          <p className="text-sm text-muted-foreground">No recent activity to display.</p>
-        </CardContent>
-      </Card>
+         </CardHeader>
+         <CardContent>
+           {/* Placeholder - Replace with actual activity feed component */}
+           {isLoading ? (
+               <div className="space-y-2">
+                 <Skeleton className="h-4 w-3/4" />
+                 <Skeleton className="h-4 w-1/2" />
+               </div>
+           ) : (
+              <p className="text-sm text-muted-foreground">No recent activity to display.</p>
+              // TODO: Map through recent activity items fetched via React Query
+           )}
+         </CardContent>
+       </Card>
 
     </div>
   );

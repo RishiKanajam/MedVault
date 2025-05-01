@@ -29,32 +29,32 @@ const CardHeader = React.forwardRef<
 ))
 CardHeader.displayName = "CardHeader"
 
+// Use div for CardTitle to avoid semantic HTML issues with headings
 const CardTitle = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
+  HTMLDivElement, // Changed from HTMLParagraphElement to HTMLDivElement
+  React.HTMLAttributes<HTMLHeadingElement>
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn(
-      "text-2xl font-semibold leading-none tracking-tight",
-      className
-    )}
+    className={cn("text-lg font-semibold leading-none tracking-tight", className)} // Adjusted text size
     {...props}
   />
-))
+));
 CardTitle.displayName = "CardTitle"
 
+// Use div for CardDescription
 const CardDescription = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
+  HTMLDivElement, // Changed from HTMLParagraphElement to HTMLDivElement
+  React.HTMLAttributes<HTMLParagraphElement>
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
     className={cn("text-sm text-muted-foreground", className)}
     {...props}
   />
-))
+));
 CardDescription.displayName = "CardDescription"
+
 
 const CardContent = React.forwardRef<
   HTMLDivElement,
