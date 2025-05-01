@@ -8,20 +8,31 @@ import { getStorage, FirebaseStorage } from 'firebase/storage';
 // Your web app's Firebase configuration
 // Use environment variables for security and flexibility
 
+// --- IMPORTANT ---
+// The error "auth/api-key-not-valid" strongly suggests that the
+// environment variable `NEXT_PUBLIC_FIREBASE_API_KEY` is either:
+// 1. Missing from your .env or .env.local file.
+// 2. Present in the file, but the Next.js development server needs to be restarted
+//    after adding/modifying the .env file.
+// 3. The API key value itself, copied from Firebase Console, is incorrect.
+// Please verify these points in your local setup. The code below correctly
+// attempts to read the variable.
+// ---
+
 // Log missing variables to help debugging
 if (!process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
-    console.warn("Firebase Warning: NEXT_PUBLIC_FIREBASE_API_KEY is not set in .env file.");
+    console.warn("Firebase Warning: NEXT_PUBLIC_FIREBASE_API_KEY is not set in the environment. Authentication will fail.");
 }
 if (!process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN) {
-    console.warn("Firebase Warning: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN is not set in .env file.");
+    console.warn("Firebase Warning: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN is not set in the environment.");
 }
 if (!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID) {
-    console.warn("Firebase Warning: NEXT_PUBLIC_FIREBASE_PROJECT_ID is not set in .env file.");
+    console.warn("Firebase Warning: NEXT_PUBLIC_FIREBASE_PROJECT_ID is not set in the environment.");
 }
 // Add similar checks for other required variables if needed
 
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "MISSING_API_KEY", // Provide fallback to avoid build errors, but auth will fail
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "MISSING_API_KEY", // Provide fallback to avoid build errors, but auth will fail if missing
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
