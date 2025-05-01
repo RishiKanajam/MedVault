@@ -15,7 +15,8 @@ import { useAuthGuard } from '@/hooks/useAuthGuard'; // Import the auth guard ho
 export default function ModuleSelectionPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const { user, loading: authLoading } = useAuthGuard({ requiredAuth: true, checkModules: false }); // Ensure user is logged in, skip module check here
+  // Ensure user is logged in using the guard, but don't check modules yet
+  const { user, loading: authLoading } = useAuthGuard({ requiredAuth: true, checkModules: false });
 
   const [selectedModules, setSelectedModules] = useState({
     medTrack: true,
@@ -26,22 +27,36 @@ export default function ModuleSelectionPage() {
   });
   const [isLoading, setIsLoading] = useState(false);
 
-   // Redirect if modules are already set (e.g., user navigates back)
+   // Redirect if modules are already set (e.g., user navigates back or finishes setup elsewhere)
    useEffect(() => {
      const checkExistingModules = async () => {
        if (user) {
-         const userDocRef = doc(db, 'users', user.uid);
-         const userDocSnap = await getDoc(userDocRef);
-         if (userDocSnap.exists() && userDocSnap.data()?.settings?.modules) {
-           console.log("Modules already configured, redirecting to dashboard.");
-           router.replace('/dashboard');
+         setIsLoading(true); // Indicate we are checking existing config
+         console.log("[ModuleSelection] Checking existing module config for user:", user.uid);
+         try {
+             const userDocRef = doc(db, 'users', user.uid);
+             const userDocSnap = await getDoc(userDocRef);
+             if (userDocSnap.exists() && userDocSnap.data()?.settings?.modules) {
+               console.log("[ModuleSelection] Modules already configured, redirecting to dashboard.");
+               router.replace('/dashboard');
+               // Keep loading true until redirection happens
+               return;
+             } else {
+               console.log("[ModuleSelection] No existing module config found.");
+             }
+         } catch (error) {
+             console.error("[ModuleSelection] Error checking existing modules:", error);
+             // Handle error appropriately, maybe show a toast or allow proceeding
+         } finally {
+             setIsLoading(false); // Finish checking
          }
        }
      };
      if (!authLoading && user) {
        checkExistingModules();
      }
-   }, [user, authLoading, router]);
+     // eslint-disable-next-line react-hooks/exhaustive-deps
+   }, [user, authLoading]); // Add router to dependencies if used inside effect
 
 
   const handleCheckboxChange = (moduleId: keyof typeof selectedModules) => {
@@ -53,27 +68,35 @@ export default function ModuleSelectionPage() {
 
   const handleContinue = async () => {
     if (!user) {
-      toast({ title: "Error", description: "You must be logged in.", variant: "destructive" });
-      router.push('/login'); // Redirect to login if user somehow got here without auth
+      toast({ title: "Authentication Error", description: "You must be logged in to save modules.", variant: "destructive" });
+      router.push('/login'); // Redirect to login if user context is lost
       return;
     }
 
     setIsLoading(true);
-    console.log('Saving selected modules for user:', user.uid, selectedModules);
+    console.log('[ModuleSelection] Saving selected modules for user:', user.uid, selectedModules);
 
     try {
       const userDocRef = doc(db, 'users', user.uid);
+      // IMPORTANT: Security rules must allow the authenticated user to write to their own document path `/users/{userId}`
       await updateDoc(userDocRef, {
         'settings.modules': selectedModules // Update only the modules part of settings
       });
+      console.log('[ModuleSelection] Modules saved successfully.');
       toast({ title: "Modules Saved", description: "Your module preferences have been saved." });
       router.push('/dashboard'); // Redirect to dashboard after selection
-    } catch (error) {
-      console.error("Error saving module settings:", error);
-      toast({ title: "Save Error", description: "Could not save module preferences.", variant: "destructive" });
-    } finally {
-      setIsLoading(false);
+    } catch (error: any) {
+      console.error("[ModuleSelection] Error saving module settings:", error);
+      let message = "Could not save module preferences.";
+      if (error.code === 'permission-denied') {
+          message = "Permission denied. Unable to save module settings.";
+      } else if (error.message) {
+          message = error.message;
+      }
+      toast({ title: "Save Error", description: message, variant: "destructive" });
+      setIsLoading(false); // Ensure loading stops on error
     }
+    // No finally here, isLoading should remain true during redirect
   };
 
   const modulesConfig = [
@@ -85,13 +108,28 @@ export default function ModuleSelectionPage() {
   ] as const;
 
 
-   if (authLoading) {
+   if (authLoading || isLoading) { // Show loader if checking auth OR checking/saving modules
      return (
        <div className="flex min-h-screen items-center justify-center bg-background p-4">
          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <span className="ml-2 text-muted-foreground">
+             {authLoading ? "Verifying authentication..." : "Checking configuration..."}
+          </span>
        </div>
      );
    }
+
+    // If auth check complete, user exists, and not currently saving/checking config
+   if (!user) {
+      // This state should ideally be prevented by the redirect in useAuthGuard,
+      // but handle defensively.
+      return (
+          <div className="flex min-h-screen items-center justify-center bg-background p-4 text-destructive">
+              Error: User not authenticated. Redirecting...
+          </div>
+      );
+   }
+
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
@@ -114,7 +152,7 @@ export default function ModuleSelectionPage() {
                  checked={selectedModules[module.id]}
                  onCheckedChange={() => handleCheckboxChange(module.id)}
                  className="mt-1"
-                 disabled={isLoading}
+                 disabled={isLoading} // Disable while saving
                />
                <div className="grid gap-1.5 leading-none">
                 <Label htmlFor={module.id} className="flex items-center gap-2 font-medium cursor-pointer">

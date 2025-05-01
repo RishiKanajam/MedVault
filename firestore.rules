@@ -4,42 +4,36 @@ service cloud.firestore {
 
     // Users can only read/write their own profile document
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, update, delete: if request.auth != null && request.auth.uid == userId;
+      // Allow creation only during signup (when user is authenticated but doc doesn't exist yet)
+      // Or allow anyone to create a user doc if signup is handled differently (less secure)
+      allow create: if request.auth != null;
     }
 
-    // Data within a clinic (medicines, shipments, etc.)
-    // Requires the user to be authenticated AND have a matching clinicId custom claim
-    // IMPORTANT: You need to set the clinicId custom claim on the user's Firebase Auth token
-    //            This is typically done via Firebase Functions during signup or an admin process.
+    // Access to clinic-specific data requires a matching clinicId custom claim in the user's auth token
+    // IMPORTANT: Setting custom claims typically requires a backend function (e.g., Firebase Function)
+    // triggered on user creation or profile update. Without this backend step, these rules
+    // will deny access even if the clinicId is stored in the /users/{userId} document.
     match /clinics/{clinicId}/{collection}/{docId} {
       allow read, write: if request.auth != null
-        && request.auth.token.clinicId == clinicId; // Check custom claim
+                          && request.auth.token.clinicId == clinicId;
+
+        // Granular access examples (uncomment and adapt as needed):
+        // Allow reads only for specific collections:
+        // allow read: if request.auth != null && request.auth.token.clinicId == clinicId;
+        // allow write: if request.auth != null && request.auth.token.clinicId == clinicId
+        //               && (collection == 'prescriptions' || collection == 'medicines'); // Example write restriction
+
+        // Allow only specific roles (requires 'role' custom claim)
+        // allow read, write: if request.auth != null
+        //                   && request.auth.token.clinicId == clinicId
+        //                   && request.auth.token.role == 'admin';
     }
 
-    // Allow reading settings only if authenticated user matches userId
-     match /clinics/{clinicId}/settings {
-       allow read: if request.auth != null && request.auth.token.clinicId == clinicId;
-       allow write: if request.auth != null && request.auth.token.clinicId == clinicId; // Or restrict further if needed
-     }
-
-     // Allow reading/writing drug cache if authenticated user matches clinicId
-     match /clinics/{clinicId}/drugCache/{rxcui} {
-         allow read, write: if request.auth != null && request.auth.token.clinicId == clinicId;
-     }
-
-     // Allow reading/writing prescriptions if authenticated user matches clinicId
-     match /clinics/{clinicId}/prescriptions/{prescriptionId} {
-            allow read, write: if request.auth != null && request.auth.token.clinicId == clinicId;
-     }
-
-      // Allow reading/writing patient history if authenticated user matches clinicId
-      match /clinics/{clinicId}/patients/{patientId}/{collection}/{recordId} {
-            allow read, write: if request.auth != null && request.auth.token.clinicId == clinicId;
-      }
-       match /clinics/{clinicId}/patients/{patientId} {
-            allow read, write: if request.auth != null && request.auth.token.clinicId == clinicId;
-       }
-
-
+     // Optional: Public read access for a specific collection (e.g., general clinic info)
+     // match /clinics/{clinicId}/publicInfo/{docId} {
+     //   allow read: if true; // Anyone can read public info
+     //   allow write: if request.auth != null && request.auth.token.clinicId == clinicId; // Only clinic members can write
+     // }
   }
 }

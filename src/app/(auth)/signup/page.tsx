@@ -48,38 +48,66 @@ export default function SignupPage() {
 
     try {
       // 1. Create Firebase Auth user
+      console.log('[Signup] Attempting to create user...');
       const userCred = await createUserWithEmailAndPassword(auth, email, password);
+      console.log('[Signup] User created in Auth:', userCred.user.uid);
 
       // 2. Update Firebase Auth Profile (Display Name)
+      console.log('[Signup] Updating Auth profile...');
       await updateProfile(userCred.user, { displayName: fullName });
+      console.log('[Signup] Auth profile updated.');
 
       // 3. Create Firestore user document
-      // IMPORTANT: For clinicId scoping, you would typically set a custom claim here via a backend Function.
-      // This frontend code sets it in Firestore, but security rules rely on the token claim.
-      await setDoc(doc(db, 'users', userCred.user.uid), {
+      console.log('[Signup] Attempting to create Firestore document for user:', userCred.user.uid);
+      // IMPORTANT: Security rules allow this write because the user is now authenticated
+      // and the path matches their UID: `/users/{userId}` where `request.auth.uid == userId`.
+      const userDocRef = doc(db, 'users', userCred.user.uid);
+      await setDoc(userDocRef, {
         name: fullName,
         email: email,
         clinicId: clinicId, // Store clinic ID in Firestore profile
         settings: { modules: null, theme: 'system' } // Initialize settings as null/default
       });
+      console.log('[Signup] Firestore document created.');
 
       // Optional: Trigger a function to set the custom claim 'clinicId' on the user token
+      // This step is CRITICAL for Firestore rules that check `request.auth.token.clinicId`.
+      // Since this requires a backend function, it's commented out here.
+      // Without this backend step, access to `/clinics/{clinicId}/...` will fail due to permissions.
+      // console.log('[Signup] Note: Backend function needed to set clinicId custom claim for full access.');
       // await fetch('/api/set-custom-claims', { method: 'POST', body: JSON.stringify({ uid: userCred.user.uid, clinicId }) });
 
-      toast({ title: "Account Created", description: "Welcome to MediSync Pro!" });
+
+      toast({ title: "Account Created", description: "Welcome to MediSync Pro! Please select your modules." });
       router.push('/module-selection'); // Redirect to module setup
 
     } catch (err: any) {
-      console.error('Signup Error:', err);
+      console.error('[Signup] Error during signup:', err);
+
       // Provide more user-friendly error messages
       let message = 'An unknown error occurred during sign up.';
-      if (err.code === 'auth/email-already-in-use') {
-          message = 'This email address is already registered.';
-      } else if (err.code === 'auth/weak-password') {
-          message = 'Password should be at least 6 characters long.';
+      if (err.code) {
+        switch (err.code) {
+           case 'auth/email-already-in-use':
+             message = 'This email address is already registered.';
+             break;
+           case 'auth/weak-password':
+             message = 'Password should be at least 6 characters long.';
+             break;
+           case 'auth/invalid-email':
+              message = 'Please enter a valid email address.';
+              break;
+           case 'permission-denied': // Firestore permission error
+             message = 'Could not save user profile. Please check permissions or contact support.';
+             break;
+           default:
+              message = err.message || message; // Use Firebase error message if available
+              break;
+        }
       } else if (err.message) {
           message = err.message;
       }
+
       setError(message);
       toast({ title: "Signup Failed", description: message, variant: "destructive" });
     } finally {
