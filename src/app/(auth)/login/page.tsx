@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react'; // Added useEffect
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -15,51 +15,86 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Pill, Loader2 } from 'lucide-react';
-import { auth } from '@/firebase'; // Ensure Firebase is correctly initialized
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth, db } from '@/firebase'; // Ensure Firebase is correctly initialized
+import { signInWithEmailAndPassword, onAuthStateChanged, User } from 'firebase/auth'; // Added onAuthStateChanged, User
+import { doc, getDoc } from 'firebase/firestore'; // Added getDoc, doc
 import { useToast } from '@/hooks/use-toast';
+import { useAuthGuard } from '@/hooks/useAuthGuard'; // Import the guard
 
 export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false); // Changed initial state to false
   const [error, setError] = useState<string | null>(null);
+
+   // Use auth guard to redirect if already logged in
+   // Set requiredAuth to false for the login page itself
+   // Redirect authenticated users away from login to dashboard
+   const { loading: authLoading } = useAuthGuard({ redirectIfAuthenticated: '/dashboard', requiredAuth: false });
+
 
   const handleLogin = async (event: React.FormEvent) => {
     event.preventDefault();
     setError(null); // Clear previous errors
-    setIsLoading(true);
+    setIsLoading(true); // Set loading to true when login starts
 
     try {
       // 1. Sign in with Firebase Auth
       console.log('[Login] Attempting sign-in...');
-      await signInWithEmailAndPassword(auth, email, password);
-      console.log('[Login] Sign-in successful.');
+      const userCred = await signInWithEmailAndPassword(auth, email, password);
+      console.log('[Login] Sign-in successful for user:', userCred.user.uid);
+
 
       // Login successful toast
       toast({ title: "Login Successful", description: `Welcome back!` });
 
-      // 2. Always redirect to dashboard after successful login
+
+      // 2. Redirect to dashboard after successful login
       console.log('[Login] Redirecting to /dashboard');
       router.push('/dashboard'); // Use push for navigation history
+      // No need to set isLoading to false here, as the component will unmount upon redirect
 
     } catch (err: any) {
       console.error('[Login] Error:', err);
       let message = 'An unknown error occurred during login.';
-       if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
-         message = 'Invalid email or password.';
+       if (err.code) {
+          switch (err.code) {
+            case 'auth/user-not-found':
+            case 'auth/wrong-password':
+            case 'auth/invalid-credential': // More generic error
+               message = 'Invalid email or password.';
+               break;
+            case 'auth/invalid-email':
+               message = 'Please enter a valid email address.';
+               break;
+            // Add other specific Firebase Auth error codes as needed
+             case 'auth/network-request-failed':
+                message = 'Network error. Please check your connection.';
+                break;
+            default:
+               message = err.message || message; // Use Firebase error message if available
+               break;
+          }
        } else if (err.message) {
           message = err.message;
        }
       setError(message);
       toast({ title: "Login Failed", description: message, variant: "destructive" });
-      setIsLoading(false); // Ensure loading is false on error
+      setIsLoading(false); // Only set loading to false on error
     }
-    // Don't set isLoading to false here if redirect happens, as the component might unmount.
-    // It's set to false only in the catch block.
   };
+
+  // Show loading indicator while auth state is being checked by the guard
+  if (authLoading) {
+      return (
+        <div className="flex min-h-screen items-center justify-center bg-background p-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      );
+  }
+
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
