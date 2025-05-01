@@ -15,9 +15,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Pill, Loader2 } from 'lucide-react';
-import { auth, db } from '@/firebase'; // Ensure these are correctly initialized and exported
+import { auth } from '@/firebase'; // Ensure Firebase is correctly initialized
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 
 export default function LoginPage() {
@@ -35,38 +34,16 @@ export default function LoginPage() {
 
     try {
       // 1. Sign in with Firebase Auth
-      const userCred = await signInWithEmailAndPassword(auth, email, password);
-      const user = userCred.user;
+      console.log('[Login] Attempting sign-in...');
+      await signInWithEmailAndPassword(auth, email, password);
+      console.log('[Login] Sign-in successful.');
 
-      // 2. Fetch user's Firestore document
-      console.log('[Login] Fetching user document for:', user.uid);
-      const userDocRef = doc(db, 'users', user.uid);
-      const userDocSnap = await getDoc(userDocRef);
-
-      let modulesConfigured = false;
-      if (userDocSnap.exists()) {
-        const userData = userDocSnap.data();
-        // Check if settings.modules exists and has any keys
-        const modules = userData?.settings?.modules;
-        modulesConfigured = !!modules && typeof modules === 'object' && Object.keys(modules).length > 0;
-        console.log('[Login] User document exists. Modules configured:', modulesConfigured, modules);
-      } else {
-        // This case should ideally not happen if signup creates the doc, but handle it defensively.
-        console.warn("[Login] User document not found in Firestore for UID:", user.uid);
-        // Redirect to module setup as a fallback, assuming it's a first-time login after a potential signup issue.
-        modulesConfigured = false;
-      }
-
+      // Login successful toast
       toast({ title: "Login Successful", description: `Welcome back!` });
 
-      // 3. Redirect based on module configuration
-      if (modulesConfigured) {
-        console.log('[Login] Redirecting to /dashboard');
-        router.push('/dashboard'); // Use push for navigation history
-      } else {
-        console.log('[Login] Redirecting to /module-selection');
-        router.push('/module-selection'); // Use push for navigation history
-      }
+      // 2. Always redirect to dashboard after successful login
+      console.log('[Login] Redirecting to /dashboard');
+      router.push('/dashboard'); // Use push for navigation history
 
     } catch (err: any) {
       console.error('[Login] Error:', err);

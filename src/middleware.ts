@@ -3,8 +3,6 @@ import type { NextRequest } from 'next/server';
 
 // List of authentication-related paths (unprotected)
 const AUTH_PATHS = ['/login', '/signup'];
-// Path for initial module setup (unprotected)
-const MODULE_SETUP_PATH = '/module-selection';
 // List of paths accessible to everyone (even unauthenticated users) - typically just the landing page
 const PUBLIC_PATHS = ['/'];
 
@@ -12,6 +10,7 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Check for Firebase Auth token in cookies (adapt cookie name if needed)
+  // This is a basic check. For production, consider server-side token verification.
   const sessionCookie = request.cookies.get('__session'); // Default name, check your setup
   const isAuthenticated = !!sessionCookie;
 
@@ -30,16 +29,16 @@ export function middleware(request: NextRequest) {
       console.log(`[Middleware] Authenticated user accessing auth path ${pathname}. Redirecting to /dashboard.`);
       return NextResponse.redirect(new URL('/dashboard', request.url));
     }
-    // Allow access to module setup (in case they revisit) and all other protected routes
+    // Allow access to all other protected routes (including settings)
     console.log(`[Middleware] Authenticated user accessing allowed path: ${pathname}. Allowing.`);
     return NextResponse.next();
   }
 
   // Handle Unauthenticated Users
   if (!isAuthenticated) {
-    // Allow access to auth paths and module setup path
-    if (AUTH_PATHS.includes(pathname) || pathname === MODULE_SETUP_PATH) {
-       console.log(`[Middleware] Unauthenticated user accessing allowed path: ${pathname}. Allowing.`);
+    // Allow access only to auth paths
+    if (AUTH_PATHS.includes(pathname)) {
+       console.log(`[Middleware] Unauthenticated user accessing allowed auth path: ${pathname}. Allowing.`);
       return NextResponse.next();
     }
     // Redirect to login if trying to access any other protected path

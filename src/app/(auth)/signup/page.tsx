@@ -58,7 +58,7 @@ export default function SignupPage() {
       await updateProfile(user, { displayName: fullName });
       console.log('[Signup] Auth profile updated.');
 
-      // 3. Create Firestore user document
+      // 3. Create Firestore user document with empty modules
       console.log('[Signup] Attempting to create Firestore document for user:', user.uid);
       const userDocRef = doc(db, 'users', user.uid);
       await setDoc(userDocRef, {
@@ -66,7 +66,7 @@ export default function SignupPage() {
         email: email,
         clinicId: clinicId, // Store clinic ID in Firestore profile
         settings: {
-           modules: {}, // Initialize modules as an empty object
+           modules: {}, // Initialize modules as an empty object for first run
            theme: 'system' // Default theme
         }
       }, { merge: true }); // Use merge: true to be safe, although it's a new doc
@@ -75,9 +75,9 @@ export default function SignupPage() {
       // Custom claims setting should ideally happen in a backend function triggered on user creation.
       // console.log('[Signup] Note: Backend function needed to set clinicId custom claim for full access.');
 
-      toast({ title: "Account Created", description: "Welcome to MediSync Pro! Please select your modules." });
-      // 4. Redirect to module setup AFTER Firestore doc is created
-      router.push('/module-selection');
+      toast({ title: "Account Created", description: "Welcome to MediSync Pro!" });
+      // 4. Redirect directly to dashboard
+      router.push('/dashboard');
 
     } catch (err: any) {
       console.error('[Signup] Error during signup:', err);
