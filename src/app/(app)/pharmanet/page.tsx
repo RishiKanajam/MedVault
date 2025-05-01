@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -19,164 +19,239 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
-
-// Mock services - replace with actual API calls
-import { searchDrugs, type Drug } from '@/services/rx-norm';
-import { getDrugByName, type DrugBankDrug } from '@/services/drug-bank';
-import { getClinicalTrials, type ClinicalTrial } from '@/services/clinical-trials';
-import { summarizeClinicalTrials } from '@/ai/flows/summarize-clinical-trials';
-import { confirmDosageDetails } from '@/ai/flows/confirm-dosage-details';
+} from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query'; // Import React Query hooks
+
+// Remove mock services - API calls will go through Next.js routes
+// import { searchDrugs, type Drug } from '@/services/rx-norm'; // Remove
+// import { getDrugByName, type DrugBankDrug } from '@/services/drug-bank'; // Remove
+import { getClinicalTrials, type ClinicalTrial } from '@/services/clinical-trials'; // Keep this for now
+import { summarizeClinicalTrials } from '@/ai/flows/summarize-clinical-trials';
+import { confirmDosageDetails, type ConfirmDosageDetailsOutput } from '@/ai/flows/confirm-dosage-details'; // Import updated flow
 
 
-type SearchResult = Drug; // Primarily RxNorm results
-type DetailedInfo = DrugBankDrug & { trialsSummary?: string }; // DrugBank info + summarized trials
+// Define interfaces for API responses
+interface RxNormSearchResult {
+  rxNormId: string;
+  name: string;
+}
 
-export default function PharmaNetPage() {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
-  const [selectedDrug, setSelectedDrug] = useState<SearchResult | null>(null);
-  const [detailedInfo, setDetailedInfo] = useState<DetailedInfo | null>(null);
-  const [isLoadingSearch, setIsLoadingSearch] = useState(false);
-  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
-  const [isLoadingSummary, setIsLoadingSummary] = useState(false);
-  const [showDosageConfirmation, setShowDosageConfirmation] = useState(false);
-  const [dosageConfirmationMessage, setDosageConfirmationMessage] = useState('');
-  const [clinicalTrials, setClinicalTrials] = useState<ClinicalTrial[]>([]); // For R&D Alerts section
-  const [isLoadingTrials, setIsLoadingTrials] = useState(false);
+interface RxNormProperties {
+  // Define expected properties based on NCBI API response
+  // Example: dosageForms: string[]; ingredients: { name: string; strength: string }[];
+  // For now, let's keep it simple
+  description?: string;
+  [key: string]: any; // Allow other properties
+}
 
-
-  const { toast } = useToast();
-
-  const handleSearch = async (e?: React.FormEvent) => {
-    e?.preventDefault();
-    if (!searchTerm.trim()) return;
-
-    setIsLoadingSearch(true);
-    setSearchResults([]);
-    setSelectedDrug(null);
-    setDetailedInfo(null);
-    try {
-      // TODO: Implement caching logic (AsyncStorage/Firestore)
-      const results = await searchDrugs(searchTerm);
-      setSearchResults(results);
-    } catch (error) {
-      console.error('Error searching drugs:', error);
-       toast({ title: "Search Failed", description: "Could not fetch drug search results.", variant: "destructive" });
-    } finally {
-      setIsLoadingSearch(false);
-    }
-  };
-
-  const handleSelectDrug = async (drug: SearchResult) => {
-    setSelectedDrug(drug);
-    setDetailedInfo(null);
-    setIsLoadingDetails(true);
-
-     // 1. Get confirmation message from AI
-    try {
-        const confirmationResult = await confirmDosageDetails({ drugName: drug.name });
-        setDosageConfirmationMessage(confirmationResult.confirmation);
-        setShowDosageConfirmation(true); // Trigger the dialog
-        // Don't proceed to fetch details yet, wait for user confirmation in the dialog
-    } catch (error) {
-        console.error('Error getting dosage confirmation:', error);
-        toast({ title: "Confirmation Error", description: "Failed to get dosage confirmation prompt.", variant: "destructive" });
-        setIsLoadingDetails(false); // Stop loading if confirmation fails
-    }
+interface DrugDetails extends RxNormProperties {
+    rxNormId: string;
+    name: string;
+    // Add fields from DrugBank or other sources if combining later
+}
 
 
-  };
-
-  const fetchDrugDetails = async () => {
-      if (!selectedDrug) return;
-      // This function is called AFTER the user confirms in the dialog
-      try {
-          const details = await getDrugByName(selectedDrug.name);
-          setDetailedInfo(details);
-          // TODO: Fetch related clinical trials based on drug name/ID if API allows
-          // const trials = await fetchTrialsForDrug(selectedDrug.name);
-          // setClinicalTrials(trials); // Or append to a different list?
-
-      } catch (error) {
-          console.error('Error fetching drug details:', error);
-          toast({ title: "Details Fetch Failed", description: "Could not fetch detailed drug information.", variant: "destructive" });
-      } finally {
-          setIsLoadingDetails(false);
-      }
+// API Fetching functions (using fetch against Next.js API routes)
+const searchRxNormApi = async (query: string): Promise<RxNormSearchResult[]> => {
+  console.log(`[API] Searching RxNorm for: ${query}`);
+  const response = await fetch(`/api/rxnorm/search?name=${encodeURIComponent(query)}`);
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ message: response.statusText }));
+    console.error("[API] RxNorm search failed:", errorData);
+    throw new Error(errorData.message || 'Failed to search RxNorm');
   }
+  const data = await response.json();
+  console.log("[API] RxNorm search results:", data);
+  return data.results; // Assuming API route returns { results: [...] }
+};
 
-  const handleConfirmDosageView = () => {
-      setShowDosageConfirmation(false); // Close dialog
-      fetchDrugDetails(); // Proceed to fetch details
-  };
-
-
-   const fetchAllClinicalTrials = async () => {
-    setIsLoadingTrials(true);
-    try {
-      const trials = await getClinicalTrials();
-      setClinicalTrials(trials);
-    } catch (error) {
-      console.error('Error fetching clinical trials:', error);
-      toast({ title: "Trials Fetch Failed", description: "Could not fetch clinical trials.", variant: "destructive" });
-    } finally {
-      setIsLoadingTrials(false);
-    }
-  };
-
-   // Fetch trials on component mount for the R&D section
-   React.useEffect(() => {
-       fetchAllClinicalTrials();
-   }, []);
-
-
-   const handleSummarizeTrial = async (trial: ClinicalTrial) => {
-    setIsLoadingSummary(true); // Use a specific loading state if needed, or reuse isLoadingDetails
-    try {
-        const result = await summarizeClinicalTrials({ clinicalTrial: trial });
-
-        // Update the specific trial in the state with its summary
-        // Or display the summary in a modal/toast
-         toast({
-          title: `Summary: ${trial.title}`,
-           description: (
-            <ScrollArea className="h-40"> {/* Add scroll for long summaries */}
-               <p className="text-sm">{result.summary}</p>
-             </ScrollArea>
-           ),
-            duration: 9000, // Longer duration for reading
-         });
-
-         // Example of updating state if you store summaries with trials:
-         // setClinicalTrials(prevTrials =>
-         //   prevTrials.map(t =>
-         //     t.url === trial.url ? { ...t, aiSummary: result.summary } : t
-         //   )
-         // );
-
-
-    } catch (error) {
-        console.error('Error summarizing trial:', error);
-        toast({ title: "Summarization Failed", description: "Could not summarize the clinical trial.", variant: "destructive" });
-    } finally {
-        setIsLoadingSummary(false);
-    }
+const getRxNormPropertiesApi = async (rxcui: string): Promise<RxNormProperties> => {
+  console.log(`[API] Fetching properties for RxCUI: ${rxcui}`);
+  const response = await fetch(`/api/rxnorm/properties?rxcui=${encodeURIComponent(rxcui)}`);
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ message: response.statusText }));
+     console.error("[API] RxNorm properties fetch failed:", errorData);
+    throw new Error(errorData.message || `Failed to fetch properties for RxCUI ${rxcui}`);
+  }
+  const data = await response.json();
+   console.log("[API] RxNorm properties:", data);
+  return data.properties; // Assuming API route returns { properties: {...} }
 };
 
 
+type SearchResult = RxNormSearchResult;
+type DetailedInfo = DrugDetails | null; // Updated type
+
+export default function PharmaNetPage() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient(); // Get query client instance
+
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedDrug, setSelectedDrug] = useState<SearchResult | null>(null);
+  const [showDosageConfirmation, setShowDosageConfirmation] = useState(false);
+  const [dosageConfirmationResult, setDosageConfirmationResult] = useState<ConfirmDosageDetailsOutput | null>(null);
+  const [showFullDetails, setShowFullDetails] = useState(false); // Controls visibility of sensitive info
+
+  // --- React Query for Search ---
+  const { data: searchResults = [], isLoading: isLoadingSearch, error: searchError, refetch: refetchSearch } = useQuery<SearchResult[], Error>({
+    queryKey: ['rxNormSearch', searchTerm],
+    queryFn: () => searchRxNormApi(searchTerm),
+    enabled: false, // Only run query when handleSearch is called
+    staleTime: 1000 * 60 * 5, // Cache results for 5 minutes
+    gcTime: 1000 * 60 * 15, // Keep unused data for 15 minutes
+     retry: 1, // Retry once on failure
+  });
+
+   // --- React Query for Drug Details ---
+   const { data: detailedInfo, isLoading: isLoadingDetails, error: detailsError, refetch: refetchDetails } = useQuery<DetailedInfo, Error>({
+     queryKey: ['rxNormDetails', selectedDrug?.rxNormId],
+     queryFn: async (): Promise<DetailedInfo> => {
+       if (!selectedDrug) return null;
+       const properties = await getRxNormPropertiesApi(selectedDrug.rxNormId);
+       // TODO: Fetch from Firestore cache if available
+       // Example cache check:
+       // const cachedData = queryClient.getQueryData(['drugCache', selectedDrug.rxNormId]);
+       // if (cachedData) return cachedData as DetailedInfo;
+
+       // TODO: Implement Firestore caching: `clinics/{clinicId}/drugCache/{rxcui}`
+       // await saveToCache(selectedDrug.rxNormId, { ...properties, rxNormId: selectedDrug.rxNormId, name: selectedDrug.name });
+
+       return { ...properties, rxNormId: selectedDrug.rxNormId, name: selectedDrug.name };
+     },
+     enabled: !!selectedDrug && showFullDetails, // Only fetch when a drug is selected AND confirmed
+     staleTime: Infinity, // Cache details indefinitely until invalidated
+      gcTime: 1000 * 60 * 60, // Keep unused details for 1 hour
+      retry: 1,
+   });
+
+   // --- React Query for Clinical Trials ---
+   const { data: clinicalTrials = [], isLoading: isLoadingTrials, error: trialsError } = useQuery<ClinicalTrial[], Error>({
+     queryKey: ['clinicalTrials'],
+     queryFn: getClinicalTrials,
+     staleTime: 1000 * 60 * 30, // Cache trials for 30 minutes
+     gcTime: 1000 * 60 * 60, // Keep unused for 1 hour
+   });
+
+   // --- Mutations ---
+   const confirmDosageMutation = useMutation({
+      mutationFn: confirmDosageDetails,
+      onSuccess: (data) => {
+          console.log("[AI Mutation] Confirmation result:", data);
+          setDosageConfirmationResult(data);
+          setShowDosageConfirmation(true); // Show the dialog
+      },
+      onError: (error) => {
+          console.error('[AI Mutation] Error getting dosage confirmation:', error);
+          toast({ title: "Confirmation Error", description: "Failed to get dosage confirmation prompt.", variant: "destructive" });
+      },
+   });
+
+   const summarizeTrialMutation = useMutation({
+      mutationFn: summarizeClinicalTrials,
+      onSuccess: (data, variables) => {
+         toast({
+           title: `Summary: ${variables.clinicalTrial.title}`,
+           description: (
+             <ScrollArea className="h-40 max-h-[50vh]"> {/* Responsive max height */}
+               <p className="text-sm whitespace-pre-wrap">{data.summary}</p>
+             </ScrollArea>
+           ),
+           duration: 15000, // Longer duration
+           className: "w-full md:w-[400px] lg:w-[500px]", // Responsive width for toast
+         });
+      },
+      onError: (error) => {
+         console.error('[AI Mutation] Error summarizing trial:', error);
+         toast({ title: "Summarization Failed", description: "Could not summarize the clinical trial.", variant: "destructive" });
+      },
+   });
+
+
+  // --- Event Handlers ---
+  const handleSearch = (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!searchTerm.trim()) return;
+    setSelectedDrug(null); // Reset selection on new search
+    setShowFullDetails(false); // Reset details visibility
+    setDetailedInfo(null); // Clear previous details
+    queryClient.removeQueries({ queryKey: ['rxNormDetails'] }); // Clear details cache for old drug
+    // Manually trigger the search query
+    refetchSearch();
+  };
+
+   const handleSelectDrug = async (drug: SearchResult) => {
+     // Don't fetch details yet, just set selected drug and trigger AI confirmation
+     setSelectedDrug(drug);
+     setShowFullDetails(false); // Ensure details are hidden initially
+     setDetailedInfo(null); // Clear previous details view
+     queryClient.removeQueries({ queryKey: ['rxNormDetails', drug.rxNormId] }); // Clear potentially stale details cache
+     console.log(`Drug selected: ${drug.name}, initiating AI confirmation...`);
+     confirmDosageMutation.mutate({ drugName: drug.name });
+   };
+
+   const handleConfirmDosageView = () => {
+      setShowDosageConfirmation(false); // Close dialog
+       if (dosageConfirmationResult?.intentConfirmed) {
+           console.log("User confirmed dosage view. Fetching details...");
+           setShowFullDetails(true); // Allow details query to run
+           // Trigger detail fetch if not already running (or rely on enabled flag)
+           refetchDetails();
+       } else {
+           console.log("User cancelled dosage view.");
+           toast({ title: "Access Cancelled", description: "Detailed dosage information not shown.", variant: "default" });
+            // Optionally reset selected drug if cancelled
+            // setSelectedDrug(null);
+       }
+       setDosageConfirmationResult(null); // Reset confirmation result
+   };
+
+   const handleCancelDosageView = () => {
+       setShowDosageConfirmation(false);
+       setShowFullDetails(false); // Ensure details remain hidden
+       console.log("User cancelled dosage view from dialog cancel button.");
+       setDosageConfirmationResult(null); // Reset confirmation result
+        // Optionally reset selected drug if cancelled
+        // setSelectedDrug(null);
+   }
+
+   const handleSummarizeTrial = (trial: ClinicalTrial) => {
+       summarizeTrialMutation.mutate({ clinicalTrial: trial });
+   };
+
+   // --- Effects ---
+   // Display search errors
+   useEffect(() => {
+       if (searchError) {
+           toast({ title: "Search Failed", description: searchError.message, variant: "destructive" });
+       }
+   }, [searchError, toast]);
+
+   // Display details errors
+    useEffect(() => {
+        if (detailsError) {
+            toast({ title: "Details Fetch Failed", description: detailsError.message, variant: "destructive" });
+        }
+    }, [detailsError, toast]);
+
+    // Display trials errors
+    useEffect(() => {
+        if (trialsError) {
+            toast({ title: "Trials Fetch Failed", description: trialsError.message, variant: "destructive" });
+        }
+    }, [trialsError, toast]);
+
+
   return (
-    <div className="grid gap-6 lg:grid-cols-3">
+    <div className="grid gap-6 lg:grid-cols-3 animate-fadeIn">
       {/* Search and Results Column */}
       <div className="lg:col-span-1 flex flex-col gap-6">
-         <Card>
+         <Card className="panel-primary"> {/* Use primary panel style */}
             <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                 <FlaskConical className="w-5 h-5 text-primary" /> PharmaNet Search
                 </CardTitle>
-                 <CardDescription>Search RxNorm, DrugBank, and more.</CardDescription>
+                 <CardDescription>Search RxNorm database.</CardDescription>
             </CardHeader>
             <CardContent>
                 <form onSubmit={handleSearch} className="flex gap-2">
@@ -192,126 +267,186 @@ export default function PharmaNetPage() {
             </CardContent>
             <Separator />
              <CardContent className="p-0">
-                 <ScrollArea className="h-[calc(50vh-100px)] min-h-[200px]"> {/* Adjust height as needed */}
-                    {searchResults.length > 0 ? (
-                        <ul className="p-4 space-y-2">
+                 <ScrollArea className="h-[calc(50vh-120px)] min-h-[200px]"> {/* Adjust height */}
+                    {isLoadingSearch && (
+                         <div className="p-6 text-center text-muted-foreground flex items-center justify-center gap-2">
+                            <Loader2 className="h-4 w-4 animate-spin" /> Searching...
+                         </div>
+                    )}
+                    {!isLoadingSearch && searchResults.length > 0 ? (
+                        <ul className="p-2 space-y-1">
                         {searchResults.map((drug) => (
                             <li key={drug.rxNormId}>
                                 <Button
                                 variant="ghost"
-                                className={`w-full justify-start text-left h-auto py-2 ${selectedDrug?.rxNormId === drug.rxNormId ? 'bg-muted' : ''}`}
+                                className={cn(
+                                    `w-full justify-start text-left h-auto py-2 px-2`,
+                                    selectedDrug?.rxNormId === drug.rxNormId ? 'bg-primary/10 text-primary' : 'hover:bg-muted'
+                                )}
                                 onClick={() => handleSelectDrug(drug)}
+                                disabled={confirmDosageMutation.isPending} // Disable while confirming previous selection
                                 >
                                 <div className="flex flex-col">
-                                    <span>{drug.name}</span>
-                                    <span className="text-xs text-muted-foreground">RxNorm: {drug.rxNormId}</span>
+                                    <span className="font-medium">{drug.name}</span>
+                                    <span className="text-xs text-muted-foreground">RxCUI: {drug.rxNormId}</span>
                                 </div>
                                 </Button>
                             </li>
                         ))}
                         </ul>
                     ) : (
-                         <div className="p-6 text-center text-muted-foreground">
-                         {isLoadingSearch ? 'Searching...' : 'No search results.'}
-                         </div>
+                         !isLoadingSearch && <div className="p-6 text-center text-muted-foreground">No results for "{searchTerm}".</div>
+                    )}
+                    {searchError && !isLoadingSearch && (
+                        <div className="p-4">
+                             <Alert variant="destructive">
+                               <AlertTriangle className="h-4 w-4" />
+                               <AlertTitle>Search Error</AlertTitle>
+                               <AlertDescription>{searchError.message}</AlertDescription>
+                             </Alert>
+                        </div>
                     )}
                  </ScrollArea>
              </CardContent>
          </Card>
 
           {/* R&D Alerts Section */}
-          <Card>
+          <Card className="panel-primary"> {/* Use primary panel style */}
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <AlertTriangle className="w-5 h-5 text-primary" /> R&D / Clinical Trial Alerts
+                <AlertTriangle className="w-5 h-5 text-warning" /> R&D / Clinical Trial Alerts
               </CardTitle>
                <CardDescription>Latest updates from ClinicalTrials.gov.</CardDescription>
             </CardHeader>
             <CardContent className="p-0">
                  <ScrollArea className="h-[calc(50vh-100px)] min-h-[200px]"> {/* Adjust height */}
-                    {isLoadingTrials ? (
-                         <div className="p-6 text-center text-muted-foreground">Loading trials...</div>
-                    ) : clinicalTrials.length > 0 ? (
-                         <ul className="p-4 space-y-3">
+                    {isLoadingTrials && (
+                        <div className="p-6 text-center text-muted-foreground flex items-center justify-center gap-2">
+                           <Loader2 className="h-4 w-4 animate-spin" /> Loading trials...
+                        </div>
+                    )}
+                    {!isLoadingTrials && clinicalTrials.length > 0 ? (
+                         <ul className="p-2 space-y-1">
                         {clinicalTrials.map((trial) => (
-                            <li key={trial.url} className="border-b pb-3 last:border-b-0">
+                            <li key={trial.url} className="border rounded-md p-3 hover:bg-muted transition-colors">
                                <p className="font-medium text-sm mb-1">{trial.title}</p>
-                               <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{trial.summary}</p>
-                               <div className="flex gap-2">
-                                  <Button variant="outline" size="sm" onClick={() => handleSummarizeTrial(trial)} disabled={isLoadingSummary}>
-                                     <Brain className="mr-1 h-3 w-3" /> TL;DR?
+                               <p className="text-xs text-muted-foreground mb-2 line-clamp-3">{trial.summary}</p> {/* Increased line clamp */}
+                               <div className="flex gap-2 mt-2">
+                                  <Button variant="outline" size="sm" onClick={() => handleSummarizeTrial(trial)} disabled={summarizeTrialMutation.isPending && summarizeTrialMutation.variables?.clinicalTrial.url === trial.url}>
+                                     {summarizeTrialMutation.isPending && summarizeTrialMutation.variables?.clinicalTrial.url === trial.url ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Brain className="mr-1 h-3 w-3" />}
+                                      TL;DR?
                                    </Button>
-                                    <Button variant="ghost" size="sm" asChild>
+                                    <Button variant="link" size="sm" asChild className="p-0 h-auto text-primary">
                                     <a href={trial.url} target="_blank" rel="noopener noreferrer">
                                         View Details <ExternalLink className="ml-1 h-3 w-3" />
                                     </a>
                                     </Button>
                                </div>
-
                             </li>
                         ))}
                         </ul>
                     ) : (
-                        <div className="p-6 text-center text-muted-foreground">No trials found.</div>
+                       !isLoadingTrials && <div className="p-6 text-center text-muted-foreground">No trials found.</div>
                     )}
+                     {trialsError && !isLoadingTrials && (
+                         <div className="p-4">
+                             <Alert variant="destructive">
+                               <AlertTriangle className="h-4 w-4" />
+                               <AlertTitle>Trials Error</AlertTitle>
+                               <AlertDescription>{trialsError.message}</AlertDescription>
+                             </Alert>
+                         </div>
+                     )}
                  </ScrollArea>
              </CardContent>
           </Card>
 
       </div>
 
-
       {/* Details Column */}
       <div className="lg:col-span-2">
-        <Card className="sticky top-[60px]"> {/* Adjust top as needed */}
+        <Card className="panel-primary sticky top-[76px]"> {/* Adjust top offset */}
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <BookOpen className="w-5 h-5 text-primary" /> Drug Details
             </CardTitle>
             <CardDescription>
-              {selectedDrug ? `Information for ${selectedDrug.name}` : 'Select a drug from the search results.'}
+              {selectedDrug ? `Information for ${selectedDrug.name} (RxCUI: ${selectedDrug.rxNormId})` : 'Select a drug from the search results.'}
             </CardDescription>
           </CardHeader>
-          <CardContent className="min-h-[60vh]"> {/* Ensure content area is tall enough */}
-            {isLoadingDetails && (
-              <div className="flex justify-center items-center h-full">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              </div>
-            )}
-            {!isLoadingDetails && detailedInfo && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">{detailedInfo.name}</h3>
-                 <Badge>DrugBank ID: {detailedInfo.drugBankId}</Badge>
-                 <p className="text-sm text-muted-foreground">{detailedInfo.description}</p>
-                <Separator />
-                {/* TODO: Display Dosage, Interactions, Target Network Graph */}
-                <div className="space-y-2">
-                    <h4 className="font-medium">Dosage & Interactions</h4>
-                     <p className="text-sm text-muted-foreground">Detailed dosage and interaction information would be displayed here after confirmation.</p>
-                      {/* Add graph visualization component here */}
+          <CardContent className="min-h-[60vh] space-y-4"> {/* Ensure content area is tall enough */}
+             {/* Loading state specific to details */}
+             {(isLoadingDetails || confirmDosageMutation.isPending) && !detailedInfo && (
+                 <div className="flex justify-center items-center h-40">
+                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <span className="ml-2 text-muted-foreground">
+                        {confirmDosageMutation.isPending ? 'Confirming...' : 'Loading details...'}
+                    </span>
                  </div>
+             )}
 
-                 {detailedInfo.trialsSummary && (
-                    <>
-                      <Separator />
-                      <div className="space-y-2">
-                          <h4 className="font-medium">Related Clinical Trials Summary</h4>
-                          <p className="text-sm text-muted-foreground whitespace-pre-wrap">{detailedInfo.trialsSummary}</p>
-                      </div>
-                    </>
-                  )}
+             {/* Display basic info even before confirmation */}
+             {selectedDrug && !detailedInfo && !isLoadingDetails && !confirmDosageMutation.isPending && !detailsError && (
+                <div className="p-6 text-center text-muted-foreground">
+                    Click "Confirm" in the dialog to view full dosage & interaction details.
+                </div>
+             )}
 
-              </div>
+            {/* Display detailed info when loaded and confirmed */}
+            {!isLoadingDetails && detailedInfo && showFullDetails && (
+              <ScrollArea className="h-[calc(100vh - 250px)] pr-3"> {/* Add scroll for long content */}
+                  <div className="space-y-6">
+                    <div>
+                        <h3 className="text-lg font-semibold">{detailedInfo.name}</h3>
+                        <Badge variant="secondary" className="mt-1">RxCUI: {detailedInfo.rxNormId}</Badge>
+                    </div>
+                    {detailedInfo.description && (
+                         <p className="text-sm text-muted-foreground">{detailedInfo.description}</p>
+                    )}
+                    <Separator />
+
+                    {/* Sensitive Information Section */}
+                    <div>
+                        <h4 className="font-medium mb-2 text-base">Dosage & Interactions</h4>
+                         <p className="text-sm bg-muted p-3 rounded-md border">
+                            {/* TODO: Render actual dosage/interaction data from detailedInfo */}
+                            Full dosage and interaction details loaded successfully. Display formatted data here based on the structure of `detailedInfo`.
+                         </p>
+                         {/* TODO: Add interaction graph visualization component here */}
+                    </div>
+
+                    {/* Add other sections as needed based on RxNormProperties */}
+                    {/* Example:
+                    {detailedInfo.ingredients && (
+                      <>
+                        <Separator />
+                        <div>
+                          <h4 className="font-medium mb-2 text-base">Ingredients</h4>
+                          <ul className="list-disc pl-5 text-sm space-y-1">
+                            {detailedInfo.ingredients.map((ing, i) => <li key={i}>{ing.name} ({ing.strength})</li>)}
+                          </ul>
+                        </div>
+                      </>
+                    )} */}
+
+                  </div>
+              </ScrollArea>
             )}
-            {!isLoadingDetails && !detailedInfo && selectedDrug && (
-               <div className="p-6 text-center text-muted-foreground">
-                 Confirm viewing details to load information.
-               </div>
-            )}
-             {!isLoadingDetails && !selectedDrug && (
+
+            {/* Handle no selection */}
+            {!selectedDrug && !isLoadingSearch && (
                <div className="p-6 text-center text-muted-foreground">
                  Search for a drug and select it to view details.
                </div>
+            )}
+
+            {/* Handle details error */}
+            {detailsError && !isLoadingDetails && (
+                 <Alert variant="destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>Details Error</AlertTitle>
+                    <AlertDescription>{detailsError.message}</AlertDescription>
+                  </Alert>
             )}
           </CardContent>
         </Card>
@@ -319,15 +454,16 @@ export default function PharmaNetPage() {
 
         {/* Dosage Confirmation Dialog */}
          <AlertDialog open={showDosageConfirmation} onOpenChange={setShowDosageConfirmation}>
-            <AlertDialogContent>
+            <AlertDialogContent className="panel-primary"> {/* Use primary panel style */}
                 <AlertDialogHeader>
                 <AlertDialogTitle>Confirm Access</AlertDialogTitle>
                 <AlertDialogDescription>
-                    {dosageConfirmationMessage || 'Are you sure you want to view detailed dosage information? This is intended for healthcare professionals.'}
+                    {dosageConfirmationResult?.confirmationMessage || 'Loading confirmation...'}
                 </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                <AlertDialogCancel onClick={() => setIsLoadingDetails(false)}>Cancel</AlertDialogCancel>
+                 {/* Use explicit handler for cancel */}
+                <AlertDialogCancel onClick={handleCancelDosageView}>Cancel</AlertDialogCancel>
                 <AlertDialogAction onClick={handleConfirmDosageView}>Confirm</AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>

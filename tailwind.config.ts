@@ -1,7 +1,7 @@
 import type { Config } from "tailwindcss";
 
 export default {
-    darkMode: ["class"],
+    darkMode: ["class"], // Enable class-based dark mode
     content: [
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -10,115 +10,117 @@ export default {
   theme: {
   	extend: {
   		colors: {
-        // New Palette
-        sidebar: '#1E1E1E', // Charcoal for sidebar background
-        primary: '#008080', // Teal for primary actions, highlights
-        secondary: '#FFA500', // Orange for secondary actions, accents
-        danger: '#E53935', // Red for errors, destructive actions
-        warning: '#FBC02D', // Yellow/Orange for warnings (like expiring soon)
-        info: '#8E24AA', // Purple for informational elements (like shipments)
-        surface: '#FFFFFF', // White for main content panels, cards
-        background: '#FAFAFA', // Light gray for the main content area background
-        'sidebar-foreground': '#F8F8F8', // Light text/icons on dark sidebar
-        'sidebar-hover': '#2A2A2A', // Slightly lighter charcoal for sidebar hover
-        'sidebar-accent': '#008080', // Teal accent for active sidebar item
-        foreground: '#333333', // Dark text for light backgrounds
-        'muted-foreground': '#4F4F4F', // Slightly lighter text
+         // Use CSS variables defined in globals.css
+        sidebar: 'hsl(var(--sidebar-hsl))',
+        'sidebar-foreground': 'hsl(var(--sidebar-foreground-hsl))',
+        'sidebar-hover': 'hsl(var(--sidebar-hover-hsl))',
+        'sidebar-accent': 'hsl(var(--sidebar-accent-hsl))',
+        'sidebar-border': 'hsl(var(--sidebar-border-hsl))',
+        'sidebar-submenu-background': 'hsl(var(--sidebar-submenu-background-hsl))',
+        'sidebar-submenu-foreground': 'hsl(var(--sidebar-submenu-foreground-hsl))',
 
-        // Shadcn UI mapping (using new palette)
-  			card: {
-  				DEFAULT: 'hsl(var(--surface-hsl))', // Use surface color (white)
-  				foreground: 'hsl(var(--foreground-hsl))' // Use main foreground
-  			},
-  			popover: {
-          DEFAULT: 'hsl(var(--surface-hsl))', // Use surface for popovers now
-  				foreground: 'hsl(var(--foreground-hsl))'
-  			},
-  			// primary, secondary, destructive, accent mapped directly above
-  			muted: { // Keep muted distinct if needed, or map to background/surface variants
-          DEFAULT: 'hsl(var(--background-hsl))', // e.g., map muted background to main background
-  				foreground: 'hsl(var(--muted-foreground-hsl))'
-  			},
-  			border: '#E0E0E0', // Specific light gray border
-  			input: 'hsl(var(--border-hsl))', // Map input border to general border
-  			ring: 'hsl(var(--primary-hsl))', // Use primary teal for focus rings
+        primary: 'hsl(var(--primary-hsl))',
+        'primary-foreground': 'hsl(var(--primary-foreground))', // Foreground for primary color
+        secondary: 'hsl(var(--secondary-hsl))',
+        'secondary-foreground': 'hsl(var(--secondary-foreground))', // Foreground for secondary color
 
-        // Chart colors (can be customized further)
-  			chart: {
-  				'1': 'hsl(var(--primary-hsl))', // Teal
-          '2': 'hsl(var(--warning-hsl))', // Warning Orange
-          '3': 'hsl(var(--danger-hsl))', // Danger Red
-          '4': 'hsl(var(--info-hsl))', // Info Purple
-          '5': 'hsl(var(--secondary-hsl))', // Secondary Orange
-  			},
+        danger: 'hsl(var(--danger-hsl))',
+        'danger-foreground': 'hsl(var(--destructive-foreground))', // Map to destructive foreground for consistency
+        warning: 'hsl(var(--warning-hsl))',
+        'warning-foreground': 'hsl(var(--secondary-foreground))', // Example: use secondary foreground on warning
+        info: 'hsl(var(--info-hsl))',
+        'info-foreground': 'hsl(var(--primary-foreground))', // Example: use primary foreground on info
 
-        // Explicit HSL vars for shadcn compatibility if needed, derived from hex
-        '--primary-hsl': '180 100% 25%', // #008080
-        '--secondary-hsl': '39 100% 50%', // #FFA500
-        '--danger-hsl': '10 78% 46%', // #E53935
-        '--warning-hsl': '45 97% 58%', // #FBC02D
-        '--info-hsl': '283 63% 40%', // #8E24AA
-        '--surface-hsl': '0 0% 100%', // #FFFFFF
-        '--background-hsl': '0 0% 98%', // #FAFAFA
-        '--foreground-hsl': '0 0% 20%', // #333333
-        '--muted-foreground-hsl': '0 0% 31%', // #4F4F4F
-        '--border-hsl': '0 0% 88%', // #E0E0E0
-        '--sidebar-hsl': '0 0% 12%', // #1E1E1E
-        '--sidebar-foreground-hsl': '0 0% 97%', // #F8F8F8
-        '--sidebar-hover-hsl': '0 0% 16%', // #2A2A2A
-        '--sidebar-accent-hsl': '180 100% 25%', // #008080 (same as primary)
+        surface: 'hsl(var(--surface-hsl))', // Main content panels
+        'surface-alt': 'hsl(var(--surface-alt-hsl))', // Slightly darker surface for tertiary overlays
+        background: 'hsl(var(--background-hsl))', // Main app background
+        foreground: 'hsl(var(--foreground-hsl))', // Default text color
 
+        'muted-foreground': 'hsl(var(--muted-foreground-hsl))',
+
+        // Shadcn UI mapping (using CSS vars)
+        card: {
+          DEFAULT: 'hsl(var(--card))',
+          foreground: 'hsl(var(--card-foreground))'
+        },
+        popover: {
+          DEFAULT: 'hsl(var(--popover))',
+          foreground: 'hsl(var(--popover-foreground))'
+        },
+        muted: {
+          DEFAULT: 'hsl(var(--muted))',
+          foreground: 'hsl(var(--muted-foreground))'
+        },
+        accent: { // Shadcn accent might map differently
+          DEFAULT: 'hsl(var(--accent))',
+          foreground: 'hsl(var(--accent-foreground))'
+        },
+        destructive: { // Shadcn destructive
+          DEFAULT: 'hsl(var(--destructive))',
+          foreground: 'hsl(var(--destructive-foreground))'
+        },
+        border: 'hsl(var(--border))',
+        input: 'hsl(var(--input))',
+        ring: 'hsl(var(--ring))',
+
+        // Chart colors (ensure these CSS vars exist or define them)
+        chart: {
+          '1': 'hsl(var(--chart-1))',
+          '2': 'hsl(var(--chart-2))',
+          '3': 'hsl(var(--chart-3))',
+          '4': 'hsl(var(--chart-4))',
+          '5': 'hsl(var(--chart-5))',
+        },
   		},
   		borderRadius: {
-  			lg: '8px', // Explicit 8px radius
-  			md: '6px',
-  			sm: '4px'
+        lg: "var(--radius)",
+        md: "calc(var(--radius) - 2px)",
+        sm: "calc(var(--radius) - 4px)",
   		},
       boxShadow: {
-         'card': '0 2px 8px rgba(0,0,0,0.1)', // Custom card shadow
-         'overlay': '0 4px 12px rgba(0,0,0,0.2)', // Custom overlay shadow
+         'card': '0 2px 8px rgba(0,0,0,0.05)', // Softer card shadow
+         'overlay': '0 4px 16px rgba(0,0,0,0.1)', // Adjusted overlay shadow
+         'lg': '0 8px 24px rgba(0,0,0,0.1)', // Larger shadow for modals
+         'md': '0 4px 12px rgba(0,0,0,0.08)',
+         'sm': '0 1px 4px rgba(0,0,0,0.05)',
       },
   		keyframes: {
-  			'accordion-down': {
-  				from: {
-  					height: '0'
-  				},
-  				to: {
-  					height: 'var(--radix-accordion-content-height)'
-  				}
-  			},
-  			'accordion-up': {
-  				from: {
-  					height: 'var(--radix-accordion-content-height)'
-  				},
-  				to: {
-  					height: '0'
-  				}
-  			},
-              'collapsible-down': {
-                 from: { height: '0' },
-                 to: { height: 'var(--radix-collapsible-content-height)' },
-               },
-               'collapsible-up': {
-                 from: { height: 'var(--radix-collapsible-content-height)' },
-                 to: { height: '0' },
-              },
-              fadeIn: {
-                 from: { opacity: '0' },
-                 to: { opacity: '1' },
-               },
-              slideUp: { // Added slideUp animation
-                  from: { transform: 'translateY(10px)', opacity: '0' },
-                  to: { transform: 'translateY(0)', opacity: '1' },
-              },
+        // Shadcn UI keyframes
+        "accordion-down": {
+          from: { height: "0" },
+          to: { height: "var(--radix-accordion-content-height)" },
+        },
+        "accordion-up": {
+          from: { height: "var(--radix-accordion-content-height)" },
+          to: { height: "0" },
+        },
+         "collapsible-down": {
+           from: { height: "0" },
+           to: { height: 'var(--radix-collapsible-content-height)' },
+         },
+         "collapsible-up": {
+           from: { height: 'var(--radix-collapsible-content-height)' },
+           to: { height: "0" },
+         },
+         // Custom animations
+         fadeIn: {
+           from: { opacity: '0' },
+           to: { opacity: '1' },
+         },
+        slideUp: {
+            from: { transform: 'translateY(10px)', opacity: '0' },
+            to: { transform: 'translateY(0)', opacity: '1' },
+        },
   		},
   		animation: {
-  			'accordion-down': 'accordion-down 0.2s ease-out',
-  			'accordion-up': 'accordion-up 0.2s ease-out',
-             'collapsible-down': 'collapsible-down 0.2s ease-out',
-             'collapsible-up': 'collapsible-up 0.2s ease-out',
-             fadeIn: 'fadeIn 0.5s ease-out forwards',
-             slideUp: 'slideUp 0.3s ease-out forwards', // Added slideUp animation
+        // Shadcn UI animations
+        "accordion-down": "accordion-down 0.2s ease-out",
+        "accordion-up": "accordion-up 0.2s ease-out",
+        "collapsible-down": "collapsible-down 0.2s ease-out",
+        "collapsible-up": "collapsible-up 0.2s ease-out",
+        // Custom animations
+        fadeIn: 'fadeIn 0.5s ease-out forwards',
+        slideUp: 'slideUp 0.3s ease-out forwards',
   		}
   	}
   },

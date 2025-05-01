@@ -4,49 +4,54 @@
 
 @layer base {
   :root {
-    /* Light Theme based on user request */
+    /* Light Theme - Based on previous requests and refined */
     --primary-hsl: 180 100% 25%; /* #008080 Teal */
-    --secondary-hsl: 39 100% 50%; /* #FFA500 Orange */
+    --secondary-hsl: 39 100% 50%; /* #FFA500 Orange (Accent) */
     --danger-hsl: 10 78% 46%; /* #E53935 Red */
     --warning-hsl: 45 97% 58%; /* #FBC02D Yellow/Orange */
     --info-hsl: 283 63% 40%; /* #8E24AA Purple */
-    --surface-hsl: 0 0% 100%; /* #FFFFFF White */
-    --background-hsl: 0 0% 98%; /* #FAFAFA Light Gray */
-    --foreground-hsl: 0 0% 20%; /* #333333 Dark Gray Text */
-    --muted-foreground-hsl: 0 0% 31%; /* #4F4F4F Medium Gray Text */
+
+    --surface-hsl: 0 0% 100%; /* #FFFFFF White (Primary Panels) */
+    --surface-alt-hsl: 0 0% 98%; /* #FAFAFA (Tertiary Overlays like tooltips) */
+    --surface-secondary-hsl: 0 0% 94%; /* #F0F0F0 (Secondary Overlays like submenus) */
+
+    --background-hsl: 0 0% 98%; /* #FAFAFA Light Gray (Main Background) */
+    --foreground-hsl: 0 0% 13%; /* #212121 Very Dark Gray (Main Text) */
+    --muted-foreground-hsl: 0 0% 40%; /* #666666 Medium Gray (Subtle Text) */
     --border-hsl: 0 0% 88%; /* #E0E0E0 Light Gray Border */
-    --input-hsl: var(--border-hsl); /* Input border matches general border */
+    --input-hsl: var(--border-hsl);
     --ring-hsl: var(--primary-hsl); /* Teal focus ring */
 
     --sidebar-hsl: 0 0% 12%; /* #1E1E1E Charcoal */
     --sidebar-foreground-hsl: 0 0% 97%; /* #F8F8F8 Light Text */
-    --sidebar-hover-hsl: 0 0% 16%; /* #2A2A2A Lighter Charcoal */
+    --sidebar-hover-hsl: 0 0% 16%; /* #2A2A2A Lighter Charcoal Hover */
     --sidebar-accent-hsl: var(--primary-hsl); /* Teal Active Item */
     --sidebar-border-hsl: 0 0% 20%; /* #333333 Darker border for sidebar */
-    --sidebar-ring-hsl: var(--primary-hsl); /* Teal focus ring */
-    --sidebar-submenu-background-hsl: var(--sidebar-hover-hsl); /* #2A2A2A for submenu background */
-    --sidebar-submenu-foreground-hsl: var(--sidebar-foreground-hsl); /* Light text for submenu */
+    --sidebar-submenu-background-hsl: var(--surface-secondary-hsl); /* Use Light Gray for Submenus */
+    --sidebar-submenu-foreground-hsl: var(--foreground-hsl); /* Use Dark Text for Submenus */
 
+
+    /* Shadcn UI Variable Mapping (Light) */
     --background: hsl(var(--background-hsl)); /* #FAFAFA */
-    --foreground: hsl(var(--foreground-hsl)); /* #333333 */
+    --foreground: hsl(var(--foreground-hsl)); /* #212121 */
 
     --card: hsl(var(--surface-hsl)); /* #FFFFFF */
-    --card-foreground: hsl(var(--foreground-hsl)); /* #333333 */
+    --card-foreground: hsl(var(--foreground-hsl)); /* #212121 */
 
-    --popover: hsl(var(--surface-hsl)); /* #FFFFFF Use surface for popovers */
-    --popover-foreground: hsl(var(--foreground-hsl)); /* #333333 */
+    --popover: hsl(var(--surface-secondary-hsl)); /* #F0F0F0 */
+    --popover-foreground: hsl(var(--foreground-hsl)); /* #212121 */
 
     --primary: hsl(var(--primary-hsl)); /* #008080 Teal */
     --primary-foreground: 0 0% 100%; /* White text on Teal */
 
     --secondary: hsl(var(--secondary-hsl)); /* #FFA500 Orange */
-    --secondary-foreground: 0 0% 100%; /* White text on Orange */
+    --secondary-foreground: 0 0% 10%; /* Dark text on Orange */
 
-    --muted: hsl(var(--background-hsl)); /* #FAFAFA */
-    --muted-foreground: hsl(var(--muted-foreground-hsl)); /* #4F4F4F */
+    --muted: hsl(var(--surface-secondary-hsl)); /* #F0F0F0 for muted bg */
+    --muted-foreground: hsl(var(--muted-foreground-hsl)); /* #666666 */
 
     --accent: hsl(var(--secondary-hsl)); /* Map accent to secondary orange */
-    --accent-foreground: hsl(var(--secondary-foreground)); /* White text on Orange */
+    --accent-foreground: hsl(var(--secondary-foreground)); /* Dark text on Orange */
 
     --destructive: hsl(var(--danger-hsl)); /* #E53935 Red */
     --destructive-foreground: 0 0% 100%; /* White text on Red */
@@ -65,88 +70,122 @@
   }
 
   .dark {
-    /* Define dark theme variables - adjust as needed */
-    --primary-hsl: 180 100% 35%; /* Brighter Teal */
-    --secondary-hsl: 39 100% 55%; /* Brighter Orange */
-    --danger-hsl: 10 70% 50%; /* Slightly brighter Red */
-    --warning-hsl: 45 90% 60%; /* Brighter Yellow/Orange */
-    --info-hsl: 283 55% 50%; /* Brighter Purple */
-    --surface-hsl: 0 0% 10%; /* Dark gray for surfaces #1A1A1A */
-    --background-hsl: 0 0% 8%; /* Very dark gray for background #141414 */
+    /* Dark Theme */
+    --primary-hsl: 180 80% 40%; /* #19B3B3 Brighter Teal */
+    --secondary-hsl: 39 90% 55%; /* #FFB74D Brighter Orange */
+    --danger-hsl: 10 70% 55%; /* #F4511E Brighter Red */
+    --warning-hsl: 45 90% 60%; /* #FFCA28 Brighter Yellow/Orange */
+    --info-hsl: 283 55% 55%; /* #AB47BC Brighter Purple */
+
+    --surface-hsl: 0 0% 10%; /* #1A1A1A (Primary Panels) */
+    --surface-alt-hsl: 0 0% 12%; /* #1E1E1E (Tertiary Overlays) */
+    --surface-secondary-hsl: 0 0% 14%; /* #232323 (Secondary Overlays) */
+
+    --background-hsl: 0 0% 8%; /* #141414 (Main Background) */
     --foreground-hsl: 0 0% 95%; /* #F2F2F2 Light Text */
-    --muted-foreground-hsl: 0 0% 60%; /* #999999 Medium Gray Text */
+    --muted-foreground-hsl: 0 0% 60%; /* #999999 Medium Gray */
     --border-hsl: 0 0% 20%; /* #333333 Dark Gray Border */
     --input-hsl: var(--border-hsl);
-    --ring-hsl: var(--primary-hsl);
+    --ring-hsl: var(--primary-hsl); /* Brighter Teal focus ring */
 
-    --sidebar-hsl: 0 0% 12%; /* #1E1E1E Charcoal (remains same) */
-    --sidebar-foreground-hsl: 0 0% 97%; /* #F8F8F8 */
-    --sidebar-hover-hsl: 0 0% 16%; /* #2A2A2A */
+    /* Sidebar remains dark */
+    --sidebar-hsl: 0 0% 12%; /* #1E1E1E Charcoal */
+    --sidebar-foreground-hsl: 0 0% 97%; /* #F8F8F8 Light Text */
+    --sidebar-hover-hsl: 0 0% 16%; /* #2A2A2A Lighter Charcoal Hover */
     --sidebar-accent-hsl: var(--primary-hsl); /* Brighter Teal Active Item */
-    --sidebar-border-hsl: 0 0% 25%; /* #404040 Lighter border for dark sidebar */
-    --sidebar-ring-hsl: var(--primary-hsl);
-    --sidebar-submenu-background-hsl: var(--sidebar-hover-hsl); /* #2A2A2A */
-    --sidebar-submenu-foreground-hsl: var(--sidebar-foreground-hsl);
+    --sidebar-border-hsl: 0 0% 25%; /* #404040 Lighter border */
+    --sidebar-submenu-background-hsl: var(--surface-secondary-hsl); /* Use Dark Gray for Submenus */
+    --sidebar-submenu-foreground-hsl: var(--foreground-hsl); /* Use Light Text for Submenus */
 
-    --primary-foreground: 0 0% 10%; /* Dark text on Teal */
-    --secondary-foreground: 0 0% 10%; /* Dark text on Orange */
-    --destructive-foreground: 0 0% 95%; /* Light text on Red */
-    --accent-foreground: var(--secondary-foreground);
 
-    /* Shadcn UI mapping */
+    /* Shadcn UI Variable Mapping (Dark) */
     --background: hsl(var(--background-hsl));
     --foreground: hsl(var(--foreground-hsl));
+
     --card: hsl(var(--surface-hsl));
     --card-foreground: hsl(var(--foreground-hsl));
-    --popover: hsl(var(--surface-hsl));
+
+    --popover: hsl(var(--surface-secondary-hsl));
     --popover-foreground: hsl(var(--foreground-hsl));
+
     --primary: hsl(var(--primary-hsl));
+    --primary-foreground: 0 0% 10%; /* Dark text on bright Teal */
+
     --secondary: hsl(var(--secondary-hsl));
-    --muted: hsl(var(--background-hsl));
+    --secondary-foreground: 0 0% 10%; /* Dark text on bright Orange */
+
+    --muted: hsl(var(--surface-secondary-hsl)); /* Darker muted bg */
     --muted-foreground: hsl(var(--muted-foreground-hsl));
+
     --accent: hsl(var(--secondary-hsl));
+    --accent-foreground: hsl(var(--secondary-foreground));
+
     --destructive: hsl(var(--danger-hsl));
+    --destructive-foreground: 0 0% 100%; /* White text on bright Red */
+
     --border: hsl(var(--border-hsl));
     --input: hsl(var(--input-hsl));
     --ring: hsl(var(--ring-hsl));
+
+    /* Chart colors might need adjustments for dark mode visibility */
+    --chart-1: var(--primary-hsl);
+    --chart-2: var(--warning-hsl);
+    --chart-3: var(--danger-hsl);
+    --chart-4: var(--info-hsl);
+    --chart-5: var(--secondary-hsl);
+
+    /* Radius remains the same */
   }
 }
 
 @layer base {
   * {
-    @apply border-border; /* Use the defined border color */
+    @apply border-border;
   }
   body {
-    @apply bg-background text-foreground; /* Use defined background and foreground */
-    font-family: 'Inter', sans-serif; /* Example font - replace if needed */
-    /* Subtle fade-in */
-    animation: fadeIn 0.5s ease-out forwards;
+    @apply bg-background text-foreground;
+    font-family: 'Inter', sans-serif;
+    /* Keep subtle fade-in */
+    /* animation: fadeIn 0.5s ease-out forwards; */
   }
 
-  h1, h2, h3, h4, h5, h6 {
-     @apply font-semibold text-foreground; /* Dark text for headings */
-  }
-   h1 { @apply text-2xl; }
-   h2 { @apply text-xl; }
-   h3 { @apply text-lg; }
-   /* Add other heading styles if needed */
-
-   p {
-      @apply text-base text-muted-foreground; /* Use muted foreground for body text */
+   h1, h2, h3, h4, h5, h6 {
+      @apply font-semibold text-foreground;
    }
+    h1 { @apply text-2xl; }
+    h2 { @apply text-xl; }
+    h3 { @apply text-lg; }
 
-  @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-  }
-   @keyframes slideUp {
-     from { transform: translateY(10px); opacity: 0; }
-     to { transform: translateY(0); opacity: 1; }
+    p {
+       /* Use main foreground for standard paragraphs */
+       @apply text-base text-foreground;
+    }
+
+   @keyframes fadeIn {
+     from { opacity: 0; }
+     to { opacity: 1; }
    }
+    @keyframes slideUp {
+      from { transform: translateY(10px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
 }
 
-/* Utility classes for panel/overlay backgrounds - REMOVED custom classes, rely on component variants */
-/* Now handled by applying background colors directly or via component variants (e.g., bg-surface, bg-sidebar-hover) */
+@layer components {
+  /* Utility classes for panel/overlay backgrounds */
+  .panel-primary { /* Major modals, main content cards */
+    @apply bg-surface text-foreground border border-border shadow-lg rounded-lg z-50;
+  }
+  .overlay-secondary { /* Submenus, popovers */
+     @apply bg-[hsl(var(--surface-secondary-hsl))] text-foreground border border-border shadow-md rounded-md z-40;
+  }
+  .overlay-tertiary { /* Tooltips, date pickers */
+     @apply bg-[hsl(var(--surface-alt-hsl))] text-foreground border border-border shadow-sm rounded-sm z-30;
+  }
+  .backdrop { /* For modals - subtle */
+     @apply bg-black/5 dark:bg-black/10 z-40;
+  }
+}
 
 
 /* Smooth scroll */
@@ -154,19 +193,19 @@ html {
   scroll-behavior: smooth;
 }
 
-/* Custom scrollbar styling (optional) */
+/* Custom scrollbar styling (optional, keep consistent) */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: hsl(var(--background-hsl) / 0.5); /* Semi-transparent background */
+  background: hsl(var(--background-hsl) / 0.1); /* Very subtle track */
   border-radius: 10px;
 }
 ::-webkit-scrollbar-thumb {
-  background: hsl(var(--primary-hsl) / 0.6); /* Semi-transparent primary color */
+  background: hsl(var(--primary-hsl) / 0.5); /* Semi-transparent primary color */
   border-radius: 10px;
 }
 ::-webkit-scrollbar-thumb:hover {
-   background: hsl(var(--primary-hsl) / 0.8); /* Darker on hover */
+   background: hsl(var(--primary-hsl) / 0.7); /* Darker on hover */
 }
