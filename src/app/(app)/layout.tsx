@@ -31,29 +31,24 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
 import { useTheme } from "next-themes";
-import { useUserContext } from '@/context/UserContext';
+import { useAuth } from '@/providers/AuthProvider'; // Use the new context hook
 import { signOut } from 'firebase/auth';
 import { auth, db } from '@/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
-// Removed direct import of ProtectedRoute/ClientSideAuthGuard, it's applied in RootLayout
+import ProtectedRoute from '@/components/ProtectedRoute'; // Import the ProtectedRoute component
 
-// Connectivity Indicator
+// Connectivity Indicator (remains the same)
 const ConnectivityIndicator = () => {
-  const [isOnline, setIsOnline] = useState(true); // Assume online initially
-  const [mounted, setMounted] = useState(false); // State to track hydration
+  const [isOnline, setIsOnline] = useState(true);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true); // Component has mounted
-
-    // Define checkOnlineStatus inside useEffect or ensure it's stable
+    setMounted(true);
     const checkOnlineStatus = () => {
-       // Ensure window is defined (client-side check)
        if (typeof window !== 'undefined' && typeof navigator !== 'undefined') {
            setIsOnline(navigator.onLine);
        }
     };
-
-
     checkOnlineStatus();
     if (typeof window !== 'undefined') {
         window.addEventListener('online', checkOnlineStatus);
@@ -63,12 +58,9 @@ const ConnectivityIndicator = () => {
             window.removeEventListener('offline', checkOnlineStatus);
         };
     }
-  }, []); // Empty dependency array ensures this runs once on mount
+  }, []);
 
-    // Avoid rendering mismatch by returning null until mounted
-    if (!mounted) {
-        return null;
-    }
+    if (!mounted) return null;
 
   const Icon = isOnline ? Wifi : WifiOff;
   const color = isOnline ? 'text-green-500' : 'text-muted-foreground';
@@ -82,25 +74,20 @@ const ConnectivityIndicator = () => {
 };
 
 
-// AppLogo component
+// AppLogo component (remains the same)
 const AppLogo = () => {
     const { resolvedTheme } = useTheme();
     const [logoSrc, setLogoSrc] = useState('/logo-light.png'); // Default to light logo
     const [mounted, setMounted] = useState(false);
 
-    // Ensure component is mounted before checking theme
-    useEffect(() => {
-        setMounted(true);
-    }, []);
+    useEffect(() => { setMounted(true); }, []);
 
      useEffect(() => {
          if (mounted && resolvedTheme) {
-             console.log("Theme resolved:", resolvedTheme);
              setLogoSrc(resolvedTheme === 'dark' ? '/logo-dark.png' : '/logo-light.png');
          }
      }, [mounted, resolvedTheme]);
 
-    // Avoid hydration mismatch by rendering placeholder until mounted
     if (!mounted) {
         return <div className="w-8 h-8 bg-muted rounded-full"></div>; // Placeholder
     }
@@ -117,33 +104,45 @@ const AppLogo = () => {
 };
 
 
+// AppLayout component wrapped in ProtectedRoute
+export default function AppLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <ProtectedRoute>
+      <AppLayoutContent>{children}</AppLayoutContent>
+    </ProtectedRoute>
+  );
+}
+
+
 // The main content layout for authenticated pages
 // This component now assumes it's rendered only when the user is authenticated,
-// because ClientSideAuthGuard in the root layout handles the protection.
+// because ProtectedRoute handles the protection.
 function AppLayoutContent({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  // Get authUser and profile from context. Loading state is handled by ClientSideAuthGuard now.
-  const { authUser, profile } = useUserContext();
+  // Get user and profile from the AuthContext
+  const { user: authUser, profile } = useAuth(); // Use 'user' from context
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
   const [profileFormData, setProfileFormData] = useState({ name: '', photoURL: '' });
   const { toast } = useToast();
 
    useEffect(() => {
+     // Update form data when profile changes
      if (profile) {
        setProfileFormData({
          name: profile.name || '',
          photoURL: profile.photoURL || '',
        });
      }
-   }, [profile]);
+   }, [profile]); // Depend on profile object
 
   const handleLogout = async () => {
     console.log("Logging out...");
     try {
        await signOut(auth);
        toast({ title: "Logged Out", description: "You have been successfully logged out." });
-       router.push('/auth/login'); // Redirect to login page
+       // No need to push to /auth/login, ProtectedRoute will handle it
+       // router.push('/auth/login');
      } catch (error) {
        console.error("Logout error:", error);
        toast({ title: "Logout Error", description: "Failed to log out.", variant: "destructive" });
@@ -152,7 +151,7 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
      e.preventDefault();
-     if (!authUser) return;
+     if (!authUser) return; // Use authUser from context
      setIsUpdatingProfile(true);
 
      try {
@@ -161,8 +160,6 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
          name: profileFormData.name,
          photoURL: profileFormData.photoURL,
        });
-        // Optionally update Firebase Auth profile too
-        // await updateProfile(authUser, { displayName: profileFormData.name, photoURL: profileFormData.photoURL });
 
        toast({ title: "Profile Updated", description: "Your profile information has been saved." });
        setIsProfileModalOpen(false);
@@ -174,8 +171,7 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
      }
   }
 
-   // No need for loading check here, ClientSideAuthGuard in root handles it.
-   // If this component renders, user is authenticated.
+   // No need for loading check here, ProtectedRoute in parent handles it.
 
   return (
     <div className="flex min-h-screen w-full bg-background">
@@ -229,7 +225,7 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
         </main>
       </SidebarInset>
 
-      {/* Profile Modal */}
+      {/* Profile Modal (remains the same, uses profileFormData state) */}
        <Dialog open={isProfileModalOpen} onOpenChange={setIsProfileModalOpen}>
         <DialogContent className="panel-primary sm:max-w-[425px]"> {/* Use primary panel style */}
           <DialogHeader>
@@ -293,7 +289,3 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
-
-
-// Export the layout content directly. The guard is applied in the RootLayout.
-export default AppLayoutContent;

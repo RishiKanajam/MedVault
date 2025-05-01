@@ -20,6 +20,8 @@ import { auth } from '@/firebase'; // Ensure Firebase is correctly initialized
 import { signInWithEmailAndPassword } from 'firebase/auth'; // Import sign-in function
 import { useToast } from '@/hooks/use-toast';
 
+// No Suspense import needed here
+
 export default function LoginPage() {
   const router = useRouter(); // Initialize useRouter
   const { toast } = useToast();
@@ -42,7 +44,7 @@ export default function LoginPage() {
 
       console.log('[Login] Redirecting to /dashboard');
       router.push('/dashboard'); // Redirect to dashboard on success
-      // Don't set isLoading to false here, component will unmount after redirect
+      // Keep isLoading true as the component will unmount/redirect
 
     } catch (err: any) {
       console.error('[Login] Error:', err);
@@ -73,15 +75,17 @@ export default function LoginPage() {
     }
   };
 
-  // Show loading overlay if isLoading is true
-  // This prevents interaction while the async login is in progress
+  // Show loading overlay *specifically for the login action*
+  // The AuthProvider handles the initial app load spinner
   if (isLoading) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <span className='sr-only'>Logging in...</span>
       </div>
     );
   }
+
 
   return (
     // The parent layout already handles centering
@@ -97,25 +101,24 @@ export default function LoginPage() {
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="m@example.com" required disabled={isLoading} />
+              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="m@example.com" required />
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Password</Label>
-                <Button variant="link" asChild className="p-0 h-auto text-sm text-primary"> {/* Primary color link */}
-                    {/* TODO: Implement password reset */}
+                {/* Implement password reset later if needed */}
+                {/* <Button variant="link" asChild className="p-0 h-auto text-sm text-primary">
                     <Link href="#">
                     Forgot your password?
                     </Link>
-                </Button>
+                </Button> */}
               </div>
-              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required disabled={isLoading} />
+              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
             </div>
              {error && <p className="text-sm text-destructive text-center">{error}</p>}
-            {/* Disable button when loading */}
-            <Button type="submit" className="w-full" disabled={isLoading}>
-               {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              {isLoading ? 'Logging In...' : 'Login'}
+            {/* Disable button handled by the isLoading overlay */}
+            <Button type="submit" className="w-full">
+              Login
             </Button>
           </form>
         </CardContent>
