@@ -9,7 +9,7 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "rounded-lg border bg-card text-card-foreground shadow-md", // Uses CSS variables for background
+      "rounded-lg border border-border bg-surface text-foreground shadow-card", // Use surface bg, custom shadow, defined border
       className
     )}
     {...props}
@@ -23,11 +23,8 @@ const CardHeader = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn(
-        "flex flex-col space-y-1.5 p-6 relative pl-8", // Added pl-8 for accent bar space
-        "before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-primary", // 4px primary accent bar
-         className
-    )}
+    // Removed left accent bar styles (relative pl-8, before pseudo-element)
+    className={cn("flex flex-col space-y-1.5 p-6", className)}
     {...props}
   />
 ))
@@ -35,15 +32,13 @@ CardHeader.displayName = "CardHeader"
 
 // Use div for CardTitle to avoid semantic HTML issues with headings
 const CardTitle = React.forwardRef<
-  HTMLDivElement, // Changed from HTMLParagraphElement to HTMLDivElement
+  HTMLDivElement,
   React.HTMLAttributes<HTMLHeadingElement>
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn(
-        "text-lg font-semibold leading-none tracking-tight text-foreground", // Use foreground color
-         className
-    )}
+    // Ensure title uses main foreground color
+    className={cn("text-lg font-semibold leading-none tracking-tight text-foreground", className)}
     {...props}
   />
 ));
@@ -51,12 +46,12 @@ CardTitle.displayName = "CardTitle"
 
 // Use div for CardDescription
 const CardDescription = React.forwardRef<
-  HTMLDivElement, // Changed from HTMLParagraphElement to HTMLDivElement
+  HTMLDivElement,
   React.HTMLAttributes<HTMLParagraphElement>
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("text-sm text-muted-foreground", className)}
+    className={cn("text-sm text-muted-foreground", className)} // Use muted foreground
     {...props}
   />
 ));

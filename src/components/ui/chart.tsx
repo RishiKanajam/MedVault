@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -13,7 +14,7 @@ export type ChartConfig = {
     label?: React.ReactNode
     icon?: React.ComponentType
   } & (
-    | { color?: string; theme?: never }
+    | { color?: string; theme?: never } // Color can be direct hex/rgb or CSS var like 'hsl(var(--primary))'
     | { color?: never; theme: Record<keyof typeof THEMES, string> }
   )
 }
@@ -52,7 +53,8 @@ const ChartContainer = React.forwardRef<
         data-chart={chartId}
         ref={ref}
         className={cn(
-          "flex aspect-video justify-center text-xs [&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-cartesian-grid_line[stroke='#ccc']]:stroke-border/50 [&_.recharts-curve.recharts-tooltip-cursor]:stroke-border [&_.recharts-dot[stroke='#fff']]:stroke-transparent [&_.recharts-layer]:outline-none [&_.recharts-polar-grid_[stroke='#ccc']]:stroke-border [&_.recharts-radial-bar-background-sector]:fill-muted [&_.recharts-rectangle.recharts-tooltip-cursor]:fill-muted [&_.recharts-reference-line_[stroke='#ccc']]:stroke-border [&_.recharts-sector[stroke='#fff']]:stroke-transparent [&_.recharts-sector]:outline-none [&_.recharts-surface]:outline-none",
+          // Use CSS variables for theme compatibility
+          "flex aspect-video justify-center text-xs [&_.recharts-cartesian-axis-tick_text]:fill-[hsl(var(--muted-foreground-hsl))] [&_.recharts-cartesian-grid_line]:stroke-[hsl(var(--border-hsl))] [&_.recharts-curve.recharts-tooltip-cursor]:stroke-[hsl(var(--border-hsl))] [&_.recharts-dot[stroke='#fff']]:stroke-transparent [&_.recharts-layer]:outline-none [&_.recharts-polar-grid_[stroke='#ccc']]:stroke-[hsl(var(--border-hsl))] [&_.recharts-radial-bar-background-sector]:fill-[hsl(var(--muted-hsl))] [&_.recharts-rectangle.recharts-tooltip-cursor]:fill-[hsl(var(--muted-hsl))] [&_.recharts-reference-line_[stroke='#ccc']]:stroke-[hsl(var(--border-hsl))] [&_.recharts-sector[stroke='#fff']]:stroke-transparent [&_.recharts-sector]:outline-none [&_.recharts-surface]:outline-none",
           className
         )}
         {...props}
@@ -88,6 +90,7 @@ ${colorConfig
     const color =
       itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ||
       itemConfig.color
+    // Use color directly now as it might be a CSS var string
     return color ? `  --color-${key}: ${color};` : null
   })
   .join("\n")}
@@ -141,10 +144,15 @@ const ChartTooltipContent = React.forwardRef<
       const [item] = payload
       const key = `${labelKey || item.dataKey || item.name || "value"}`
       const itemConfig = getPayloadConfigFromPayload(config, item, key)
-      const value =
-        !labelKey && typeof label === "string"
+      let value = !labelKey && typeof label === "string"
           ? config[label as keyof typeof config]?.label || label
-          : itemConfig?.label
+          : itemConfig?.label;
+
+       // Fallback to item name if no label is found
+       if (!value && item.name) {
+         value = item.name;
+       }
+
 
       if (labelFormatter) {
         return (
@@ -179,7 +187,8 @@ const ChartTooltipContent = React.forwardRef<
       <div
         ref={ref}
         className={cn(
-          "grid min-w-[8rem] items-start gap-1.5 rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl",
+          // Use surface, foreground, border from CSS vars
+          "grid min-w-[8rem] items-start gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-xs text-foreground shadow-md",
           className
         )}
       >
@@ -188,11 +197,13 @@ const ChartTooltipContent = React.forwardRef<
           {payload.map((item, index) => {
             const key = `${nameKey || item.name || item.dataKey || "value"}`
             const itemConfig = getPayloadConfigFromPayload(config, item, key)
-            const indicatorColor = color || item.payload.fill || item.color
+            // Use CSS variable from config or fallback to payload color
+            const indicatorColor = itemConfig?.color ? `var(--color-${key})` : (item.payload.fill || item.color);
+             const indicatorColorValue = itemConfig?.color || item.payload.fill || item.color; // Get the actual color value for style
 
             return (
               <div
-                key={item.dataKey}
+                key={item.dataKey ?? index} // Use index as fallback key
                 className={cn(
                   "flex w-full flex-wrap items-stretch gap-2 [&>svg]:h-2.5 [&>svg]:w-2.5 [&>svg]:text-muted-foreground",
                   indicator === "dot" && "items-center"
@@ -208,7 +219,7 @@ const ChartTooltipContent = React.forwardRef<
                       !hideIndicator && (
                         <div
                           className={cn(
-                            "shrink-0 rounded-[2px] border-[--color-border] bg-[--color-bg]",
+                            "shrink-0 rounded-[2px] border", // Added border class
                             {
                               "h-2.5 w-2.5": indicator === "dot",
                               "w-1": indicator === "line",
@@ -219,8 +230,9 @@ const ChartTooltipContent = React.forwardRef<
                           )}
                           style={
                             {
-                              "--color-bg": indicatorColor,
-                              "--color-border": indicatorColor,
+                               // Use the resolved color value here
+                              backgroundColor: indicatorColorValue,
+                              borderColor: indicatorColorValue,
                             } as React.CSSProperties
                           }
                         />
@@ -238,9 +250,9 @@ const ChartTooltipContent = React.forwardRef<
                           {itemConfig?.label || item.name}
                         </span>
                       </div>
-                      {item.value && (
+                      {item.value !== undefined && item.value !== null && ( // Check for undefined/null
                         <span className="font-mono font-medium tabular-nums text-foreground">
-                          {item.value.toLocaleString()}
+                          {typeof item.value === 'number' ? item.value.toLocaleString() : item.value}
                         </span>
                       )}
                     </div>
@@ -288,6 +300,10 @@ const ChartLegendContent = React.forwardRef<
         {payload.map((item) => {
           const key = `${nameKey || item.dataKey || "value"}`
           const itemConfig = getPayloadConfigFromPayload(config, item, key)
+           // Resolve color using CSS variable if available
+           const legendColor = itemConfig?.color ? `var(--color-${key})` : item.color;
+           const legendColorValue = itemConfig?.color || item.color; // Get actual value
+
 
           return (
             <div
@@ -302,11 +318,11 @@ const ChartLegendContent = React.forwardRef<
                 <div
                   className="h-2 w-2 shrink-0 rounded-[2px]"
                   style={{
-                    backgroundColor: item.color,
+                    backgroundColor: legendColorValue, // Use resolved value
                   }}
                 />
               )}
-              {itemConfig?.label}
+              <span className="text-muted-foreground">{itemConfig?.label || item.value}</span>
             </div>
           )
         })}
@@ -321,7 +337,7 @@ function getPayloadConfigFromPayload(
   config: ChartConfig,
   payload: unknown,
   key: string
-) {
+): ChartConfig[string] | undefined { // Added return type
   if (typeof payload !== "object" || payload === null) {
     return undefined
   }
@@ -331,28 +347,27 @@ function getPayloadConfigFromPayload(
     typeof payload.payload === "object" &&
     payload.payload !== null
       ? payload.payload
-      : undefined
+      : undefined;
 
-  let configLabelKey: string = key
+  let configLabelKey: string = key;
 
-  if (
-    key in payload &&
-    typeof payload[key as keyof typeof payload] === "string"
-  ) {
-    configLabelKey = payload[key as keyof typeof payload] as string
-  } else if (
-    payloadPayload &&
-    key in payloadPayload &&
-    typeof payloadPayload[key as keyof typeof payloadPayload] === "string"
-  ) {
-    configLabelKey = payloadPayload[
-      key as keyof typeof payloadPayload
-    ] as string
+  // Check if the key exists directly in the payload item itself (e.g., for BarChart payload)
+  if (key in payload && typeof payload[key as keyof typeof payload] === "string") {
+    configLabelKey = payload[key as keyof typeof payload] as string;
+  }
+  // Check if the key exists in the nested payload (e.g., for LineChart payload)
+  else if (payloadPayload && key in payloadPayload && typeof payloadPayload[key as keyof typeof payloadPayload] === 'string') {
+    configLabelKey = payloadPayload[key as keyof typeof payloadPayload] as string;
+  }
+  // Special handling for BarChart data where the category label might be in 'payload.payload' or directly in 'payload'
+  else if (payloadPayload && 'status' in payloadPayload && typeof payloadPayload.status === 'string') { // Example: Check for 'status' key specifically for expiry chart
+      configLabelKey = payloadPayload.status;
+  } else if ('status' in payload && typeof payload.status === 'string') {
+      configLabelKey = payload.status;
   }
 
-  return configLabelKey in config
-    ? config[configLabelKey]
-    : config[key as keyof typeof config]
+
+  return config[configLabelKey] || config[key as keyof typeof config];
 }
 
 export {
@@ -363,3 +378,5 @@ export {
   ChartLegendContent,
   ChartStyle,
 }
+
+     

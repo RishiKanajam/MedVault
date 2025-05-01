@@ -9,14 +9,14 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90", // Teal button
+        default: "bg-primary text-primary-foreground hover:bg-primary/90", // Teal button (primary)
         destructive:
-          "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+          "bg-danger text-destructive-foreground hover:bg-danger/90", // Use danger color
         outline:
-          "border border-input bg-background hover:bg-accent hover:text-accent-foreground", // Keeps accent color on hover for outline
+          "border border-input bg-background hover:bg-secondary hover:text-secondary-foreground", // Orange accent on hover for outline
         secondary:
-          "bg-accent text-accent-foreground hover:bg-accent/90", // Orange button as secondary
-        ghost: "hover:bg-accent hover:text-accent-foreground", // Keeps accent color on hover for ghost
+          "bg-secondary text-secondary-foreground hover:bg-secondary/90", // Orange button (secondary/accent)
+        ghost: "hover:bg-secondary hover:text-secondary-foreground", // Orange accent on hover for ghost
         link: "text-primary underline-offset-4 hover:underline", // Uses primary teal for link
       },
       size: {
