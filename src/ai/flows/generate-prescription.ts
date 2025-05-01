@@ -58,8 +58,8 @@ export async function generatePrescription(
 const prompt = ai.definePrompt({
   name: 'generatePrescriptionPrompt',
   // Use a more capable model if needed for complex reasoning & citations
-  // model: ai.getModel('googleai/gemini-1.5-pro-latest'), // Or similar powerful model
-  model: ai.getModel('googleai/gemini-pro'), // Keep gemini-pro as a baseline
+  // model: 'googleai/gemini-1.5-pro-latest', // Or similar powerful model
+  model: 'googleai/gemini-pro', // Keep gemini-pro as a baseline
 
   input: { schema: GeneratePrescriptionInputSchema },
   output: { schema: GeneratePrescriptionOutputSchema },

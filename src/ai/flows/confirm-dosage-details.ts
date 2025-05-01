@@ -46,7 +46,7 @@ const prompt = ai.definePrompt({
   },
   // Use a system message or specific instructions for Gemma/Gemini
   // Adapt the model name if necessary (e.g., 'googleai/gemini-pro')
-  model: ai.getModel('googleai/gemini-pro'), // Or appropriate Gemma model if configured
+  model: 'googleai/gemini-pro', // Directly use the model string ID
   prompt: `You are an assistant verifying user intent. The user wants to view sensitive dosage information for the drug "{{drugName}}". Ask a clear question to confirm they wish to proceed, understanding this is for healthcare professionals. Respond with a short confirmation message and determine if the underlying intent is affirmative ('Yes') or negative ('No').`,
    // Adjust temperature for more deterministic yes/no type answers
    config: { temperature: 0.2 },
