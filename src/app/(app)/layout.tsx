@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -34,19 +35,24 @@ import { useUserContext } from '@/context/UserContext';
 import { signOut } from 'firebase/auth';
 import { auth, db } from '@/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
-// Removed direct import of ProtectedRoute, using ClientSideAuthGuard in RootLayout
+// Removed direct import of ProtectedRoute/ClientSideAuthGuard, it's applied in RootLayout
 
 // Connectivity Indicator
 const ConnectivityIndicator = () => {
   const [isOnline, setIsOnline] = useState(true); // Assume online initially
+  const [mounted, setMounted] = useState(false); // State to track hydration
 
   useEffect(() => {
+    setMounted(true); // Component has mounted
+
+    // Define checkOnlineStatus inside useEffect or ensure it's stable
     const checkOnlineStatus = () => {
        // Ensure window is defined (client-side check)
        if (typeof window !== 'undefined' && typeof navigator !== 'undefined') {
            setIsOnline(navigator.onLine);
        }
     };
+
 
     checkOnlineStatus();
     if (typeof window !== 'undefined') {
@@ -57,10 +63,10 @@ const ConnectivityIndicator = () => {
             window.removeEventListener('offline', checkOnlineStatus);
         };
     }
-  }, []);
+  }, []); // Empty dependency array ensures this runs once on mount
 
-    // Avoid rendering on the server or before hydration
-    if (typeof navigator === 'undefined') {
+    // Avoid rendering mismatch by returning null until mounted
+    if (!mounted) {
         return null;
     }
 
@@ -112,6 +118,8 @@ const AppLogo = () => {
 
 
 // The main content layout for authenticated pages
+// This component now assumes it's rendered only when the user is authenticated,
+// because ClientSideAuthGuard in the root layout handles the protection.
 function AppLayoutContent({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   // Get authUser and profile from context. Loading state is handled by ClientSideAuthGuard now.
@@ -166,7 +174,7 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
      }
   }
 
-   // No need for loading check here, ClientSideAuthGuard handles it.
+   // No need for loading check here, ClientSideAuthGuard in root handles it.
    // If this component renders, user is authenticated.
 
   return (
@@ -193,7 +201,7 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56 overlay-tertiary">
+                <DropdownMenuContent align="end" className="w-56 overlay-tertiary"> {/* Use tertiary overlay */}
                   <DropdownMenuLabel className="font-normal">
                     <div className="flex flex-col space-y-1">
                       <p className="text-sm font-medium leading-none text-foreground">{profile?.name}</p>
@@ -223,7 +231,7 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
 
       {/* Profile Modal */}
        <Dialog open={isProfileModalOpen} onOpenChange={setIsProfileModalOpen}>
-        <DialogContent className="panel-primary sm:max-w-[425px]">
+        <DialogContent className="panel-primary sm:max-w-[425px]"> {/* Use primary panel style */}
           <DialogHeader>
             <DialogTitle>Edit Profile</DialogTitle>
             <DialogDescription className="text-muted-foreground">

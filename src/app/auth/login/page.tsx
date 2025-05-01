@@ -1,3 +1,4 @@
+
 'use client'; // Required for hooks and event handlers
 
 import React, { useState } from 'react';
@@ -73,6 +74,7 @@ export default function LoginPage() {
   };
 
   // Show loading overlay if isLoading is true
+  // This prevents interaction while the async login is in progress
   if (isLoading) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
@@ -83,7 +85,7 @@ export default function LoginPage() {
 
   return (
     // The parent layout already handles centering
-      <Card className="panel-primary w-full max-w-sm">
+      <Card className="panel-primary w-full max-w-sm"> {/* Use primary panel */}
         <CardHeader className="text-center">
            <div className="flex justify-center mb-4">
              <Pill className="w-10 h-10 text-primary" />
@@ -100,7 +102,7 @@ export default function LoginPage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Password</Label>
-                <Button variant="link" asChild className="p-0 h-auto text-sm">
+                <Button variant="link" asChild className="p-0 h-auto text-sm text-primary"> {/* Primary color link */}
                     {/* TODO: Implement password reset */}
                     <Link href="#">
                     Forgot your password?
@@ -119,7 +121,7 @@ export default function LoginPage() {
         </CardContent>
          <CardFooter className="text-center text-sm">
            Don't have an account?{' '}
-            <Button variant="link" asChild className="p-0 h-auto ml-1">
+            <Button variant="link" asChild className="p-0 h-auto ml-1 text-primary"> {/* Primary color link */}
                 <Link href="/auth/signup">
                 Sign up
                 </Link>

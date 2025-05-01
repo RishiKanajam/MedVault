@@ -1,3 +1,4 @@
+
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
@@ -25,6 +26,7 @@ export default function RootLayout({
     // especially those caused by browser extensions modifying the DOM.
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans antialiased`}>
+        {/* Providers wrap everything */}
         <ThemeProvider
             attribute="class"
             defaultTheme="system" // Default to system theme preference
@@ -34,8 +36,8 @@ export default function RootLayout({
           <UserProvider>
               <Providers> {/* React Query */}
                   <SidebarProvider>
-                      {/* Wrap the main content with the client-side guard */}
-                      {/* This handles loading spinners and redirects based on auth state */}
+                      {/* ClientSideAuthGuard wraps the main application content */}
+                      {/* It handles showing loading/redirects based on auth state */}
                       <ClientSideAuthGuard>
                           {children}
                       </ClientSideAuthGuard>

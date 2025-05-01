@@ -1,4 +1,5 @@
-'use client';
+
+'use client'; // Required for hooks and event handlers
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -53,14 +54,14 @@ export default function SignupPage() {
       await updateProfile(user, { displayName: fullName });
       console.log('[Signup] Auth profile updated.');
 
-      // 3. Create Firestore user document
+      // 3. Create Firestore user document for profile info
       console.log('[Signup] Attempting to create Firestore document for user:', user.uid);
       const userDocRef = doc(db, 'users', user.uid);
       await setDoc(userDocRef, {
         name: fullName,
         email: email,
         createdAt: serverTimestamp(), // Add creation timestamp
-        // No settings.modules here anymore
+        // Removed settings.modules initialization here
       });
       console.log('[Signup] Firestore document created.');
 
@@ -114,7 +115,7 @@ export default function SignupPage() {
 
   return (
     // The parent layout already handles centering
-      <Card className="panel-primary w-full max-w-md">
+      <Card className="panel-primary w-full max-w-md"> {/* Use primary panel */}
         <CardHeader className="text-center">
            <div className="flex justify-center mb-4">
              <Pill className="w-10 h-10 text-primary" />
@@ -149,7 +150,7 @@ export default function SignupPage() {
         </CardContent>
          <CardFooter className="text-center text-sm">
            Already have an account?{' '}
-            <Button variant="link" asChild className="p-0 h-auto ml-1">
+            <Button variant="link" asChild className="p-0 h-auto ml-1 text-primary"> {/* Primary color link */}
               <Link href="/auth/login">
                 Login
               </Link>
