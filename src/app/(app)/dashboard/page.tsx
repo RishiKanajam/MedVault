@@ -4,10 +4,10 @@ import React from 'react';
 import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Boxes, AlertTriangle, CalendarOff, Truck, ThermometerSnowflake, Activity, BrainCircuit, BarChart3, LineChart } from 'lucide-react'; // Use BarChart3, LineChart
+import { Boxes, AlertTriangle, CalendarOff, Truck, ThermometerSnowflake, Activity, BrainCircuit, BarChart3, LineChart, ClipboardList } from 'lucide-react'; // Use BarChart3, LineChart, Added ClipboardList
 import { Skeleton } from '@/components/ui/skeleton';
 // Import chart components
-import { Bar, BarChart, Line, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, Legend, LineChart as RechartsLineChart } from 'recharts';
+import { Bar, BarChart, Line, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, Legend, LineChart as RechartsLineChart, Cell } from 'recharts'; // Added Cell
 import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from "@/components/ui/chart";
 
 // Placeholder hook for user data
@@ -45,10 +45,11 @@ const expiryChartData = [
 ];
 const expiryChartConfig = {
   count: { label: "Count" },
-  expired: { label: "Expired", color: "hsl(var(--danger-hsl))" },
-  expiring: { label: "Expiring Soon", color: "hsl(var(--warning-hsl))" },
-  safe: { label: "Safe", color: "hsl(var(--primary-hsl))" },
+  Expired: { label: "Expired", color: "hsl(var(--danger-hsl))" }, // Match key to data status
+  Expiring: { label: "Expiring Soon", color: "hsl(var(--warning-hsl))" },
+  Safe: { label: "Safe", color: "hsl(var(--primary-hsl))" },
 } satisfies ChartConfig;
+
 
 const recordsTrendData = [
   { month: 'Jan', count: 15 }, { month: 'Feb', count: 20 }, { month: 'Mar', count: 18 },
@@ -83,13 +84,15 @@ export default function DashboardPage() {
   return (
     // Increased spacing between sections (space-y-12 = 48px)
     <div className="space-y-12 animate-fadeIn">
-       {/* Welcome Banner - Use primary color */}
-       <Card className="bg-primary text-primary-foreground shadow-card">
-         <CardHeader className="border-none pt-6"> {/* Removed accent bar style from Card component */}
-           <CardTitle className="text-2xl">
-             {isLoading ? <Skeleton className="h-8 w-48 bg-white/30" /> : `Welcome back, ${user?.name || 'User'}!`}
+       {/* Welcome Banner - Use surface bg, primary accent */}
+       <Card className="bg-surface text-foreground shadow-card relative overflow-hidden">
+         {/* Decorative accent bar */}
+          <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>
+         <CardHeader className="pl-8 pt-6 pb-6"> {/* Adjusted padding */}
+           <CardTitle className="text-2xl text-primary"> {/* Title uses primary color */}
+             {isLoading ? <Skeleton className="h-8 w-48 bg-gray-200" /> : `Welcome back, ${user?.name || 'User'}!`}
            </CardTitle>
-           <CardDescription className="text-primary-foreground/80">
+           <CardDescription className="text-muted-foreground">
              Here's a quick overview of your MediSync Pro workspace.
            </CardDescription>
          </CardHeader>
@@ -146,11 +149,11 @@ export default function DashboardPage() {
                    <BarChart data={expiryChartData} layout="vertical" margin={{ left: 10, right: 10 }}>
                      <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                      <XAxis type="number" hide />
-                     <YAxis dataKey="status" type="category" tickLine={false} axisLine={false} tick={{ fill: 'hsl(var(--foreground-hsl))' }} />
-                     <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
+                     <YAxis dataKey="status" type="category" tickLine={false} axisLine={false} tick={{ fill: 'hsl(var(--foreground-hsl))' }} width={80} />
+                     <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="line" hideLabel />} />
                      <Bar dataKey="count" radius={5}>
                         {expiryChartData.map((entry) => (
-                            <div key={entry.status} style={{backgroundColor: entry.fill}} /> // Use Cell for individual bar colors
+                             <Cell key={`cell-${entry.status}`} fill={entry.fill} /> // Use Cell for individual bar colors
                         ))}
                      </Bar>
                    </BarChart>
@@ -213,11 +216,13 @@ export default function DashboardPage() {
 
        {/* Optional: Recent Activity Feed */}
        <Card className="shadow-card bg-surface border-border rounded-lg">
-         <CardHeader>
+          {/* Decorative accent bar */}
+          <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>
+         <CardHeader className="pl-8">
            <CardTitle className="flex items-center gap-2 text-lg"><Activity className="h-5 w-5 text-primary" /> Recent Activity</CardTitle>
            <CardDescription>Overview of recent inventory changes and alerts.</CardDescription>
          </CardHeader>
-         <CardContent>
+         <CardContent className="pl-8">
            {isLoading ? (
                <div className="space-y-2">
                  <Skeleton className="h-4 w-3/4 bg-gray-200" />
@@ -239,3 +244,4 @@ export default function DashboardPage() {
 //   const { fill, x, y, width, height } = props;
 //   return <rect x={x} y={y} width={width} height={height} fill={fill} />;
 // };
+
