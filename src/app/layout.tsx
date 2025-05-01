@@ -21,11 +21,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
+    // Add suppressHydrationWarning to the html tag to help mitigate hydration errors,
+    // especially those caused by browser extensions modifying the DOM.
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans antialiased`}>
         <ThemeProvider
             attribute="class"
-            defaultTheme="system"
+            defaultTheme="system" // Default to system theme preference
             enableSystem
             disableTransitionOnChange
         >
