@@ -176,6 +176,7 @@ export function AppSidebar() {
                            variant="ghost"
                            className="justify-between w-full"
                            tooltip={sidebarState === 'collapsed' ? item.label : undefined}
+                           data-state={openSubmenus[item.label] ? 'open' : 'closed'} // Add data-state
                           >
                            <span className="flex items-center gap-2">
                              <item.icon />
@@ -187,9 +188,10 @@ export function AppSidebar() {
                           </SidebarMenuButton>
                       </CollapsibleTrigger>
                       {/* Apply background color and shadow to the CollapsibleContent */}
-                      <CollapsibleContent className="bg-sidebar-submenu text-sidebar-submenu-foreground rounded-md shadow-md mt-1">
+                      <CollapsibleContent className="mt-1">
                          <div className="overflow-hidden transition-all duration-300 ease-in-out data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
-                           <SidebarMenuSub> {/* Use SidebarMenuSub for styling */}
+                            {/* Apply overlay-secondary here for the submenu background */}
+                           <SidebarMenuSub className="overlay-secondary">
                              {item.submenu.map(subItem => (
                                <SidebarMenuSubItem key={subItem.label}>
                                   <SidebarMenuSubButton asChild isActive={router.pathname === subItem.href}> {/* Use SubButton */}

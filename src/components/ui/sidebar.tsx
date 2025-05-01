@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
-import { Skeleton } from "@/components/ui/skeleton"
+import { Skeleton } from "@/components/ui/skeleton" // Keep skeleton import
 import {
   Tooltip,
   TooltipContent,
@@ -141,7 +141,7 @@ const SidebarProvider = React.forwardRef<
               } as React.CSSProperties
             }
             className={cn(
-              "group/sidebar-wrapper flex min-h-svh w-full has-[[data-variant=inset]]:bg-sidebar", // Use --sidebar-background
+              "group/sidebar-wrapper flex min-h-svh w-full has-[[data-variant=inset]]:bg-sidebar-background", // Use --sidebar-background
               className
             )}
             ref={ref}
@@ -303,7 +303,7 @@ const SidebarRail = React.forwardRef<
         "absolute inset-y-0 z-20 hidden w-4 -translate-x-1/2 transition-all ease-linear after:absolute after:inset-y-0 after:left-1/2 after:w-[2px] hover:after:bg-sidebar-border group-data-[side=left]:-right-4 group-data-[side=right]:left-0 sm:flex", // Use sidebar border color
         "[[data-side=left]_&]:cursor-w-resize [[data-side=right]_&]:cursor-e-resize",
         "[[data-side=left][data-state=collapsed]_&]:cursor-e-resize [[data-side=right][data-state=collapsed]_&]:cursor-w-resize",
-        "group-data-[collapsible=offcanvas]:translate-x-0 group-data-[collapsible=offcanvas]:after:left-full group-data-[collapsible=offcanvas]:hover:bg-sidebar", // Use sidebar background
+        "group-data-[collapsible=offcanvas]:translate-x-0 group-data-[collapsible=offcanvas]:after:left-full group-data-[collapsible=offcanvas]:hover:bg-sidebar-background", // Use sidebar background
         "[[data-side=left][data-collapsible=offcanvas]_&]:-right-2",
         "[[data-side=right][data-collapsible=offcanvas]_&]:-left-2",
         className
@@ -513,14 +513,14 @@ SidebarMenuItem.displayName = "SidebarMenuItem"
 
 // Updated CVA for SidebarMenuButton to use sidebar variables
 const sidebarMenuButtonVariants = cva(
-  "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-none ring-sidebar-ring transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-primary data-[active=true]:font-medium data-[active=true]:text-sidebar-primary-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-2 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
+  "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-none ring-sidebar-ring transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-primary data-[active=true]:font-medium data-[active=true]:text-sidebar-primary-foreground data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-2 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0", // Added open state styles
   {
     variants: {
       variant: {
-        default: "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground", // Use sidebar colors
-        ghost: "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground", // Ghost variant adjusted
+        default: "text-sidebar-foreground", // Base text color
+        ghost: "text-sidebar-foreground", // Ghost variant adjusted
         outline:
-          "bg-transparent text-sidebar-foreground border border-sidebar-border hover:bg-sidebar-accent hover:text-sidebar-accent-foreground", // Outline variant adjusted
+          "bg-transparent text-sidebar-foreground border border-sidebar-border", // Outline variant adjusted
       },
       size: {
         default: "h-8 text-sm",
@@ -590,7 +590,7 @@ const SidebarMenuButton = React.forwardRef<
           side="right"
           align="center"
           hidden={state !== "collapsed" || isMobile}
-          className="bg-popover text-popover-foreground shadow-lg border-none" // Solid background, shadow
+          className="overlay-tertiary" // Use overlay-tertiary class
           {...tooltipContentProps}
         >
           {typeof tooltip === 'string' ? tooltip : tooltip.children}
@@ -702,7 +702,7 @@ const SidebarMenuSub = React.forwardRef<
     className={cn(
       "mx-3.5 flex min-w-0 translate-x-px flex-col gap-1 border-l border-sidebar-border px-2.5 py-0.5", // Use sidebar border color
       "group-data-[collapsible=icon]:hidden",
-      "bg-sidebar-submenu text-sidebar-submenu-foreground shadow-md", // Add solid background and shadow for submenu
+      "overlay-secondary", // Use overlay-secondary class for background
       className
     )}
     {...props}
@@ -718,7 +718,7 @@ SidebarMenuSubItem.displayName = "SidebarMenuSubItem"
 
 // Updated CVA for SidebarMenuSubButton
 const sidebarMenuSubButtonVariants = cva(
-  "flex h-7 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-md px-2 text-sidebar-submenu-foreground outline-none ring-sidebar-ring hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-sidebar-accent-foreground",
+  "flex h-7 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-md px-2 text-sidebar-submenu-foreground outline-none ring-sidebar-ring hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-muted-foreground", // Use muted foreground for sub-icons
   {
     variants: {
       size: {
@@ -726,7 +726,7 @@ const sidebarMenuSubButtonVariants = cva(
         md: "text-sm",
       },
       isActive: {
-        true: "bg-sidebar-primary text-sidebar-primary-foreground", // Active style for submenu items
+        true: "bg-sidebar-primary text-sidebar-primary-foreground font-medium", // Active style for submenu items (within the submenu bg)
         false: "hover:bg-accent/10", // Subtle hover for non-active items within the submenu
       }
     },
@@ -790,4 +790,3 @@ export {
   SidebarTrigger,
   useSidebar,
 }
-

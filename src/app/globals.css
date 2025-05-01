@@ -11,38 +11,40 @@ body {
     /* Light Theme based on user request */
     --color-primary-dark-hsl: 180 100% 15%; /* #004F4F */
     --color-primary-light-hsl: 180 100% 25%; /* #008080 */
-    --color-secondary-hsl: 0 0% 94%; /* #F0F0F0 */
+    --color-secondary-hsl: 0 0% 94%; /* #F0F0F0 - Use for secondary overlays */
+    --color-surface-alt-hsl: 0 0% 98%; /* #FAFAFA - Use for tertiary overlays */
     --color-accent-hsl: 39 100% 50%; /* #FFA500 */
-    --color-surface-hsl: 0 0% 100%; /* #FFFFFF */
+    --color-surface-hsl: 0 0% 100%; /* #FFFFFF - Use only for main content panels */
     --color-on-primary-hsl: 0 0% 100%; /* #FFFFFF */
     --color-on-surface-hsl: 0 0% 20%; /* #333333 */
     --color-sidebar-hover-hsl: 180 100% 20%; /* #006666 */
+    --color-surface-overlay-hsl: 0 0% 0%; /* Used with opacity for backdrop */
 
-    --background: hsl(var(--color-surface-hsl));
-    --foreground: hsl(var(--color-on-surface-hsl));
+    --background: hsl(var(--color-surface-hsl)); /* Main background is white */
+    --foreground: hsl(var(--color-on-surface-hsl)); /* Dark text on white */
 
-    --card: hsl(var(--color-surface-hsl)); /* White background for cards */
+    --card: hsl(var(--color-surface-hsl)); /* Default card is white */
     --card-foreground: hsl(var(--color-on-surface-hsl));
 
-    --popover: hsl(var(--color-surface-hsl)); /* White background for popovers */
-    --popover-foreground: hsl(var(--color-on-surface-hsl));
+    --popover: hsl(var(--color-secondary-hsl)); /* Popovers use light gray */
+    --popover-foreground: hsl(var(--color-on-surface-hsl)); /* Dark text on light gray */
 
     --primary: hsl(var(--color-primary-light-hsl)); /* Teal accent #008080 */
     --primary-foreground: hsl(var(--color-on-primary-hsl)); /* White text */
 
-    --secondary: hsl(var(--color-secondary-hsl)); /* Light gray for secondary elements */
+    --secondary: hsl(var(--color-secondary-hsl)); /* Light gray */
     --secondary-foreground: hsl(var(--color-on-surface-hsl)); /* Dark text on light gray */
 
     --muted: hsl(0 0% 90%); /* Slightly darker muted gray */
     --muted-foreground: hsl(0 0% 45.1%); /* Muted text */
 
     --accent: hsl(var(--color-accent-hsl)); /* Orange accent #FFA500 */
-    --accent-foreground: hsl(var(--color-on-primary-hsl)); /* White text on Orange for better contrast */
+    --accent-foreground: hsl(0 0% 100%); /* White text on Orange */
 
     --destructive: 0 84.2% 60.2%; /* Default Red */
     --destructive-foreground: 0 0% 98%; /* Default White */
 
-    --border: hsl(0 0% 88%); /* Lighter border (rgba(0,0,0,0.08) equivalent) */
+    --border: hsl(0 0% 88%); /* Lighter border */
     --input: hsl(0 0% 88%);
     --ring: hsl(var(--color-primary-light-hsl)); /* Teal ring */
 
@@ -62,7 +64,7 @@ body {
     --sidebar-accent-foreground: hsl(var(--color-on-primary-hsl)); /* White text */
     --sidebar-border: hsl(180 100% 18%); /* Slightly lighter teal border */
     --sidebar-ring: hsl(var(--color-primary-light-hsl)); /* Teal ring */
-    --sidebar-submenu-background: hsl(var(--color-surface-hsl)); /* White background for submenu */
+    --sidebar-submenu-background: hsl(var(--color-secondary-hsl)); /* Light gray for submenu */
     --sidebar-submenu-foreground: hsl(var(--color-on-surface-hsl)); /* Dark text for submenu */
   }
 
@@ -70,12 +72,15 @@ body {
     /* Dark Theme (Adjusted to maintain contrast and feel) */
     --color-primary-dark-hsl: 180 100% 10%; /* Even Darker Teal */
     --color-primary-light-hsl: 180 100% 35%; /* Brighter Teal */
-    --color-secondary-hsl: 240 4% 16%; /* Dark Gray */
+    --color-secondary-hsl: 240 4% 16%; /* Dark Gray - Use for secondary overlays */
+    --color-surface-alt-hsl: 240 5% 12%; /* Slightly lighter dark gray - Use for tertiary overlays */
     --color-accent-hsl: 39 100% 55%; /* Brighter Orange */
-    --color-surface-hsl: 240 5% 8%; /* Very Dark Background */
+    --color-surface-hsl: 240 5% 8%; /* Very Dark Background - Use only for main content */
     --color-on-primary-hsl: 0 0% 98%; /* Light Text */
     --color-on-surface-hsl: 0 0% 98%; /* Light Text */
     --color-sidebar-hover-hsl: 180 100% 15%; /* Slightly lighter dark teal */
+    --color-surface-overlay-hsl: 0 0% 100%; /* Used with opacity for backdrop */
+
 
     --background: hsl(var(--color-surface-hsl));
     --foreground: hsl(var(--color-on-surface-hsl));
@@ -83,8 +88,8 @@ body {
     --card: hsl(240 6% 10%); /* Very Dark Gray cards */
     --card-foreground: hsl(var(--color-on-surface-hsl));
 
-    --popover: hsl(240 6% 12%); /* Slightly lighter dark popover */
-    --popover-foreground: hsl(var(--color-on-surface-hsl));
+    --popover: hsl(var(--color-secondary-hsl)); /* Popovers use dark gray */
+    --popover-foreground: hsl(var(--color-on-surface-hsl)); /* Light text on dark gray */
 
     --primary: hsl(var(--color-primary-light-hsl));
     --primary-foreground: hsl(var(--color-on-primary-hsl));
@@ -101,7 +106,7 @@ body {
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: hsl(240 4% 16%); /* Dark border */
+    --border: hsl(240 4% 20%); /* Darker border */
     --input: hsl(240 4% 16%);
     --ring: hsl(var(--color-primary-light-hsl));
 
@@ -120,8 +125,8 @@ body {
     --sidebar-accent-foreground: hsl(var(--color-on-primary-hsl));
     --sidebar-border: hsl(180 100% 12%);
     --sidebar-ring: hsl(var(--color-primary-light-hsl));
-    --sidebar-submenu-background: hsl(240 6% 12%); /* Dark background for submenu */
-     --sidebar-submenu-foreground: hsl(var(--color-on-surface-hsl)); /* Light text for submenu */
+    --sidebar-submenu-background: hsl(var(--color-secondary-hsl)); /* Dark gray for submenu */
+    --sidebar-submenu-foreground: hsl(var(--color-on-surface-hsl)); /* Light text for submenu */
   }
 }
 
@@ -140,6 +145,27 @@ body {
     to { opacity: 1; }
   }
 }
+
+/* Utility classes for panel/overlay backgrounds */
+@layer components {
+  /* Primary panels & modals */
+  .panel-primary {
+    @apply bg-background shadow-2xl z-50 rounded-lg border; /* Uses main background (white/dark) */
+  }
+  /* Secondary overlays (submenus, popovers) */
+  .overlay-secondary {
+    @apply bg-secondary shadow-lg z-40 rounded-md border text-secondary-foreground; /* Uses light/dark gray */
+  }
+  /* Tertiary context menus/tooltips */
+  .overlay-tertiary {
+    @apply bg-[hsl(var(--color-surface-alt-hsl))] shadow-md z-30 rounded-sm border text-foreground; /* Uses FAFAFA/darker */
+  }
+  /* Backdrop for full-screen modals */
+  .backdrop {
+    @apply fixed inset-0 z-40 bg-[hsl(var(--color-surface-overlay-hsl))]/30 dark:bg-[hsl(var(--color-surface-overlay-hsl))]/50; /* Use variable with opacity */
+  }
+}
+
 
 /* Smooth scroll */
 html {
