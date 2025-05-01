@@ -18,8 +18,6 @@ import { Pill, Loader2 } from 'lucide-react';
 import { auth } from '@/firebase'; // Ensure Firebase is correctly initialized
 import { signInWithEmailAndPassword } from 'firebase/auth'; // Import sign-in function
 import { useToast } from '@/hooks/use-toast';
-// Removed useAuthGuard as middleware and client-side guard in layout handle protection
-// import { useAuthGuard } from '@/hooks/useAuthGuard';
 
 export default function LoginPage() {
   const router = useRouter(); // Initialize useRouter
@@ -28,8 +26,6 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false); // State for loading indicator
   const [error, setError] = useState<string | null>(null);
-
-  // Auth guard logic is now handled by middleware and the layout's client-side guard
 
   const handleLogin = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -45,7 +41,7 @@ export default function LoginPage() {
 
       console.log('[Login] Redirecting to /dashboard');
       router.push('/dashboard'); // Redirect to dashboard on success
-      // Don't set isLoading to false here, component will unmount
+      // Don't set isLoading to false here, component will unmount after redirect
 
     } catch (err: any) {
       console.error('[Login] Error:', err);
@@ -86,7 +82,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
+    // The parent layout already handles centering
       <Card className="panel-primary w-full max-w-sm">
         <CardHeader className="text-center">
            <div className="flex justify-center mb-4">
@@ -130,6 +126,5 @@ export default function LoginPage() {
             </Button>
          </CardFooter>
       </Card>
-    </div>
   );
 }

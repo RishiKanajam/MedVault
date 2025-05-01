@@ -27,7 +27,6 @@ export default function SignupPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  // Removed clinicId state
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -39,7 +38,6 @@ export default function SignupPage() {
       setError('Passwords do not match.');
       return;
     }
-    // Removed clinicId check
 
     setIsLoading(true);
 
@@ -62,14 +60,14 @@ export default function SignupPage() {
         name: fullName,
         email: email,
         createdAt: serverTimestamp(), // Add creation timestamp
-        // Removed clinicId and settings.modules
+        // No settings.modules here anymore
       });
       console.log('[Signup] Firestore document created.');
 
 
       toast({ title: "Account Created", description: "Welcome to MediSync Pro! Please log in." });
       // 4. Redirect to login page
-      router.push('/auth/login'); // Changed redirect target
+      router.push('/auth/login'); // Redirect straight to login
 
     } catch (err: any) {
       console.error('[Signup] Error during signup:', err);
@@ -104,8 +102,18 @@ export default function SignupPage() {
     }
   };
 
+    // Show loading overlay if isLoading is true
+  if (isLoading) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
+    // The parent layout already handles centering
       <Card className="panel-primary w-full max-w-md">
         <CardHeader className="text-center">
            <div className="flex justify-center mb-4">
@@ -132,7 +140,6 @@ export default function SignupPage() {
               <Label htmlFor="confirmPassword">Confirm Password</Label>
               <Input id="confirmPassword" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required disabled={isLoading}/>
             </div>
-             {/* Removed Clinic ID field */}
             {error && <p className="text-sm text-destructive text-center">{error}</p>}
             <Button type="submit" className="w-full" disabled={isLoading}>
                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
@@ -149,6 +156,5 @@ export default function SignupPage() {
            </Button>
          </CardFooter>
       </Card>
-    </div>
   );
 }

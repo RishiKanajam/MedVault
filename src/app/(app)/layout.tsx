@@ -36,13 +36,14 @@ import { auth, db } from '@/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 // Removed direct import of ProtectedRoute, using ClientSideAuthGuard in RootLayout
 
-// Connectivity Indicator (no changes)
+// Connectivity Indicator
 const ConnectivityIndicator = () => {
   const [isOnline, setIsOnline] = useState(true); // Assume online initially
 
   useEffect(() => {
     const checkOnlineStatus = () => {
-       if (typeof navigator !== 'undefined') {
+       // Ensure window is defined (client-side check)
+       if (typeof window !== 'undefined' && typeof navigator !== 'undefined') {
            setIsOnline(navigator.onLine);
        }
     };
@@ -58,9 +59,10 @@ const ConnectivityIndicator = () => {
     }
   }, []);
 
-   if (typeof navigator === 'undefined') {
-     return null;
-   }
+    // Avoid rendering on the server or before hydration
+    if (typeof navigator === 'undefined') {
+        return null;
+    }
 
   const Icon = isOnline ? Wifi : WifiOff;
   const color = isOnline ? 'text-green-500' : 'text-muted-foreground';
@@ -74,21 +76,27 @@ const ConnectivityIndicator = () => {
 };
 
 
-// AppLogo component (no changes)
+// AppLogo component
 const AppLogo = () => {
     const { resolvedTheme } = useTheme();
-    const [logoSrc, setLogoSrc] = useState('/logo-light.png');
+    const [logoSrc, setLogoSrc] = useState('/logo-light.png'); // Default to light logo
     const [mounted, setMounted] = useState(false);
 
+    // Ensure component is mounted before checking theme
     useEffect(() => {
         setMounted(true);
-         if (resolvedTheme) {
+    }, []);
+
+     useEffect(() => {
+         if (mounted && resolvedTheme) {
+             console.log("Theme resolved:", resolvedTheme);
              setLogoSrc(resolvedTheme === 'dark' ? '/logo-dark.png' : '/logo-light.png');
          }
-    }, [resolvedTheme]);
+     }, [mounted, resolvedTheme]);
 
-    if (!mounted || !resolvedTheme) {
-        return <div className="w-8 h-8 bg-muted rounded-full"></div>;
+    // Avoid hydration mismatch by rendering placeholder until mounted
+    if (!mounted) {
+        return <div className="w-8 h-8 bg-muted rounded-full"></div>; // Placeholder
     }
 
     return (
@@ -106,7 +114,8 @@ const AppLogo = () => {
 // The main content layout for authenticated pages
 function AppLayoutContent({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { authUser, profile, loading: isLoadingUser } = useUserContext();
+  // Get authUser and profile from context. Loading state is handled by ClientSideAuthGuard now.
+  const { authUser, profile } = useUserContext();
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
   const [profileFormData, setProfileFormData] = useState({ name: '', photoURL: '' });
@@ -157,20 +166,8 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
      }
   }
 
-   // This layout should only render *after* the ClientSideAuthGuard allows it.
-   // The guard handles the loading state. If we reach here, user is authenticated.
-   if (isLoadingUser || !authUser || !profile) {
-       // This state should ideally not be reached frequently if the guard works correctly.
-       // It might show briefly between context update and render.
-       // You might want a more subtle loading indicator here or rely on the guard's spinner.
-       console.log("[AppLayout] Waiting for user context...");
-       return (
-            <div className="flex min-h-screen w-full items-center justify-center bg-background">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-        );
-   }
-
+   // No need for loading check here, ClientSideAuthGuard handles it.
+   // If this component renders, user is authenticated.
 
   return (
     <div className="flex min-h-screen w-full bg-background">

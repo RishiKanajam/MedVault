@@ -1,4 +1,4 @@
-// src/app/(auth)/layout.tsx
+// src/app/auth/layout.tsx
 import React from 'react';
 
 // Simple layout for authentication pages

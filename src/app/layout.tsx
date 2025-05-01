@@ -22,7 +22,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.variable} font-sans antialiased`} suppressHydrationWarning>
+      <body className={`${inter.variable} font-sans antialiased`}>
         <ThemeProvider
             attribute="class"
             defaultTheme="system"
@@ -33,6 +33,7 @@ export default function RootLayout({
               <Providers> {/* React Query */}
                   <SidebarProvider>
                       {/* Wrap the main content with the client-side guard */}
+                      {/* This handles loading spinners and redirects based on auth state */}
                       <ClientSideAuthGuard>
                           {children}
                       </ClientSideAuthGuard>
