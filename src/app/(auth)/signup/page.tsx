@@ -50,36 +50,34 @@ export default function SignupPage() {
       // 1. Create Firebase Auth user
       console.log('[Signup] Attempting to create user...');
       const userCred = await createUserWithEmailAndPassword(auth, email, password);
-      console.log('[Signup] User created in Auth:', userCred.user.uid);
+      const user = userCred.user;
+      console.log('[Signup] User created in Auth:', user.uid);
 
       // 2. Update Firebase Auth Profile (Display Name)
       console.log('[Signup] Updating Auth profile...');
-      await updateProfile(userCred.user, { displayName: fullName });
+      await updateProfile(user, { displayName: fullName });
       console.log('[Signup] Auth profile updated.');
 
       // 3. Create Firestore user document
-      console.log('[Signup] Attempting to create Firestore document for user:', userCred.user.uid);
-      // IMPORTANT: Security rules allow this write because the user is now authenticated
-      // and the path matches their UID: `/users/{userId}` where `request.auth.uid == userId`.
-      const userDocRef = doc(db, 'users', userCred.user.uid);
+      console.log('[Signup] Attempting to create Firestore document for user:', user.uid);
+      const userDocRef = doc(db, 'users', user.uid);
       await setDoc(userDocRef, {
         name: fullName,
         email: email,
         clinicId: clinicId, // Store clinic ID in Firestore profile
-        settings: { modules: null, theme: 'system' } // Initialize settings as null/default
-      });
+        settings: {
+           modules: {}, // Initialize modules as an empty object
+           theme: 'system' // Default theme
+        }
+      }, { merge: true }); // Use merge: true to be safe, although it's a new doc
       console.log('[Signup] Firestore document created.');
 
-      // Optional: Trigger a function to set the custom claim 'clinicId' on the user token
-      // This step is CRITICAL for Firestore rules that check `request.auth.token.clinicId`.
-      // Since this requires a backend function, it's commented out here.
-      // Without this backend step, access to `/clinics/{clinicId}/...` will fail due to permissions.
+      // Custom claims setting should ideally happen in a backend function triggered on user creation.
       // console.log('[Signup] Note: Backend function needed to set clinicId custom claim for full access.');
-      // await fetch('/api/set-custom-claims', { method: 'POST', body: JSON.stringify({ uid: userCred.user.uid, clinicId }) });
-
 
       toast({ title: "Account Created", description: "Welcome to MediSync Pro! Please select your modules." });
-      router.push('/module-selection'); // Redirect to module setup
+      // 4. Redirect to module setup AFTER Firestore doc is created
+      router.push('/module-selection');
 
     } catch (err: any) {
       console.error('[Signup] Error during signup:', err);

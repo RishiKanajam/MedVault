@@ -1,4 +1,4 @@
-// src/app/(auth)/module-selection/page.tsx
+{// src/app/(auth)/module-selection/page.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -10,13 +10,13 @@ import { Boxes, Truck, BrainCircuit, FlaskConical, ClipboardList, CheckSquare, L
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { auth, db } from '@/firebase'; // Import Firebase auth and db
-import { doc, setDoc, getDoc } from 'firebase/firestore'; // Import setDoc and getDoc
+import { doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore'; // Import Firestore functions
 import { useAuthGuard } from '@/hooks/useAuthGuard'; // Import the auth guard hook
 
 export default function ModuleSelectionPage() {
   const router = useRouter();
   const { toast } = useToast();
-  // Ensure user is logged in using the guard, but don't check modules yet
+  // Ensure user is logged in using the guard, but don't check modules initially here.
   const { user, loading: authLoading } = useAuthGuard({ requiredAuth: true, checkModules: false });
 
   const [selectedModules, setSelectedModules] = useState({
@@ -26,43 +26,55 @@ export default function ModuleSelectionPage() {
     pharmaNet: true,
     patientHistory: true,
   });
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [isCheckingConfig, setIsCheckingConfig] = useState(true); // State for checking existing config
 
-   // Redirect if modules are already set (e.g., user navigates back or finishes setup elsewhere)
+   // Effect to check if modules are already configured and redirect if necessary
    useEffect(() => {
-     const checkExistingModules = async () => {
-       if (user) {
-         setIsCheckingConfig(true); // Indicate we are checking existing config
-         console.log("[ModuleSelection] Checking existing module config for user:", user.uid);
-         try {
-             const userDocRef = doc(db, 'users', user.uid);
-             const userDocSnap = await getDoc(userDocRef);
-             if (userDocSnap.exists() && userDocSnap.data()?.settings?.modules) {
-               console.log("[ModuleSelection] Modules already configured, redirecting to dashboard.");
-               router.replace('/dashboard');
-               // Don't set checking config false here, let loading state handle UI until redirect
-               return;
-             } else {
-               console.log("[ModuleSelection] No existing module config found or document missing.");
-             }
-         } catch (error) {
-             console.error("[ModuleSelection] Error checking existing modules:", error);
-             // Handle error appropriately, maybe show a toast or allow proceeding
-             toast({ title: "Error", description: "Could not verify module configuration.", variant: "destructive" });
-         } finally {
-             setIsCheckingConfig(false); // Finish checking
+     let unsubscribe: (() => void) | null = null;
+
+     if (user) {
+       setIsCheckingConfig(true);
+       console.log("[ModuleSelection] Setting up listener to check existing module config for user:", user.uid);
+       const userDocRef = doc(db, 'users', user.uid);
+
+       unsubscribe = onSnapshot(userDocRef, (docSnap) => {
+         if (docSnap.exists()) {
+           const modules = docSnap.data()?.settings?.modules;
+           // Redirect if modules exist and the object is not empty
+           if (modules && Object.keys(modules).length > 0) {
+             console.log("[ModuleSelection] Modules already configured, redirecting to dashboard.");
+             router.replace('/dashboard');
+             // Keep checking config true until redirect finishes
+             return; // Exit snapshot handler early
+           } else {
+             console.log("[ModuleSelection] No existing module config found or modules object is empty.");
+           }
+         } else {
+           console.warn("[ModuleSelection] User document doesn't exist yet, cannot check modules.");
+           // This might happen briefly after signup before the doc is created. Wait for next snapshot.
          }
-       } else {
-          // If no user, stop checking
-          setIsCheckingConfig(false);
+         // Only set checking to false if NOT redirecting
+         setIsCheckingConfig(false);
+       }, (error) => {
+         console.error("[ModuleSelection] Error listening to user document:", error);
+         toast({ title: "Error", description: "Could not verify module configuration.", variant: "destructive" });
+         setIsCheckingConfig(false); // Stop checking on error
+       });
+
+     } else if (!authLoading) {
+        // If auth loading is finished and there's no user, stop checking
+       setIsCheckingConfig(false);
+     }
+
+     // Cleanup listener on component unmount or when user changes
+     return () => {
+       if (unsubscribe) {
+         console.log("[ModuleSelection] Cleaning up Firestore listener.");
+         unsubscribe();
        }
      };
-     if (!authLoading) { // Only check when auth state is resolved
-       checkExistingModules();
-     }
-     // eslint-disable-next-line react-hooks/exhaustive-deps
-   }, [user, authLoading, router]); // Add router to dependencies
+   }, [user, authLoading, router, toast]); // Add toast to dependencies
 
 
   const handleCheckboxChange = (moduleId: keyof typeof selectedModules) => {
@@ -79,19 +91,21 @@ export default function ModuleSelectionPage() {
       return;
     }
 
-    setIsLoading(true);
+    setIsSaving(true);
     console.log('[ModuleSelection] Saving selected modules for user:', user.uid, selectedModules);
 
     try {
       const userDocRef = doc(db, 'users', user.uid);
-      // Use setDoc with merge: true to create or update the document safely.
+      // Use setDoc with merge: true to update the settings field without overwriting other fields.
       await setDoc(userDocRef, {
-        settings: { modules: selectedModules }
+        settings: { modules: selectedModules } // Set the modules object within settings
       }, { merge: true }); // Use merge: true
 
       console.log('[ModuleSelection] Modules saved successfully.');
       toast({ title: "Modules Saved", description: "Your module preferences have been saved." });
-      router.push('/dashboard'); // Redirect to dashboard after selection
+      // Redirect happens via the useEffect listener detecting the change
+      // router.push('/dashboard'); // No need to push here, listener handles it.
+
     } catch (error: any) {
       console.error("[ModuleSelection] Error saving module settings:", error);
       let message = "Could not save module preferences.";
@@ -101,9 +115,10 @@ export default function ModuleSelectionPage() {
           message = error.message;
       }
       toast({ title: "Save Error", description: message, variant: "destructive" });
-      setIsLoading(false); // Ensure loading stops on error
+    } finally {
+       // Set saving false AFTER attempt, regardless of redirect triggering
+      setIsSaving(false);
     }
-    // No finally here, isLoading should remain true during redirect
   };
 
   const modulesConfig = [
@@ -159,7 +174,7 @@ export default function ModuleSelectionPage() {
                  checked={selectedModules[module.id]}
                  onCheckedChange={() => handleCheckboxChange(module.id)}
                  className="mt-1"
-                 disabled={isLoading} // Disable while saving
+                 disabled={isSaving} // Disable while saving
                />
                <div className="grid gap-1.5 leading-none">
                 <Label htmlFor={module.id} className="flex items-center gap-2 font-medium cursor-pointer">
@@ -172,9 +187,9 @@ export default function ModuleSelectionPage() {
           ))}
         </CardContent>
         <CardFooter>
-          <Button onClick={handleContinue} className="w-full" disabled={isLoading}>
-             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckSquare className="mr-2 h-4 w-4" />}
-             {isLoading ? 'Saving...' : 'Save & Continue'}
+          <Button onClick={handleContinue} className="w-full" disabled={isSaving}>
+             {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckSquare className="mr-2 h-4 w-4" />}
+             {isSaving ? 'Saving...' : 'Save & Continue'}
           </Button>
         </CardFooter>
       </Card>

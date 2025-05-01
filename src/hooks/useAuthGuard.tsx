@@ -1,4 +1,4 @@
-// src/hooks/useAuthGuard.tsx
+{// src/hooks/useAuthGuard.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '@/firebase';
+import { Loader2 } from 'lucide-react'; // Ensure Loader2 is imported
 
 interface UseAuthGuardOptions {
   requiredAuth?: boolean; // Does the route require authentication? (Default: true)
@@ -27,71 +28,103 @@ interface AuthGuardResult {
 export function useAuthGuard(options: UseAuthGuardOptions = {}): AuthGuardResult {
   const {
     requiredAuth = true,
-    checkModules = true,
+    checkModules = true, // Default to checking modules for protected routes
     redirectIfAuthenticated,
   } = options;
 
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [hasCheckedModules, setHasCheckedModules] = useState(!checkModules); // Track if module check is complete or skipped
 
   useEffect(() => {
+    console.log("[AuthGuard] Initializing...");
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
+      setLoading(true); // Reset loading on auth change
+      setHasCheckedModules(!checkModules); // Reset module check status
 
       if (currentUser) {
+        console.log("[AuthGuard] User is authenticated:", currentUser.uid);
         // User is logged in
         if (redirectIfAuthenticated) {
-          console.log(`[AuthGuard] User authenticated, redirecting to ${redirectIfAuthenticated}`);
+          console.log(`[AuthGuard] User authenticated, redirecting from auth page to ${redirectIfAuthenticated}`);
           router.replace(redirectIfAuthenticated);
-          // Keep loading until redirect is complete to avoid rendering the original page
-          return; // Exit early to prevent further checks until redirect happens
+          return; // Exit early, loading remains true until redirect completes
         }
 
         if (checkModules) {
-          // Check Firestore for module configuration
+          console.log("[AuthGuard] Checking module configuration...");
           try {
             const userDocRef = doc(db, 'users', currentUser.uid);
             const userDocSnap = await getDoc(userDocRef);
-            if (!userDocSnap.exists() || !userDocSnap.data()?.settings?.modules) {
-              console.log("[AuthGuard] Modules not configured, redirecting to /module-selection");
-              router.replace('/module-selection');
-              // Keep loading until redirect is complete
-              return; // Exit early
+            const modules = userDocSnap.data()?.settings?.modules;
+
+            if (!userDocSnap.exists() || !modules || Object.keys(modules).length === 0) {
+              console.log("[AuthGuard] Modules not configured or empty, redirecting to /module-selection");
+              // Only redirect if NOT already on the module selection page
+              if (window.location.pathname !== '/module-selection') {
+                router.replace('/module-selection');
+                return; // Exit early, loading remains true until redirect completes
+              } else {
+                 console.log("[AuthGuard] Already on module selection page, allowing access.");
+                 setHasCheckedModules(true); // Mark check as complete
+                 setLoading(false); // Stop loading on module selection page
+              }
             } else {
-               console.log("[AuthGuard] User authenticated and modules configured.");
+              console.log("[AuthGuard] User authenticated and modules configured.");
+              setHasCheckedModules(true); // Mark check as complete
               setLoading(false); // Allow rendering protected content
             }
           } catch (error) {
             console.error("[AuthGuard] Error checking modules:", error);
             // Handle error case, maybe redirect to an error page or logout
+            await auth.signOut(); // Log out user on error
             router.replace('/login'); // Fallback redirect
             return; // Exit early
           }
         } else {
            console.log("[AuthGuard] User authenticated, module check skipped.");
-          setLoading(false); // Module check skipped, allow rendering
+           // setLoading(false); // No need to set loading here, setHasCheckedModules handles it
         }
 
       } else {
         // User is logged out
+        console.log("[AuthGuard] User is not authenticated.");
         if (requiredAuth) {
-           console.log("[AuthGuard] User not authenticated, redirecting to /login");
-          router.replace('/login');
-          // Keep loading until redirect is complete
-          return; // Exit early
+           console.log("[AuthGuard] Route requires authentication, redirecting to /login");
+           // Only redirect if not already on an auth path
+           if (!window.location.pathname.startsWith('/login') && !window.location.pathname.startsWith('/signup')) {
+              router.replace('/login');
+              return; // Exit early, loading remains true until redirect completes
+           } else {
+               console.log("[AuthGuard] Already on an auth path, allowing access.");
+               setLoading(false); // Allow rendering login/signup
+           }
         } else {
-           console.log("[AuthGuard] User not authenticated, route does not require auth.");
-          setLoading(false); // Route doesn't require auth, allow rendering
+           console.log("[AuthGuard] Route does not require auth.");
+          setLoading(false); // Allow rendering public content
         }
       }
+
+      // Final loading state check after all conditions
+      if (hasCheckedModules) { // Only set loading false if module check is done (or skipped)
+          // setLoading(false); // Already handled in specific conditions
+      }
+
     });
 
     // Cleanup subscription on unmount
-    return () => unsubscribe();
-  }, [requiredAuth, checkModules, redirectIfAuthenticated, router]);
+    return () => {
+       console.log("[AuthGuard] Cleaning up auth listener.");
+       unsubscribe();
+    }
+  }, [requiredAuth, checkModules, redirectIfAuthenticated, router]); // Include router in dependencies
 
-  return { user, loading };
+   // Determine final loading state based on auth check AND module check completion
+   const finalLoadingState = loading || (checkModules && !hasCheckedModules && !!user);
+
+  return { user, loading: finalLoadingState };
 }
 
 // Optional: A wrapper component for easier usage in page layouts
@@ -101,9 +134,10 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, authGuardOptions }: ProtectedRouteProps) {
-  const { loading } = useAuthGuard(authGuardOptions);
+  // Use the hook to get loading status and handle redirects
+  const { loading: isLoading } = useAuthGuard(authGuardOptions);
 
-  if (loading) {
+  if (isLoading) {
     // Show a loading spinner or skeleton screen while checking auth/modules
     return (
       <div className="flex min-h-screen w-full items-center justify-center bg-background">
@@ -115,6 +149,3 @@ export function ProtectedRoute({ children, authGuardOptions }: ProtectedRoutePro
   // If loading is complete, render the children (redirects handle unauthorized access)
   return <>{children}</>;
 }
-
-// Need to import Loader2 if not globally available
-import { Loader2 } from 'lucide-react';

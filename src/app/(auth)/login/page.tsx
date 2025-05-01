@@ -36,35 +36,38 @@ export default function LoginPage() {
     try {
       // 1. Sign in with Firebase Auth
       const userCred = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCred.user;
 
       // 2. Fetch user's Firestore document
-      const userDocRef = doc(db, 'users', userCred.user.uid);
+      console.log('[Login] Fetching user document for:', user.uid);
+      const userDocRef = doc(db, 'users', user.uid);
       const userDocSnap = await getDoc(userDocRef);
 
-      if (!userDocSnap.exists()) {
+      let modulesConfigured = false;
+      if (userDocSnap.exists()) {
+        const userData = userDocSnap.data();
+        // Check if settings.modules exists and has any keys
+        modulesConfigured = userData?.settings?.modules && Object.keys(userData.settings.modules).length > 0;
+        console.log('[Login] User document exists. Modules configured:', modulesConfigured);
+      } else {
         // This case should ideally not happen if signup creates the doc, but handle it defensively.
-        console.warn("User document not found in Firestore for UID:", userCred.user.uid);
-        // Potentially log out the user or redirect to an error page/signup.
-        // For now, let's redirect to module setup as a fallback.
-         router.push('/module-selection');
-         return;
+        console.warn("[Login] User document not found in Firestore for UID:", user.uid);
+        // Redirect to module setup as a fallback, assuming it's a first-time login after a potential signup issue.
       }
 
-      // 3. Check if modules are already configured
-      const userData = userDocSnap.data();
-      const modulesConfigured = userData?.settings?.modules;
+      toast({ title: "Login Successful", description: `Welcome back!` });
 
-      toast({ title: "Login Successful", description: `Welcome back, ${userCred.user.displayName || 'User'}!` });
-
-      // 4. Redirect based on module configuration
+      // 3. Redirect based on module configuration
       if (modulesConfigured) {
+        console.log('[Login] Redirecting to /dashboard');
         router.push('/dashboard'); // Modules set up, go to dashboard
       } else {
-        router.push('/module-selection'); // Modules not set up, go to selection screen
+        console.log('[Login] Redirecting to /module-selection');
+        router.push('/module-selection'); // Modules not set up or empty, go to selection screen
       }
 
     } catch (err: any) {
-      console.error('Login Error:', err);
+      console.error('[Login] Error:', err);
       let message = 'An unknown error occurred during login.';
        if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
          message = 'Invalid email or password.';
