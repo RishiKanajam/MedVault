@@ -25,7 +25,8 @@ export default function RootLayout({
     // Add suppressHydrationWarning to the html tag to help mitigate hydration errors,
     // especially those caused by browser extensions modifying the DOM.
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.variable} font-sans antialiased`}>
+      {/* Add suppressHydrationWarning to body as well */}
+      <body className={`${inter.variable} font-sans antialiased`} suppressHydrationWarning>
         <ThemeProvider
             attribute="class"
             defaultTheme="system" // Default to system theme preference
@@ -34,10 +35,9 @@ export default function RootLayout({
         >
            <Providers> {/* React Query */}
              <AuthProvider> {/* Wrap content with AuthProvider */}
-               <SidebarProvider> {/* Sidebar provider might need context too, placed inside */}
-                 {children}
-                 <Toaster />
-               </SidebarProvider>
+               {/* SidebarProvider removed from here as AppLayout handles it */}
+               {children}
+               <Toaster />
              </AuthProvider>
            </Providers>
          </ThemeProvider>
