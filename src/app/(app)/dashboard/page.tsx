@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Boxes, AlertTriangle, CalendarOff, Truck, ThermometerSnowflake, Activity, FlaskConical, BrainCircuit } from 'lucide-react';
+import { Boxes, AlertTriangle, CalendarOff, Truck, ThermometerSnowflake, Activity, FlaskConical, BrainCircuit, BarChart } from 'lucide-react'; // Added BarChart
 import { Skeleton } from '@/components/ui/skeleton'; // For loading state
 
 // Placeholder hook for user data - Replace with actual auth context/hook
@@ -62,24 +62,26 @@ export default function DashboardPage() {
   const isLoading = userLoading || metricsLoading;
 
   const metricCards = [
-    { title: "Total Medicines", value: metrics.totalMeds, icon: Boxes, href: "/inventory", color: "text-primary" },
-    { title: "Expiring Soon", value: metrics.expiringSoon, icon: AlertTriangle, href: "/inventory?filter=expiring", color: "text-orange-500" }, // Accent color
-    { title: "Expired Medicines", value: metrics.expired, icon: CalendarOff, href: "/inventory?filter=expired", color: "text-destructive" },
-    { title: "Cold-Chain Breaches", value: metrics.coldChainBreaches, icon: ThermometerSnowflake, href: "/inventory?filter=coldchain", color: "text-blue-500" }, // Or another distinct color
-    { title: "Active Shipments", value: metrics.activeShipments, icon: Truck, href: "/shipments", color: "text-purple-500" }, // Example color
+    { title: "Total Medicines", value: metrics.totalMeds, icon: Boxes, href: "/inventory", color: "text-primary", valueColor: "text-primary" },
+    { title: "Expiring Soon", value: metrics.expiringSoon, icon: AlertTriangle, href: "/inventory?filter=expiring", color: "text-orange-500", valueColor: "text-orange-500" }, // Accent color for icon and value
+    { title: "Expired Medicines", value: metrics.expired, icon: CalendarOff, href: "/inventory?filter=expired", color: "text-destructive", valueColor: "text-destructive" }, // Destructive color for icon and value
+    { title: "Cold-Chain Breaches", value: metrics.coldChainBreaches, icon: ThermometerSnowflake, href: "/inventory?filter=coldchain", color: "text-blue-500", valueColor: "text-blue-500" }, // Blue for cold chain
+    { title: "Active Shipments", value: metrics.activeShipments, icon: Truck, href: "/shipments", color: "text-purple-500", valueColor: "text-purple-500" }, // Example purple color
   ];
 
    const quickActions = [
-     { title: "Manage Inventory", icon: Boxes, href: "/inventory" },
-     { title: "Track Shipments", icon: Truck, href: "/shipments" },
-     { title: "RxAI Support", icon: BrainCircuit, href: "/rxai" },
-     { title: "PharmaNet", icon: FlaskConical, href: "/pharmanet"},
+     { title: "Manage Inventory", icon: Boxes, href: "/inventory", label: "inventory" },
+     { title: "Track Shipments", icon: Truck, href: "/shipments", label: "shipments" },
+     { title: "RxAI Support", icon: BrainCircuit, href: "/rxai", label: "RxAI" },
+     { title: "PharmaNet", icon: FlaskConical, href: "/pharmanet", label: "PharmaNet"},
+     // Removed Reports quick action as it's now a submenu in sidebar
+     // { title: "View Reports", icon: BarChart, href: "/reports/inventory", label: "reports" },
    ];
 
   return (
     <div className="space-y-6 animate-fadeIn">
        {/* Welcome Banner */}
-       <Card className="bg-gradient-to-r from-primary to-teal-600 text-primary-foreground shadow">
+       <Card className="bg-gradient-to-r from-primary to-teal-600 text-primary-foreground shadow-lg"> {/* Increased shadow */}
          <CardHeader>
            <CardTitle className="text-2xl">
              {isLoading ? (
@@ -97,16 +99,16 @@ export default function DashboardPage() {
        {/* Metric Cards */}
        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
          {metricCards.map((metric, index) => (
-           <Card key={index}>
+           <Card key={index} className="shadow-md hover:shadow-lg transition-shadow"> {/* Added shadow */}
              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                <CardTitle className="text-sm font-medium">{metric.title}</CardTitle>
-               <metric.icon className={`h-4 w-4 text-muted-foreground ${metric.color}`} />
+               <metric.icon className={`h-4 w-4 ${metric.color}`} />
              </CardHeader>
              <CardContent className="pb-4">
                {isLoading ? (
                   <Skeleton className="h-8 w-16" />
                ) : (
-                 <div className={`text-2xl font-bold ${metric.value > 0 ? metric.color : ''}`}>{metric.value}</div>
+                 <div className={`text-2xl font-bold ${metric.value > 0 ? metric.valueColor : ''}`}>{metric.value}</div>
                )}
                <p className="text-xs text-muted-foreground">
                  {metric.title === 'Expiring Soon' ? 'Within 7 days' :
@@ -130,7 +132,7 @@ export default function DashboardPage() {
           <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
              {quickActions.map((action, index) => (
-                <Card key={index} className="hover:shadow-md transition-shadow hover:border-primary/50">
+                <Card key={index} className="hover:shadow-lg transition-shadow hover:border-primary/50 shadow-md"> {/* Added shadow */}
                  <Link href={action.href} className="block h-full">
                     <CardContent className="pt-6 flex flex-col items-center justify-center text-center h-full">
                         <action.icon className="h-10 w-10 text-primary mb-3" />
@@ -144,7 +146,7 @@ export default function DashboardPage() {
        </div>
 
        {/* Optional: Recent Activity Feed */}
-       <Card>
+       <Card className="shadow-md"> {/* Added shadow */}
          <CardHeader>
            <CardTitle className="flex items-center gap-2"><Activity className="h-5 w-5" /> Recent Activity</CardTitle>
            <CardDescription>Overview of recent inventory changes and alerts.</CardDescription>

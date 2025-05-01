@@ -13,6 +13,7 @@ import {
   ChevronRight,
   User, // For fallback avatar
   LogOut, // Logout Icon
+  BarChart // Example for submenu
 } from 'lucide-react';
 import {
   Sidebar,
@@ -36,7 +37,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useToast } from '@/hooks/use-toast'; // For logout feedback
 import { useRouter } from 'next/navigation';
-import { Skeleton } from "@/components/ui/skeleton"; // Import Skeleton component
+import { Skeleton } from "@/components/ui/skeleton";
 
 
 // Placeholder - replace with actual Firebase Auth hook/context
@@ -75,6 +76,7 @@ const useModules = () => {
         rxAI: true,
         pharmaNet: true,
         patientHistory: true,
+        reports: false, // Example: Reports module initially disabled
     });
     const [loading, setLoading] = useState(true);
 
@@ -117,17 +119,18 @@ export function AppSidebar() {
     { href: "/pharmanet", icon: FlaskConical, label: "PharmaNet", moduleKey: 'pharmaNet' as const },
     { href: "/history", icon: ClipboardList, label: "Patient History", moduleKey: 'patientHistory' as const },
     // Example Submenu (if needed later)
-    // {
-    //   label: "Reports", icon: BarChart, moduleKey: 'reports' as const, // Add 'reports' to modules if needed
-    //   submenu: [
-    //      { href: "/reports/inventory", label: "Inventory Reports" },
-    //      { href: "/reports/usage", label: "Usage Analytics" },
-    //   ]
-    // }
+    {
+      label: "Reports", icon: BarChart, moduleKey: 'reports' as const, // Add 'reports' to modules if needed
+      submenu: [
+         { href: "/reports/inventory", label: "Inventory Reports" },
+         { href: "/reports/usage", label: "Usage Analytics" },
+      ]
+    }
   ];
 
+  // Filter items based on enabled modules (ensure 'dashboard' and 'settings' are always present if they exist)
   const filteredItems = sidebarItems.filter(item =>
-     item.moduleKey === 'dashboard' || modules[item.moduleKey] // Show dashboard or if module is enabled
+     item.moduleKey === 'dashboard' || (item.moduleKey && modules[item.moduleKey])
    );
 
 
@@ -180,8 +183,8 @@ export function AppSidebar() {
                             )}
                           </SidebarMenuButton>
                       </CollapsibleTrigger>
-                      <CollapsibleContent>
-                         {/* Smooth transition */}
+                      {/* Apply background color to the CollapsibleContent */}
+                      <CollapsibleContent className="bg-sidebar-submenu rounded-md">
                          <div className="overflow-hidden transition-all duration-300 ease-in-out data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
                            <SidebarMenu className="pl-6 py-1"> {/* Indent submenu */}
                              {item.submenu.map(subItem => (

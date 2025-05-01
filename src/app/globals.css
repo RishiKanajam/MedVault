@@ -50,14 +50,15 @@ body {
     --radius: 0.5rem;
 
     /* Sidebar Theme */
-    --sidebar-background: hsl(0 0% 100%); /* White sidebar */
+    --sidebar-background: hsl(0 0% 98%); /* Slightly off-white sidebar for contrast */
     --sidebar-foreground: hsl(var(--foreground-hsl)); /* Dark text */
     --sidebar-primary: hsl(var(--primary-hsl)); /* Teal for active/hover */
     --sidebar-primary-foreground: hsl(0 0% 98%); /* White text on teal */
-    --sidebar-accent: hsl(0 0% 96%); /* Very light gray for hover */
+    --sidebar-accent: hsl(0 0% 92%); /* Lighter gray for hover */
     --sidebar-accent-foreground: hsl(var(--foreground-hsl)); /* Dark text on hover */
-    --sidebar-border: hsl(0 0% 92%); /* Slightly darker border */
+    --sidebar-border: hsl(0 0% 88%); /* Slightly darker border */
     --sidebar-ring: hsl(var(--primary-hsl)); /* Teal ring */
+    --sidebar-submenu-background: hsl(0 0% 95%); /* Slightly darker background for submenu */
   }
   .dark {
     /* Dark Mode Theme */
@@ -66,7 +67,7 @@ body {
     --accent-hsl: 39 100% 55%; /* Brighter Orange for dark mode */
 
     --card-hsl: 240 6% 10%; /* Very Dark Gray */
-    --background-hsl: 240 6% 10%; /* Very Dark Gray */
+    --background-hsl: 240 5% 8%; /* Slightly darker background */
     --foreground-hsl: 0 0% 98%; /* White */
 
     /* Shadcn UI Variables - Dark */
@@ -96,14 +97,15 @@ body {
     --chart-5: 340 75% 55%;
 
     /* Dark Sidebar Theme */
-    --sidebar-background: hsl(240 6% 12%); /* Slightly lighter dark */
+    --sidebar-background: hsl(240 6% 10%); /* Match card background */
     --sidebar-foreground: hsl(var(--foreground-hsl));
     --sidebar-primary: hsl(var(--primary-hsl));
     --sidebar-primary-foreground: hsl(0 0% 98%);
-    --sidebar-accent: hsl(240 5% 20%); /* Darker accent */
+    --sidebar-accent: hsl(240 5% 18%); /* Darker accent */
     --sidebar-accent-foreground: hsl(var(--foreground-hsl));
     --sidebar-border: hsl(240 4% 16%);
     --sidebar-ring: hsl(var(--primary-hsl));
+    --sidebar-submenu-background: hsl(240 6% 12%); /* Slightly lighter dark for submenu */
   }
 }
 
