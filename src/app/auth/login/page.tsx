@@ -19,21 +19,20 @@ import { Pill, Loader2 } from 'lucide-react';
 import { auth } from '@/firebase'; // Ensure Firebase is correctly initialized
 import { signInWithEmailAndPassword } from 'firebase/auth'; // Import sign-in function
 import { useToast } from '@/hooks/use-toast';
-
-// No Suspense import needed here
+import { useAuth } from '@/providers/AuthProvider'; // Import useAuth
 
 export default function LoginPage() {
   const router = useRouter(); // Initialize useRouter
   const { toast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false); // State for loading indicator
+  const [isLoading, setIsLoading] = useState(false); // State for login action loading
   const [error, setError] = useState<string | null>(null);
 
   const handleLogin = async (event: React.FormEvent) => {
     event.preventDefault();
     setError(null);
-    setIsLoading(true); // Show spinner
+    setIsLoading(true); // Show spinner for login action
 
     try {
       console.log('[Login] Attempting sign-in...');
@@ -75,17 +74,8 @@ export default function LoginPage() {
     }
   };
 
-  // Show loading overlay *specifically for the login action*
-  // The AuthProvider handles the initial app load spinner
-  if (isLoading) {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <span className='sr-only'>Logging in...</span>
-      </div>
-    );
-  }
-
+  // Note: The main loading indicator is handled by AuthProvider in the root layout.
+  // The isLoading state here is specifically for the login button action.
 
   return (
     // The parent layout already handles centering
@@ -101,7 +91,7 @@ export default function LoginPage() {
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="m@example.com" required />
+              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="m@example.com" required disabled={isLoading}/>
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
@@ -113,21 +103,26 @@ export default function LoginPage() {
                     </Link>
                 </Button> */}
               </div>
-              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required disabled={isLoading}/>
             </div>
              {error && <p className="text-sm text-destructive text-center">{error}</p>}
-            {/* Disable button handled by the isLoading overlay */}
-            <Button type="submit" className="w-full">
-              Login
+            {/* Disable button based on the login action's loading state */}
+            <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                {isLoading ? 'Logging In...' : 'Login'}
             </Button>
           </form>
         </CardContent>
          <CardFooter className="text-center text-sm">
            Don't have an account?{' '}
-            <Button variant="link" asChild className="p-0 h-auto ml-1 text-primary"> {/* Primary color link */}
-                <Link href="/auth/signup">
-                Sign up
-                </Link>
+            {/* Use standard button with onClick for navigation */}
+            <Button
+              variant="link"
+              className="p-0 h-auto ml-1 text-primary"
+              onClick={() => router.push('/auth/signup')} // Use onClick for navigation
+              disabled={isLoading} // Optionally disable during login
+            >
+              Sign up
             </Button>
          </CardFooter>
       </Card>
