@@ -10,6 +10,7 @@ import {
   LogIn,
   UserPlus,
   Pill, // Generic icon for the app
+  ClipboardList, // Icon for Patient History
 } from 'lucide-react';
 import {
   Sidebar,
@@ -19,23 +20,25 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
-  SidebarTrigger,
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 
-// TODO: Replace with actual auth state and module settings
-// const isAuthenticated = false; // Placeholder - Temporarily set to true for testing
-const isAuthenticated = true;
+// TODO: Replace with actual auth state and module settings from context/state management
+// These should ideally come from a global state/context, not hardcoded here.
+const isAuthenticated = true; // Assume authenticated within the AppLayout context
 const modules = {
   medTrack: true,
   shipment: true,
   rxAI: true,
   pharmaNet: true,
-  rndAlerts: true, // Assuming PharmaNet includes R&D Alerts for now
+  patientHistory: true, // Add the new module toggle state
 }; // Placeholder
 
 export function AppSidebar() {
+  // Removed redundant isAuthenticated check, as this component is rendered within AppLayout which handles auth.
+  // Module visibility should be based on fetched settings.
+
   return (
     <Sidebar>
       <SidebarHeader className="p-4">
@@ -47,8 +50,7 @@ export function AppSidebar() {
 
       <SidebarContent className="flex-1 overflow-y-auto">
         <SidebarMenu>
-          {isAuthenticated ? (
-            <>
+              {/* Always show Dashboard */}
               <SidebarMenuItem>
                 <SidebarMenuButton asChild tooltip="Dashboard">
                   <Link href="/dashboard">
@@ -58,6 +60,7 @@ export function AppSidebar() {
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
+              {/* Module-based Links */}
               {modules.medTrack && (
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild tooltip="Inventory">
@@ -101,24 +104,24 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               )}
-            </>
-          ) : (
-             <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Login">
-                  <Link href="/login">
-                    <LogIn />
-                    Login
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-          )}
+
+              {/* Add Patient History Link */}
+              {modules.patientHistory && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip="Patient History">
+                    <Link href="/history">
+                      <ClipboardList />
+                      Patient History
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
         </SidebarMenu>
       </SidebarContent>
 
       <Separator />
 
       <SidebarFooter className="p-2">
-        {isAuthenticated ? (
           <SidebarMenu>
             <SidebarMenuItem>
                <SidebarMenuButton asChild tooltip="Settings">
@@ -128,20 +131,8 @@ export function AppSidebar() {
                   </Link>
                 </SidebarMenuButton>
             </SidebarMenuItem>
-             {/* TODO: Add Logout Button Here (will be handled in AppLayout dropdown) */}
+             {/* Logout Button is handled in AppLayout dropdown */}
           </SidebarMenu>
-        ) : (
-           <SidebarMenu>
-             <SidebarMenuItem>
-               <SidebarMenuButton asChild tooltip="Sign Up">
-                 <Link href="/signup">
-                   <UserPlus />
-                   Sign Up
-                 </Link>
-               </SidebarMenuButton>
-             </SidebarMenuItem>
-           </SidebarMenu>
-        )}
       </SidebarFooter>
     </Sidebar>
   );

@@ -5,11 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Boxes, Truck, BrainCircuit, FlaskConical, CheckSquare } from 'lucide-react';
+import { Boxes, Truck, BrainCircuit, FlaskConical, ClipboardList, CheckSquare } from 'lucide-react'; // Added ClipboardList
 import { useRouter } from 'next/navigation'; // Use next/navigation for App Router
 import { useToast } from '@/hooks/use-toast';
 
-// TODO: Integrate with Firebase to save selections under users/{uid}/settings/modules
+// TODO: Integrate with Firebase to save selections under users/{uid}/settings/modules or clinics/{clinicId}/settings/modules
 
 export default function ModuleSelectionPage() {
   const router = useRouter();
@@ -19,6 +19,7 @@ export default function ModuleSelectionPage() {
     shipment: true,
     rxAI: true,
     pharmaNet: true,
+    patientHistory: true, // Added patient history module
   });
 
   const handleCheckboxChange = (moduleId: keyof typeof selectedModules) => {
@@ -47,6 +48,7 @@ export default function ModuleSelectionPage() {
     { id: 'shipment', label: 'Shipment Tracker', icon: Truck, description: 'Track deliveries and monitor cold chain status.' },
     { id: 'rxAI', label: 'RxAI Clinical Support', icon: BrainCircuit, description: 'AI-powered prescription assistance.' },
     { id: 'pharmaNet', label: 'PharmaNet & Alerts', icon: FlaskConical, description: 'Access drug databases and R&D updates.' },
+    { id: 'patientHistory', label: 'Patient History', icon: ClipboardList, description: 'Manage patient records and documents.' }, // Added patient history config
   ] as const; // Use 'as const' for stricter typing of id
 
 

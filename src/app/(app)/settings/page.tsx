@@ -8,10 +8,10 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { Settings as SettingsIcon, Sun, Moon, Languages, RefreshCw, Boxes, Truck, BrainCircuit, FlaskConical } from 'lucide-react';
+import { Settings as SettingsIcon, Sun, Moon, Languages, RefreshCw, Boxes, Truck, BrainCircuit, FlaskConical, ClipboardList } from 'lucide-react'; // Added ClipboardList
 import { useToast } from '@/hooks/use-toast';
 
-// TODO: Fetch initial settings from Firestore/local state
+// TODO: Fetch initial settings from Firestore/local state (e.g., clinics/{clinicId}/settings)
 // TODO: Implement logic to save settings changes to Firestore and update local state/context
 
 export default function SettingsPage() {
@@ -22,22 +22,33 @@ export default function SettingsPage() {
     shipment: true,
     rxAI: true,
     pharmaNet: true,
-    // rndAlerts: true, // Included in pharmaNet for this example
+    patientHistory: true, // Added patient history module
   });
   const [darkMode, setDarkMode] = useState(false); // Manage theme state
   const [language, setLanguage] = useState('en');
   const [isSyncing, setIsSyncing] = useState(false);
 
+  // Load theme preference on mount
+  React.useEffect(() => {
+    const isDark = document.documentElement.classList.contains('dark');
+    setDarkMode(isDark);
+    // TODO: Fetch module settings from Firestore/AsyncStorage
+  }, []);
+
   const handleModuleToggle = (moduleName: keyof typeof modules) => {
-    setModules((prev) => ({ ...prev, [moduleName]: !prev[moduleName] }));
-    // TODO: Save to Firestore: users/{uid}/settings/modules
-    toast({ title: "Module Updated", description: `${moduleName} setting saved.` });
+    setModules((prev) => {
+        const newState = { ...prev, [moduleName]: !prev[moduleName] };
+         console.log("Updating module settings:", newState); // Log the new state
+         // TODO: Save newState to Firestore: users/{uid}/settings/modules or clinics/{clinicId}/settings/modules
+         toast({ title: "Module Updated", description: `${moduleName} setting changed.` });
+         return newState;
+    });
   };
 
   const handleThemeChange = (checked: boolean) => {
     setDarkMode(checked);
-    // TODO: Implement theme switching logic (e.g., adding/removing 'dark' class to html element)
      document.documentElement.classList.toggle('dark', checked);
+     // TODO: Save theme preference to localStorage/Firestore
     toast({ title: "Theme Changed", description: `Switched to ${checked ? 'Dark' : 'Light'} Mode.` });
   };
 
@@ -69,8 +80,9 @@ export default function SettingsPage() {
             <h3 className="text-lg font-medium">Enabled Modules</h3>
              <Separator />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
+                {/* MedTrack */}
                 <div className="flex items-center justify-between space-x-2 p-2 rounded-md border">
-                    <Label htmlFor="medTrack-module" className="flex items-center gap-2 font-normal">
+                    <Label htmlFor="medTrack-module" className="flex items-center gap-2 font-normal cursor-pointer">
                         <Boxes className="w-4 h-4"/> MedTrack Inventory
                     </Label>
                     <Switch
@@ -79,8 +91,9 @@ export default function SettingsPage() {
                         onCheckedChange={() => handleModuleToggle('medTrack')}
                     />
                 </div>
+                 {/* Shipment Tracker */}
                  <div className="flex items-center justify-between space-x-2 p-2 rounded-md border">
-                    <Label htmlFor="shipment-module" className="flex items-center gap-2 font-normal">
+                    <Label htmlFor="shipment-module" className="flex items-center gap-2 font-normal cursor-pointer">
                         <Truck className="w-4 h-4"/> Shipment Tracker
                     </Label>
                     <Switch
@@ -89,8 +102,9 @@ export default function SettingsPage() {
                         onCheckedChange={() => handleModuleToggle('shipment')}
                     />
                 </div>
+                {/* RxAI */}
                  <div className="flex items-center justify-between space-x-2 p-2 rounded-md border">
-                    <Label htmlFor="rxAI-module" className="flex items-center gap-2 font-normal">
+                    <Label htmlFor="rxAI-module" className="flex items-center gap-2 font-normal cursor-pointer">
                          <BrainCircuit className="w-4 h-4"/> RxAI Support
                     </Label>
                     <Switch
@@ -99,14 +113,26 @@ export default function SettingsPage() {
                         onCheckedChange={() => handleModuleToggle('rxAI')}
                     />
                 </div>
+                 {/* PharmaNet */}
                  <div className="flex items-center justify-between space-x-2 p-2 rounded-md border">
-                    <Label htmlFor="pharmaNet-module" className="flex items-center gap-2 font-normal">
+                    <Label htmlFor="pharmaNet-module" className="flex items-center gap-2 font-normal cursor-pointer">
                         <FlaskConical className="w-4 h-4"/> PharmaNet & Alerts
                     </Label>
                     <Switch
                         id="pharmaNet-module"
                         checked={modules.pharmaNet}
                         onCheckedChange={() => handleModuleToggle('pharmaNet')}
+                    />
+                </div>
+                {/* Patient History */}
+                 <div className="flex items-center justify-between space-x-2 p-2 rounded-md border">
+                    <Label htmlFor="patientHistory-module" className="flex items-center gap-2 font-normal cursor-pointer">
+                        <ClipboardList className="w-4 h-4"/> Patient History
+                    </Label>
+                    <Switch
+                        id="patientHistory-module"
+                        checked={modules.patientHistory}
+                        onCheckedChange={() => handleModuleToggle('patientHistory')}
                     />
                 </div>
             </div>
@@ -119,7 +145,7 @@ export default function SettingsPage() {
             <h3 className="text-lg font-medium">Appearance</h3>
              <Separator />
             <div className="flex items-center justify-between space-x-2 p-2 rounded-md border">
-              <Label htmlFor="dark-mode" className="flex items-center gap-2 font-normal">
+              <Label htmlFor="dark-mode" className="flex items-center gap-2 font-normal cursor-pointer">
                  {darkMode ? <Moon className="w-4 h-4"/> : <Sun className="w-4 h-4"/>} Dark Mode
               </Label>
               <Switch
