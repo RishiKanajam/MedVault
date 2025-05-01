@@ -1,4 +1,3 @@
-{// src/app/(auth)/module-selection/page.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -10,7 +9,7 @@ import { Boxes, Truck, BrainCircuit, FlaskConical, ClipboardList, CheckSquare, L
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { auth, db } from '@/firebase'; // Import Firebase auth and db
-import { doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore'; // Import Firestore functions
+import { doc, setDoc, getDoc, onSnapshot, updateDoc } from 'firebase/firestore'; // Import Firestore functions
 import { useAuthGuard } from '@/hooks/useAuthGuard'; // Import the auth guard hook
 
 export default function ModuleSelectionPage() {
@@ -44,7 +43,10 @@ export default function ModuleSelectionPage() {
            // Redirect if modules exist and the object is not empty
            if (modules && Object.keys(modules).length > 0) {
              console.log("[ModuleSelection] Modules already configured, redirecting to dashboard.");
-             router.replace('/dashboard');
+              // Ensure we are not already on dashboard before redirecting
+              if (window.location.pathname !== '/dashboard') {
+                 router.replace('/dashboard');
+              }
              // Keep checking config true until redirect finishes
              return; // Exit snapshot handler early
            } else {
@@ -96,15 +98,15 @@ export default function ModuleSelectionPage() {
 
     try {
       const userDocRef = doc(db, 'users', user.uid);
-      // Use setDoc with merge: true to update the settings field without overwriting other fields.
-      await setDoc(userDocRef, {
-        settings: { modules: selectedModules } // Set the modules object within settings
-      }, { merge: true }); // Use merge: true
+      // Use updateDoc to merge the modules into the settings field.
+      // This assumes the `settings` field already exists from signup.
+      await updateDoc(userDocRef, {
+        'settings.modules': selectedModules // Set the modules object within settings
+      });
 
       console.log('[ModuleSelection] Modules saved successfully.');
       toast({ title: "Modules Saved", description: "Your module preferences have been saved." });
-      // Redirect happens via the useEffect listener detecting the change
-      // router.push('/dashboard'); // No need to push here, listener handles it.
+      // No explicit redirect needed here - the useEffect listener will detect the change and redirect.
 
     } catch (error: any) {
       console.error("[ModuleSelection] Error saving module settings:", error);
@@ -171,8 +173,8 @@ export default function ModuleSelectionPage() {
             >
                <Checkbox
                  id={module.id}
-                 checked={selectedModules[module.id]}
-                 onCheckedChange={() => handleCheckboxChange(module.id)}
+                 checked={selectedModules[module.id as keyof typeof selectedModules]}
+                 onCheckedChange={() => handleCheckboxChange(module.id as keyof typeof selectedModules)}
                  className="mt-1"
                  disabled={isSaving} // Disable while saving
                />

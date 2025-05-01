@@ -1,4 +1,3 @@
-{// src/hooks/useAuthGuard.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -58,9 +57,11 @@ export function useAuthGuard(options: UseAuthGuardOptions = {}): AuthGuardResult
           try {
             const userDocRef = doc(db, 'users', currentUser.uid);
             const userDocSnap = await getDoc(userDocRef);
-            const modules = userDocSnap.data()?.settings?.modules;
+            // Ensure settings and modules exist before accessing Object.keys
+             const modules = userDocSnap.data()?.settings?.modules;
 
-            if (!userDocSnap.exists() || !modules || Object.keys(modules).length === 0) {
+
+             if (!userDocSnap.exists() || !modules || Object.keys(modules).length === 0) {
               console.log("[AuthGuard] Modules not configured or empty, redirecting to /module-selection");
               // Only redirect if NOT already on the module selection page
               if (window.location.pathname !== '/module-selection') {
@@ -73,6 +74,12 @@ export function useAuthGuard(options: UseAuthGuardOptions = {}): AuthGuardResult
               }
             } else {
               console.log("[AuthGuard] User authenticated and modules configured.");
+               // If modules ARE configured, and we are currently on module-selection, redirect away.
+               if (window.location.pathname === '/module-selection') {
+                   console.log("[AuthGuard] Modules configured, redirecting away from module-selection to /dashboard");
+                   router.replace('/dashboard');
+                   return; // Exit early
+               }
               setHasCheckedModules(true); // Mark check as complete
               setLoading(false); // Allow rendering protected content
             }
@@ -85,7 +92,8 @@ export function useAuthGuard(options: UseAuthGuardOptions = {}): AuthGuardResult
           }
         } else {
            console.log("[AuthGuard] User authenticated, module check skipped.");
-           // setLoading(false); // No need to set loading here, setHasCheckedModules handles it
+           setHasCheckedModules(true); // Mark as complete since check is skipped
+           setLoading(false); // Allow rendering
         }
 
       } else {
@@ -93,23 +101,19 @@ export function useAuthGuard(options: UseAuthGuardOptions = {}): AuthGuardResult
         console.log("[AuthGuard] User is not authenticated.");
         if (requiredAuth) {
            console.log("[AuthGuard] Route requires authentication, redirecting to /login");
-           // Only redirect if not already on an auth path
-           if (!window.location.pathname.startsWith('/login') && !window.location.pathname.startsWith('/signup')) {
+           // Only redirect if not already on an auth path or module selection
+            const isAuthPath = AUTH_PATHS.some(path => window.location.pathname.startsWith(path));
+           if (!isAuthPath && window.location.pathname !== MODULE_SETUP_PATH) {
               router.replace('/login');
               return; // Exit early, loading remains true until redirect completes
            } else {
-               console.log("[AuthGuard] Already on an auth path, allowing access.");
-               setLoading(false); // Allow rendering login/signup
+               console.log("[AuthGuard] Already on an auth/module path, allowing access.");
+               setLoading(false); // Allow rendering login/signup/module-setup
            }
         } else {
            console.log("[AuthGuard] Route does not require auth.");
           setLoading(false); // Allow rendering public content
         }
-      }
-
-      // Final loading state check after all conditions
-      if (hasCheckedModules) { // Only set loading false if module check is done (or skipped)
-          // setLoading(false); // Already handled in specific conditions
       }
 
     });
@@ -119,7 +123,9 @@ export function useAuthGuard(options: UseAuthGuardOptions = {}): AuthGuardResult
        console.log("[AuthGuard] Cleaning up auth listener.");
        unsubscribe();
     }
-  }, [requiredAuth, checkModules, redirectIfAuthenticated, router]); // Include router in dependencies
+    // Removed router from dependencies as it can cause infinite loops in some Next.js versions if not memoized correctly.
+    // The redirect logic should function correctly without it here.
+  }, [requiredAuth, checkModules, redirectIfAuthenticated]);
 
    // Determine final loading state based on auth check AND module check completion
    const finalLoadingState = loading || (checkModules && !hasCheckedModules && !!user);
@@ -149,3 +155,7 @@ export function ProtectedRoute({ children, authGuardOptions }: ProtectedRoutePro
   // If loading is complete, render the children (redirects handle unauthorized access)
   return <>{children}</>;
 }
+
+// Define AUTH_PATHS and MODULE_SETUP_PATH for use within the hook
+const AUTH_PATHS = ['/login', '/signup'];
+const MODULE_SETUP_PATH = '/module-selection';
