@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   LayoutDashboard,
   Boxes,
-  Ship,
+  Ship, // Consider Truck icon from previous version if 'Ship' is not ideal
   BrainCircuit,
   FlaskConical,
   Settings,
@@ -13,7 +13,8 @@ import {
   ChevronRight,
   User,
   LogOut,
-  BarChart
+  BarChart,
+  Truck // Added Truck icon as an alternative
 } from 'lucide-react';
 import {
   Sidebar,
@@ -38,103 +39,88 @@ import {
 } from "@/components/ui/collapsible"
 import { cn } from "@/lib/utils";
 import { useToast } from '@/hooks/use-toast';
-import { useRouter, usePathname } from 'next/navigation'; // Import usePathname
+import { useRouter, usePathname } from 'next/navigation';
 import { Skeleton } from "@/components/ui/skeleton";
-
-// Placeholder - replace with actual Firebase Auth hook/context
-const useAuth = () => {
-  const [user, setUser] = useState<{ displayName: string; email: string; photoURL?: string } | null>(null);
-   const [loading, setLoading] = useState(true);
-
-   React.useEffect(() => {
-     const timer = setTimeout(() => {
-       setUser({ displayName: "Dr. Anya Sharma", email: "anya.sharma@medsync.pro", photoURL: "https://picsum.photos/id/237/40/40" });
-        setLoading(false);
-     }, 300);
-     return () => clearTimeout(timer);
-   }, []);
+import { useUserContext } from '@/context/UserContext'; // Use the context hook
+import { signOut } from 'firebase/auth';
+import { auth } from '@/firebase';
 
 
-   const logout = async () => {
-     setLoading(true);
-     await new Promise(resolve => setTimeout(resolve, 300));
-     setUser(null);
-     setLoading(false);
-     console.log("Logout simulated from sidebar hook");
-   };
+// Define Module Keys explicitly for type safety
+type ModuleKey = 'medTrack' | 'shipment' | 'rxAI' | 'pharmaNet' | 'patientHistory' | 'reports' | 'dashboard';
 
-  return { user, loading, logout };
-};
+// Interface for sidebar items, including module key
+interface SidebarItemConfig {
+    href?: string;
+    icon: React.ElementType;
+    label: string;
+    moduleKey: ModuleKey;
+    submenu?: SubmenuItemConfig[];
+}
 
-// Placeholder - replace with actual module settings hook
-const useModules = () => {
-    const [modules, setModules] = useState({
-        medTrack: true,
-        shipment: true,
-        rxAI: true,
-        pharmaNet: true,
-        patientHistory: true,
-        reports: true,
-    });
-    const [loading, setLoading] = useState(true);
+interface SubmenuItemConfig {
+    href: string;
+    label: string;
+}
 
-    React.useEffect(() => {
-      const timer = setTimeout(() => {
-        setLoading(false);
-      }, 200);
-      return () => clearTimeout(timer);
-    }, []);
-
-    return { modules, loading };
-};
 
 export function AppSidebar() {
   const { state: sidebarState } = useSidebar();
-  const { user, loading: userLoading, logout } = useAuth();
-  const { modules, loading: modulesLoading } = useModules();
+  const { authUser, profile, loading: userLoading } = useUserContext(); // Get user and profile from context
   const { toast } = useToast();
   const router = useRouter();
-  const pathname = usePathname(); // Get current pathname
+  const pathname = usePathname();
   const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({});
 
+   // Extract module settings from the profile
+   const moduleSettings = profile?.settings?.modules;
+   const modulesLoading = userLoading; // Loading state depends on user context loading
+
+
   const handleLogout = async () => {
-    await logout();
-    toast({ title: "Logged Out" });
-    router.push('/');
+     try {
+      await signOut(auth);
+      toast({ title: "Logged Out" });
+      router.push('/login'); // Redirect to login after successful logout
+    } catch (error) {
+      console.error("Logout error:", error);
+      toast({ title: "Logout Error", description: "Failed to log out.", variant: "destructive" });
+    }
   }
 
    const toggleSubmenu = (key: string) => {
     setOpenSubmenus(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const sidebarItems = [
-    { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard", moduleKey: 'dashboard' as const },
-    { href: "/inventory", icon: Boxes, label: "Inventory", moduleKey: 'medTrack' as const },
-    { href: "/shipments", icon: Ship, label: "Shipments", moduleKey: 'shipment' as const },
-    { href: "/rxai", icon: BrainCircuit, label: "RxAI Support", moduleKey: 'rxAI' as const },
-    { href: "/pharmanet", icon: FlaskConical, label: "PharmaNet", moduleKey: 'pharmaNet' as const },
-    { href: "/history", icon: ClipboardList, label: "Patient History", moduleKey: 'patientHistory' as const },
-    {
-      label: "Reports", icon: BarChart, moduleKey: 'reports' as const,
-      submenu: [
-         { href: "/reports/inventory", label: "Inventory Reports" },
-         { href: "/reports/usage", label: "Usage Analytics" },
-      ]
-    }
+  const sidebarItems: SidebarItemConfig[] = [
+    { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard", moduleKey: 'dashboard' },
+    { href: "/inventory", icon: Boxes, label: "Inventory", moduleKey: 'medTrack' },
+    { href: "/shipments", icon: Truck, label: "Shipments", moduleKey: 'shipment' }, // Using Truck icon
+    { href: "/rxai", icon: BrainCircuit, label: "RxAI Support", moduleKey: 'rxAI' },
+    { href: "/pharmanet", icon: FlaskConical, label: "PharmaNet", moduleKey: 'pharmaNet' },
+    { href: "/history", icon: ClipboardList, label: "Patient History", moduleKey: 'patientHistory' },
+    // { // Example Reports submenu - enable if 'reports' module exists
+    //   label: "Reports", icon: BarChart, moduleKey: 'reports',
+    //   submenu: [
+    //      { href: "/reports/inventory", label: "Inventory Reports" },
+    //      { href: "/reports/usage", label: "Usage Analytics" },
+    //   ]
+    // }
   ];
 
+
+  // Filter items based on module settings from the user's profile
   const filteredItems = sidebarItems.filter(item =>
-     item.moduleKey === 'dashboard' || (item.moduleKey && modules[item.moduleKey])
+     item.moduleKey === 'dashboard' || (moduleSettings && moduleSettings[item.moduleKey])
    );
 
-   const isLoading = userLoading || modulesLoading;
+
+   const isLoading = modulesLoading; // Use the loading state from context
 
   return (
-    // Apply sidebar background and fixed width
-    <Sidebar className="bg-sidebar text-sidebar-foreground border-r border-sidebar-border" style={{ width: '240px' }}>
+    <Sidebar className="bg-sidebar text-sidebar-foreground border-r border-sidebar-border w-[var(--sidebar-width)]">
       <SidebarHeader className="p-4 flex items-center justify-between">
          <Link href="/dashboard" className="flex items-center gap-2 flex-grow overflow-hidden">
-             {/* Use primary color for the pill icon */}
             <Pill className="w-6 h-6 text-primary shrink-0" />
             {sidebarState === 'expanded' && (
                <h1 className="text-xl font-semibold truncate">MediSync Pro</h1>
@@ -168,10 +154,10 @@ export function AppSidebar() {
                     <Collapsible open={openSubmenus[item.label]} onOpenChange={() => toggleSubmenu(item.label)}>
                         <CollapsibleTrigger asChild>
                           <SidebarMenuButton
-                            variant="ghost" // Use ghost for consistent styling
+                            variant="ghost"
                             className={cn(
-                                "justify-between w-full hover:bg-sidebar-hover", // Hover state
-                                isSubmenuActive && "bg-sidebar-accent text-sidebar-foreground" // Active state for submenu parent
+                                "justify-between w-full hover:bg-sidebar-hover",
+                                isSubmenuActive && "bg-sidebar-accent text-sidebar-foreground"
                             )}
                             tooltip={sidebarState === 'collapsed' ? item.label : undefined}
                             data-state={openSubmenus[item.label] ? 'open' : 'closed'}
@@ -186,13 +172,11 @@ export function AppSidebar() {
                             </SidebarMenuButton>
                         </CollapsibleTrigger>
                         <CollapsibleContent className="mt-1">
-                           {/* Use sidebar-submenu-background */}
                            <SidebarMenuSub className="bg-sidebar-submenu-background rounded-md">
                              {item.submenu.map(subItem => {
                                 const isSubItemActive = pathname === subItem.href;
                                 return (
                                    <SidebarMenuSubItem key={subItem.label}>
-                                      {/* Pass isActive to SubButton */}
                                      <SidebarMenuSubButton asChild isActive={isSubItemActive}>
                                        <Link href={subItem.href}>
                                           <span>{subItem.label}</span>
@@ -205,7 +189,6 @@ export function AppSidebar() {
                         </CollapsibleContent>
                     </Collapsible>
                   ) : (
-                    // Pass isActive prop to SidebarMenuButton
                     <SidebarMenuButton asChild tooltip={sidebarState === 'collapsed' ? item.label : undefined} isActive={isActive} variant="ghost">
                         <Link href={item.href!}>
                           <item.icon />
@@ -234,27 +217,29 @@ export function AppSidebar() {
             </SidebarMenuItem>
           </SidebarMenu>
 
+           {/* User Info Section - Uses profile from context */}
            <div className={cn(
-             "flex items-center gap-2 p-2 rounded-md hover:bg-sidebar-hover", // Hover uses lighter charcoal
+             "flex items-center gap-2 p-2 rounded-md hover:bg-sidebar-hover",
              sidebarState === 'collapsed' ? 'justify-center' : 'justify-between'
             )}>
-             <Link href="#" onClick={(e) => { e.preventDefault(); console.log("Avatar clicked - open profile modal");}} className="flex items-center gap-2 overflow-hidden">
+              {/* Make Avatar clickable to open profile modal - Example, can be linked to settings or modal */}
+             <div className="flex items-center gap-2 overflow-hidden">
                  <Avatar className="h-8 w-8">
-                     <AvatarImage src={user?.photoURL || undefined} alt={user?.displayName || 'User'} data-ai-hint="user avatar placeholder" />
-                     {/* Fallback uses sidebar hover color */}
+                     {/* Use profile data */}
+                     <AvatarImage src={profile?.photoURL || undefined} alt={profile?.name || 'User'} data-ai-hint="user avatar placeholder" />
                      <AvatarFallback className="bg-sidebar-hover text-sidebar-foreground">
-                         {user?.displayName ? user.displayName.charAt(0).toUpperCase() : <User className="h-5 w-5" />}
+                         {profile?.name ? profile.name.charAt(0).toUpperCase() : <User className="h-5 w-5" />}
                      </AvatarFallback>
                  </Avatar>
                  {sidebarState === 'expanded' && (
                      <div className="flex flex-col text-xs truncate">
-                         <span className="font-medium">{user?.displayName || 'User'}</span>
-                         <span className="text-sidebar-foreground/70">{user?.email || ''}</span>
+                         {/* Use profile data */}
+                         <span className="font-medium">{profile?.name || 'User'}</span>
+                         <span className="text-sidebar-foreground/70">{authUser?.email || ''}</span>
                      </div>
                  )}
-              </Link>
+              </div>
               {sidebarState === 'expanded' && (
-                 // Logout button uses ghost variant for consistency
                  <Button variant="ghost" size="icon" onClick={handleLogout} className="h-8 w-8 text-sidebar-foreground hover:bg-sidebar-hover hover:text-sidebar-foreground">
                      <LogOut className="h-4 w-4" />
                      <span className="sr-only">Logout</span>

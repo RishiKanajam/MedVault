@@ -30,68 +30,47 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image'; // Import Image for logo
 import { useTheme } from "next-themes"; // Import useTheme
+import { useUserContext } from '@/context/UserContext'; // Import the user context hook
+import { signOut } from 'firebase/auth'; // Import Firebase sign out
+import { auth, db } from '@/firebase'; // Import Firebase instances
+import { doc, updateDoc } from 'firebase/firestore'; // Import Firestore update
+import { ProtectedRoute } from '@/hooks/useAuthGuard'; // Import ProtectedRoute wrapper
 
-// Placeholder - replace with actual Firebase Auth hook/context
-const useAuth = () => {
-  const [user, setUser] = useState<{ displayName: string; email: string; photoURL?: string } | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      const fakeAuth = true;
-      if (fakeAuth) {
-        setUser({ displayName: "Dr. Anya Sharma", email: "anya.sharma@medsync.pro", photoURL: "https://picsum.photos/id/237/40/40" });
-        setIsAuthenticated(true);
-      } else {
-        setUser(null);
-        setIsAuthenticated(false);
-      }
-      setLoading(false);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, []);
-
-  const logout = async () => {
-    setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 300));
-    setUser(null);
-    setIsAuthenticated(false);
-    setLoading(false);
-    console.log("Logout simulated");
-  };
-
-  return { isAuthenticated, user, loading, logout };
-};
-
-// Improved Connectivity Indicator
+// Connectivity Indicator (remains the same)
 const ConnectivityIndicator = () => {
   const [isOnline, setIsOnline] = useState(true); // Assume online initially
 
   useEffect(() => {
     const checkOnlineStatus = () => {
-      setIsOnline(navigator.onLine);
+       // Check if navigator is available (client-side)
+      if (typeof navigator !== 'undefined') {
+           setIsOnline(navigator.onLine);
+       }
     };
 
-    // Initial check
-    if (typeof navigator !== 'undefined') {
-      checkOnlineStatus(); // Check immediately
-      window.addEventListener('online', checkOnlineStatus);
-      window.addEventListener('offline', checkOnlineStatus);
-    }
+    checkOnlineStatus(); // Initial check
+    window.addEventListener('online', checkOnlineStatus);
+    window.addEventListener('offline', checkOnlineStatus);
+
 
     return () => {
-      if (typeof navigator !== 'undefined') {
-        window.removeEventListener('online', checkOnlineStatus);
-        window.removeEventListener('offline', checkOnlineStatus);
-      }
+       if (typeof navigator !== 'undefined') {
+            window.removeEventListener('online', checkOnlineStatus);
+            window.removeEventListener('offline', checkOnlineStatus);
+       }
     };
   }, []);
 
+
+   // Avoid rendering on server or before hydration
+   if (typeof navigator === 'undefined') {
+     return null;
+   }
+
+
   const Icon = isOnline ? Wifi : WifiOff;
-  // Use Tailwind classes for color based on theme
-  const color = isOnline ? 'text-green-500' : 'text-muted-foreground'; // Muted foreground for offline
-  const title = isOnline ? 'Online' : 'Offline';
+  const color = isOnline ? 'text-green-500' : 'text-muted-foreground';
+  const title = isOnline ? 'Online' : 'Offline - Using cached data';
 
   return (
      <div className="flex items-center gap-1" title={title}>
@@ -100,20 +79,27 @@ const ConnectivityIndicator = () => {
   );
 };
 
-// Logo Component that adapts to theme
+
+// Logo Component that adapts to theme (remains the same)
 const AppLogo = () => {
     const { resolvedTheme } = useTheme();
     const [logoSrc, setLogoSrc] = useState('/logo-light.png'); // Default to light
+    const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
+        setMounted(true);
         // Set the logo based on the resolved theme (accounts for 'system' preference)
-        setLogoSrc(resolvedTheme === 'dark' ? '/logo-dark.png' : '/logo-light.png');
+         if (resolvedTheme) {
+             setLogoSrc(resolvedTheme === 'dark' ? '/logo-dark.png' : '/logo-light.png');
+         }
     }, [resolvedTheme]);
 
-    // Basic check to prevent rendering if theme isn't resolved yet (optional)
-    if (!resolvedTheme) {
-        return null; // Or a placeholder skeleton
+    // Prevent hydration mismatch by delaying render until mounted
+    if (!mounted || !resolvedTheme) {
+       // Render a placeholder or null during SSR / hydration phase
+        return <div className="w-8 h-8 bg-muted rounded-full"></div>; // Example placeholder
     }
+
 
     return (
         <Image
@@ -127,100 +113,130 @@ const AppLogo = () => {
 };
 
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
+function AppLayoutContent({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { isAuthenticated, user, loading: isLoadingAuth, logout } = useAuth();
+  const { authUser, profile, loading: isLoadingUser } = useUserContext(); // Use context hook
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+  const [profileFormData, setProfileFormData] = useState({ name: '', photoURL: '' });
   const { toast } = useToast();
 
+   // Update form data when profile loads/changes
    useEffect(() => {
-     if (!isLoadingAuth && !isAuthenticated) {
-       router.replace('/');
+     if (profile) {
+       setProfileFormData({
+         name: profile.name || '',
+         photoURL: profile.photoURL || '',
+       });
      }
-   }, [isLoadingAuth, isAuthenticated, router]);
+   }, [profile]);
 
 
   const handleLogout = async () => {
     console.log("Logging out...");
-    await logout();
-    toast({ title: "Logged Out", description: "You have been successfully logged out." });
-    router.push('/');
+    try {
+       await signOut(auth);
+       toast({ title: "Logged Out", description: "You have been successfully logged out." });
+       router.push('/login'); // Redirect to login page after logout
+     } catch (error) {
+       console.error("Logout error:", error);
+       toast({ title: "Logout Error", description: "Failed to log out.", variant: "destructive" });
+     }
   }
 
-  const handleProfileUpdate = (e: React.FormEvent) => {
+  const handleProfileUpdate = async (e: React.FormEvent) => {
      e.preventDefault();
-     // TODO: Implement Firestore update logic for user profile
-     console.log("Profile update simulated");
-     toast({ title: "Profile Updated", description: "Your profile information has been saved." });
-     setIsProfileModalOpen(false);
+     if (!authUser) return;
+     setIsUpdatingProfile(true);
+
+     try {
+       // Update Firestore first
+       const userDocRef = doc(db, 'users', authUser.uid);
+       await updateDoc(userDocRef, {
+         name: profileFormData.name,
+         photoURL: profileFormData.photoURL,
+       });
+
+        // Then update Firebase Auth profile (optional, depends if you use it directly)
+        // await updateProfile(authUser, {
+        //   displayName: profileFormData.name,
+        //   photoURL: profileFormData.photoURL,
+        // });
+
+
+       toast({ title: "Profile Updated", description: "Your profile information has been saved." });
+       setIsProfileModalOpen(false);
+     } catch (error) {
+       console.error("Profile update error:", error);
+       toast({ title: "Update Failed", description: "Could not update profile.", variant: "destructive" });
+     } finally {
+        setIsUpdatingProfile(false);
+     }
   }
 
-  if (isLoadingAuth) {
-     return (
-       <div className="flex min-h-screen w-full items-center justify-center bg-background">
-         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-       </div>
-     );
-  }
-
-   if (!isAuthenticated) {
-     return (
+   // Show loading indicator while user context is loading
+   if (isLoadingUser) {
+      return (
         <div className="flex min-h-screen w-full items-center justify-center bg-background">
-          <p>Redirecting to login...</p>
-          <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       );
+   }
+
+   // If loading is done but no authenticated user (should be handled by ProtectedRoute, but as fallback)
+   if (!authUser) {
+     // ProtectedRoute should handle the redirect, but this is a safety net.
+     // Returning null avoids rendering the layout for unauthenticated users briefly.
+     return null;
    }
 
   return (
     <div className="flex min-h-screen w-full bg-background">
       <AppSidebar />
       <SidebarInset className="flex flex-1 flex-col">
-        {/* Header: Use surface bg, defined height, bottom border */}
+        {/* Header */}
         <header className="sticky top-0 z-20 flex h-16 items-center justify-between gap-4 border-b border-border bg-surface px-6 shrink-0">
-           {/* Left side: Logo and Title */}
+           {/* Left side */}
            <div className="flex items-center gap-3">
-               {/* Use SidebarTrigger from ui/sidebar if needed for mobile */}
-               {/* <SidebarTrigger className="md:hidden" /> */}
-                <AppLogo /> {/* Dynamic Logo */}
+                <AppLogo />
                <span className="font-semibold text-lg text-foreground hidden md:inline">MediSync Pro</span>
            </div>
 
-           {/* Right side: Connectivity, Theme Toggle, User Menu */}
+           {/* Right side */}
            <div className="flex items-center gap-4">
              <ConnectivityIndicator />
-             <ThemeToggle /> {/* Add Theme Toggle Button */}
+             <ThemeToggle />
              <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                     <Avatar className="h-10 w-10">
-                      <AvatarImage src={user?.photoURL || undefined} alt={user?.displayName || 'User'} data-ai-hint="user avatar" />
-                       {/* Use muted background for fallback */}
+                       {/* Use profile data from context */}
+                      <AvatarImage src={profile?.photoURL || undefined} alt={profile?.name || 'User'} data-ai-hint="user avatar" />
                       <AvatarFallback className="bg-muted text-muted-foreground">
-                        {user?.displayName ? user.displayName.slice(0, 2).toUpperCase() : <User className="h-5 w-5"/>}
+                         {/* Use profile name for fallback initials */}
+                        {profile?.name ? profile.name.slice(0, 2).toUpperCase() : <User className="h-5 w-5"/>}
                       </AvatarFallback>
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
-                {/* Use tertiary overlay for profile menu */}
                 <DropdownMenuContent align="end" className="w-56 overlay-tertiary">
                   <DropdownMenuLabel className="font-normal">
                     <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none text-foreground">{user?.displayName}</p>
-                      <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
+                       {/* Use profile data */}
+                      <p className="text-sm font-medium leading-none text-foreground">{profile?.name}</p>
+                      <p className="text-xs leading-none text-muted-foreground">{authUser?.email}</p>
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator className="bg-border" />
-                   {/* Use accent color on focus/hover */}
                   <DropdownMenuItem onSelect={() => setIsProfileModalOpen(true)} className="focus:bg-accent/10 focus:text-accent-foreground">
                     Profile
                   </DropdownMenuItem>
                   <DropdownMenuItem onSelect={() => router.push('/settings')} className="focus:bg-accent/10 focus:text-accent-foreground">
                     Settings
                   </DropdownMenuItem>
-                  <DropdownMenuItem disabled className="focus:bg-accent/10 focus:text-accent-foreground opacity-50 cursor-not-allowed">
+                  {/* <DropdownMenuItem disabled className="focus:bg-accent/10 focus:text-accent-foreground opacity-50 cursor-not-allowed">
                     Support
-                  </DropdownMenuItem>
+                  </DropdownMenuItem> */}
                   <DropdownMenuSeparator className="bg-border" />
                   <DropdownMenuItem onSelect={handleLogout} className="focus:bg-accent/10 focus:text-accent-foreground">
                     Logout
@@ -236,7 +252,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </main>
       </SidebarInset>
 
-      {/* Profile Modal: Use primary panel styling */}
+      {/* Profile Modal */}
        <Dialog open={isProfileModalOpen} onOpenChange={setIsProfileModalOpen}>
         <DialogContent className="panel-primary sm:max-w-[425px]">
           <DialogHeader>
@@ -251,31 +267,65 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   <Label htmlFor="name" className="text-right">
                     Name
                   </Label>
-                  <Input id="name" defaultValue={user?.displayName} className="col-span-3" />
+                   {/* Use controlled input */}
+                  <Input
+                     id="name"
+                     value={profileFormData.name}
+                     onChange={(e) => setProfileFormData(prev => ({...prev, name: e.target.value }))}
+                     className="col-span-3"
+                    />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="email" className="text-right">
                     Email
                   </Label>
-                  <Input id="email" type="email" defaultValue={user?.email} className="col-span-3" disabled />
+                  <Input id="email" type="email" value={authUser?.email || ''} className="col-span-3" disabled />
                 </div>
                  <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="photoURL" className="text-right">
                     Photo URL
                   </Label>
-                  <Input id="photoURL" defaultValue={user?.photoURL} className="col-span-3" />
+                   {/* Use controlled input */}
+                  <Input
+                     id="photoURL"
+                     value={profileFormData.photoURL}
+                     onChange={(e) => setProfileFormData(prev => ({...prev, photoURL: e.target.value }))}
+                     className="col-span-3"
+                    />
+                     {/* Optional: Preview image */}
+                     {profileFormData.photoURL && (
+                        <div className="col-span-3 col-start-2 mt-2">
+                           <Avatar className="h-16 w-16">
+                             <AvatarImage src={profileFormData.photoURL} alt="Profile Preview" />
+                             <AvatarFallback className="bg-muted">?</AvatarFallback>
+                           </Avatar>
+                        </div>
+                     )}
                 </div>
               </div>
               <DialogFooter>
                  <DialogClose asChild>
                     <Button type="button" variant="outline">Cancel</Button>
                  </DialogClose>
-                <Button type="submit" variant="default">Save changes</Button> {/* Primary button */}
+                <Button type="submit" variant="default" disabled={isUpdatingProfile}>
+                   {isUpdatingProfile ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
+                   {isUpdatingProfile ? 'Saving...' : 'Save changes'}
+                </Button>
               </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
 
     </div>
+  );
+}
+
+
+// Export the layout wrapped in ProtectedRoute
+export default function ProtectedAppLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <ProtectedRoute>
+      <AppLayoutContent>{children}</AppLayoutContent>
+    </ProtectedRoute>
   );
 }

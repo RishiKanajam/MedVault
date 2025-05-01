@@ -176,7 +176,6 @@ export default function PharmaNetPage() {
     if (!searchTerm.trim()) return;
     setSelectedDrug(null); // Reset selection on new search
     setShowFullDetails(false); // Reset details visibility
-    // setDetailedInfo(null); // Remove this line - React Query handles data state
     queryClient.removeQueries({ queryKey: ['rxNormDetails'] }); // Clear details cache for old drug
     // Manually trigger the search query
     refetchSearch();
@@ -186,7 +185,6 @@ export default function PharmaNetPage() {
      // Don't fetch details yet, just set selected drug and trigger AI confirmation
      setSelectedDrug(drug);
      setShowFullDetails(false); // Ensure details are hidden initially
-     // setDetailedInfo(null); // Remove this line - React Query handles data state
      queryClient.removeQueries({ queryKey: ['rxNormDetails', drug.rxNormId] }); // Clear potentially stale details cache
      console.log(`Drug selected: ${drug.name}, initiating AI confirmation...`);
      confirmDosageMutation.mutate({ drugName: drug.name });

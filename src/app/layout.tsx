@@ -4,7 +4,8 @@ import './globals.css';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { Toaster } from '@/components/ui/toaster';
 import Providers from './providers'; // React Query Provider
-import { ThemeProvider } from "@/components/theme-provider"; // Import ThemeProvider
+import { ThemeProvider } from "@/components/theme-provider"; // Theme Provider
+import { UserProvider } from '@/context/UserContext'; // Import UserProvider
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
@@ -27,12 +28,15 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
         >
-            <Providers> {/* React Query */}
-                <SidebarProvider>
-                    {children}
-                    <Toaster />
-                </SidebarProvider>
-            </Providers>
+           {/* Wrap everything inside ThemeProvider with UserProvider */}
+          <UserProvider>
+              <Providers> {/* React Query */}
+                  <SidebarProvider>
+                      {children}
+                      <Toaster />
+                  </SidebarProvider>
+              </Providers>
+          </UserProvider>
          </ThemeProvider>
       </body>
     </html>

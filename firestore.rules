@@ -1,0 +1,45 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Users can only read/write their own profile document
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Data within a clinic (medicines, shipments, etc.)
+    // Requires the user to be authenticated AND have a matching clinicId custom claim
+    // IMPORTANT: You need to set the clinicId custom claim on the user's Firebase Auth token
+    //            This is typically done via Firebase Functions during signup or an admin process.
+    match /clinics/{clinicId}/{collection}/{docId} {
+      allow read, write: if request.auth != null
+        && request.auth.token.clinicId == clinicId; // Check custom claim
+    }
+
+    // Allow reading settings only if authenticated user matches userId
+     match /clinics/{clinicId}/settings {
+       allow read: if request.auth != null && request.auth.token.clinicId == clinicId;
+       allow write: if request.auth != null && request.auth.token.clinicId == clinicId; // Or restrict further if needed
+     }
+
+     // Allow reading/writing drug cache if authenticated user matches clinicId
+     match /clinics/{clinicId}/drugCache/{rxcui} {
+         allow read, write: if request.auth != null && request.auth.token.clinicId == clinicId;
+     }
+
+     // Allow reading/writing prescriptions if authenticated user matches clinicId
+     match /clinics/{clinicId}/prescriptions/{prescriptionId} {
+            allow read, write: if request.auth != null && request.auth.token.clinicId == clinicId;
+     }
+
+      // Allow reading/writing patient history if authenticated user matches clinicId
+      match /clinics/{clinicId}/patients/{patientId}/{collection}/{recordId} {
+            allow read, write: if request.auth != null && request.auth.token.clinicId == clinicId;
+      }
+       match /clinics/{clinicId}/patients/{patientId} {
+            allow read, write: if request.auth != null && request.auth.token.clinicId == clinicId;
+       }
+
+
+  }
+}

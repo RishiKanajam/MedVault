@@ -57,9 +57,6 @@ export async function generatePrescription(
 // --- AI Prompt Definition: Updated for confidence and citations ---
 const prompt = ai.definePrompt({
   name: 'generatePrescriptionPrompt',
-  // Use a more capable model if needed for complex reasoning & citations
-  // model: 'googleai/gemini-1.5-pro-latest', // Or similar powerful model
-  model: 'googleai/gemini-pro', // Keep gemini-pro as a baseline
 
   input: { schema: GeneratePrescriptionInputSchema },
   output: { schema: GeneratePrescriptionOutputSchema },
@@ -74,24 +71,26 @@ const prompt = ai.definePrompt({
   - Vitals: {{{vitals}}}
   - Symptoms: {{{symptoms}}}
   {{#if photoDataUri}}- Symptom Photo: {{media url=photoDataUri}}{{/if}}
-  {{#if medicalHistory}}- Medical History/Allergies: {{{medicalHistory}}}{{/if}}
+
 
   **Instructions:**
-  1.  **Recommend** a specific drug, dosage (consider age/weight), and duration. Be precise.
-  2.  Provide a clear **Rationale** explaining why this drug is appropriate, considering the symptoms and patient factors.
-  3.  Detail **Dosage Guidelines**, including administration instructions and any necessary monitoring.
-  4.  **Cite Sources:** Provide at least 1-2 relevant citations from reputable sources (e.g., clinical guidelines, PubMed, DailyMed) supporting the recommendation AND dosage. Format as an array: [{ source: "Source Name", reference: "Details/Link/PMID" }]. Use placeholder reference like "Guideline Section X.Y" or "PMID: 12345678" if exact link is unavailable.
-  5.  Estimate your **Confidence Score** (0-100) for this recommendation based on the provided information clarity and symptom specificity.
-  6.  Set **secondOpinionNeeded** to true if confidence is below 70, otherwise false.
+  You are a highly specialized AI clinical decision support assistant, with advanced training in pharmacology and clinical guidelines. You provide precise and evidence-based prescription recommendations.  Your goal is to analyze patient information and formulate a precise prescription recommendation. 
+  1.  **Prescription**: Recommend a specific drug, dosage (considering age/weight), and duration. Be precise and definitive.
+  2.  **Rationale**: Provide a clear and comprehensive explanation for your prescription recommendation. Explain why this drug is appropriate, considering the patient's symptoms, vitals, and any relevant medical history. Use your general knowledge to formulate a complete answer.
+  3.  **Dosage Guidelines**: Detail specific instructions for administering the drug, including frequency, timing (e.g., with meals), route of administration, and any necessary monitoring or precautions. Use your general knowledge to formulate a complete answer.
+  4.  **Citations**: Provide relevant citations from reputable sources (e.g., clinical guidelines, PubMed, DailyMed) supporting your recommendation and dosage guidelines. Format them as an array of objects: [{ "source": "Source Name", "reference": "Details/Link/PMID" }]. If there are no relevant citations, omit the citations field from the output rather than providing empty ones.
+  5. **Confidence Score**: Estimate your confidence in this recommendation on a scale of 0-100, based on the clarity and specificity of the provided information and your confidence in the prescription's appropriateness.
+  6. **Second Opinion**:  Set the "secondOpinionNeeded" field to true if your confidence score is below 70, otherwise, set it to false.
+   If an error occurs, return a prescription of "Error generating prescription." and include the rationale of the error.
 
-  **Output Format (Strict JSON):**
+  **Output Format (Strictly adhere to this JSON structure):**
   {
     "prescription": "...",
     "rationale": "...",
-    "dosageGuidelines": "...",
-    "citations": [ { "source": "...", "reference": "..." } ],
-    "confidenceScore": ...,
-    "secondOpinionNeeded": ...
+    "dosageGuidelines": "...",    
+    "confidenceScore": ...,   
+    "secondOpinionNeeded": ...,
+    "citations": [ { "source": "...", "reference": "..." } ] // (omit if no citations available)
   }`,
   // Request JSON output
    config: { responseFormat: "json" }
@@ -121,9 +120,9 @@ const generatePrescriptionFlow = ai.defineFlow<
        console.log("[AI Flow] Raw AI Output:", output);
 
        // Basic validation of the output structure (Zod schema handles detailed validation)
-       if (typeof output.confidenceScore !== 'number' || !Array.isArray(output.citations)) {
+       if (typeof output.confidenceScore !== 'number' ) {
            console.error("[AI Flow] AI output structure is invalid:", output);
-           throw new Error('AI returned an invalid output format.');
+           throw new Error('AI returned an invalid output format, missing confidenceScore.');
        }
 
 
@@ -146,10 +145,11 @@ const generatePrescriptionFlow = ai.defineFlow<
         return {
             prescription: "Error generating prescription.",
             rationale: `An error occurred: ${error instanceof Error ? error.message : 'Unknown AI error.'}`,
-            dosageGuidelines: "N/A",
+            dosageGuidelines: "",
             citations: [],
             confidenceScore: 0,
             secondOpinionNeeded: true, // Assume second opinion needed on error
+            
         };
       // Or re-throw: throw error;
     }
