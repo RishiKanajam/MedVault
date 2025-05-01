@@ -47,12 +47,14 @@ export default function LoginPage() {
       if (userDocSnap.exists()) {
         const userData = userDocSnap.data();
         // Check if settings.modules exists and has any keys
-        modulesConfigured = userData?.settings?.modules && Object.keys(userData.settings.modules).length > 0;
-        console.log('[Login] User document exists. Modules configured:', modulesConfigured);
+        const modules = userData?.settings?.modules;
+        modulesConfigured = !!modules && typeof modules === 'object' && Object.keys(modules).length > 0;
+        console.log('[Login] User document exists. Modules configured:', modulesConfigured, modules);
       } else {
         // This case should ideally not happen if signup creates the doc, but handle it defensively.
         console.warn("[Login] User document not found in Firestore for UID:", user.uid);
         // Redirect to module setup as a fallback, assuming it's a first-time login after a potential signup issue.
+        modulesConfigured = false;
       }
 
       toast({ title: "Login Successful", description: `Welcome back!` });
@@ -60,10 +62,10 @@ export default function LoginPage() {
       // 3. Redirect based on module configuration
       if (modulesConfigured) {
         console.log('[Login] Redirecting to /dashboard');
-        router.push('/dashboard'); // Modules set up, go to dashboard
+        router.push('/dashboard'); // Use push for navigation history
       } else {
         console.log('[Login] Redirecting to /module-selection');
-        router.push('/module-selection'); // Modules not set up or empty, go to selection screen
+        router.push('/module-selection'); // Use push for navigation history
       }
 
     } catch (err: any) {
@@ -76,9 +78,10 @@ export default function LoginPage() {
        }
       setError(message);
       toast({ title: "Login Failed", description: message, variant: "destructive" });
-    } finally {
-      setIsLoading(false);
+      setIsLoading(false); // Ensure loading is false on error
     }
+    // Don't set isLoading to false here if redirect happens, as the component might unmount.
+    // It's set to false only in the catch block.
   };
 
   return (
@@ -96,7 +99,7 @@ export default function LoginPage() {
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="m@example.com" required />
+              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="m@example.com" required disabled={isLoading} />
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
@@ -108,7 +111,7 @@ export default function LoginPage() {
                     </Link>
                 </Button>
               </div>
-              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required disabled={isLoading} />
             </div>
              {error && <p className="text-sm text-destructive text-center">{error}</p>}
             <Button type="submit" className="w-full" disabled={isLoading}>
