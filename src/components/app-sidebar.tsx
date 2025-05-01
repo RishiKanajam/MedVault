@@ -197,7 +197,7 @@ export function AppSidebar() {
                                   <SidebarMenuSubButton asChild isActive={router.pathname === subItem.href}> {/* Use SubButton */}
                                      <Link href={subItem.href}>
                                         {/* Optionally add a sub-icon or indent further */}
-                                        {subItem.label}
+                                        <span>{subItem.label}</span> {/* Wrap label in a span */}
                                       </Link>
                                   </SidebarMenuSubButton>
                                </SidebarMenuSubItem>
