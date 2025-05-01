@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query'; // Import React Query hooks
+import { cn } from "@/lib/utils"; // Import cn
 
 // Remove mock services - API calls will go through Next.js routes
 // import { searchDrugs, type Drug } from '@/services/rx-norm'; // Remove
@@ -42,6 +43,7 @@ interface RxNormProperties {
   // Example: dosageForms: string[]; ingredients: { name: string; strength: string }[];
   // For now, let's keep it simple
   description?: string;
+  ingredients?: string[]; // Added ingredients based on API response structure
   [key: string]: any; // Allow other properties
 }
 
@@ -174,7 +176,7 @@ export default function PharmaNetPage() {
     if (!searchTerm.trim()) return;
     setSelectedDrug(null); // Reset selection on new search
     setShowFullDetails(false); // Reset details visibility
-    setDetailedInfo(null); // Clear previous details
+    // setDetailedInfo(null); // Remove this line - React Query handles data state
     queryClient.removeQueries({ queryKey: ['rxNormDetails'] }); // Clear details cache for old drug
     // Manually trigger the search query
     refetchSearch();
@@ -184,7 +186,7 @@ export default function PharmaNetPage() {
      // Don't fetch details yet, just set selected drug and trigger AI confirmation
      setSelectedDrug(drug);
      setShowFullDetails(false); // Ensure details are hidden initially
-     setDetailedInfo(null); // Clear previous details view
+     // setDetailedInfo(null); // Remove this line - React Query handles data state
      queryClient.removeQueries({ queryKey: ['rxNormDetails', drug.rxNormId] }); // Clear potentially stale details cache
      console.log(`Drug selected: ${drug.name}, initiating AI confirmation...`);
      confirmDosageMutation.mutate({ drugName: drug.name });
@@ -295,7 +297,7 @@ export default function PharmaNetPage() {
                         ))}
                         </ul>
                     ) : (
-                         !isLoadingSearch && <div className="p-6 text-center text-muted-foreground">No results for "{searchTerm}".</div>
+                         !isLoadingSearch && searchTerm && <div className="p-6 text-center text-muted-foreground">No results for "{searchTerm}".</div>
                     )}
                     {searchError && !isLoadingSearch && (
                         <div className="p-4">
@@ -376,7 +378,7 @@ export default function PharmaNetPage() {
           </CardHeader>
           <CardContent className="min-h-[60vh] space-y-4"> {/* Ensure content area is tall enough */}
              {/* Loading state specific to details */}
-             {(isLoadingDetails || confirmDosageMutation.isPending) && !detailedInfo && (
+             {(isLoadingDetails || confirmDosageMutation.isPending) && !detailedInfo && selectedDrug && (
                  <div className="flex justify-center items-center h-40">
                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
                     <span className="ml-2 text-muted-foreground">
@@ -416,18 +418,17 @@ export default function PharmaNetPage() {
                     </div>
 
                     {/* Add other sections as needed based on RxNormProperties */}
-                    {/* Example:
-                    {detailedInfo.ingredients && (
+                    {detailedInfo.ingredients && detailedInfo.ingredients.length > 0 && (
                       <>
                         <Separator />
                         <div>
                           <h4 className="font-medium mb-2 text-base">Ingredients</h4>
                           <ul className="list-disc pl-5 text-sm space-y-1">
-                            {detailedInfo.ingredients.map((ing, i) => <li key={i}>{ing.name} ({ing.strength})</li>)}
+                            {detailedInfo.ingredients.map((ing, i) => <li key={i}>{ing}</li>)}
                           </ul>
                         </div>
                       </>
-                    )} */}
+                    )}
 
                   </div>
               </ScrollArea>
