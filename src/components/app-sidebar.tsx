@@ -36,6 +36,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useToast } from '@/hooks/use-toast'; // For logout feedback
 import { useRouter } from 'next/navigation';
+import { Skeleton } from "@/components/ui/skeleton"; // Import Skeleton component
 
 
 // Placeholder - replace with actual Firebase Auth hook/context
