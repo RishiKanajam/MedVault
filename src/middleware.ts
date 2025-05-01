@@ -1,53 +1,41 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-// List of authentication-related paths (unprotected)
-const AUTH_PATHS = ['/login', '/signup'];
-// List of paths accessible to everyone (even unauthenticated users) - typically just the landing page
-const PUBLIC_PATHS = ['/'];
+// List of authentication-related paths (publicly accessible)
+const AUTH_PATHS = ['/auth/login', '/auth/signup'];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Check for Firebase Auth token in cookies (adapt cookie name if needed)
-  // This is a basic check. For production, consider server-side token verification.
-  const sessionCookie = request.cookies.get('__session'); // Default name, check your setup
+  const sessionCookie = request.cookies.get('__session'); // Or your specific session cookie name
   const isAuthenticated = !!sessionCookie;
 
   console.log(`[Middleware] Path: ${pathname}, Authenticated: ${isAuthenticated}`);
 
-  // Allow access to public paths regardless of authentication state
-  if (PUBLIC_PATHS.includes(pathname)) {
-     console.log(`[Middleware] Allowing access to public path: ${pathname}`);
+  // Allow access to auth paths regardless of authentication state
+  if (AUTH_PATHS.some(authPath => pathname.startsWith(authPath))) {
+     console.log(`[Middleware] Allowing access to auth path: ${pathname}`);
     return NextResponse.next();
   }
 
-  // Handle Authenticated Users
+  // If the user is authenticated, allow access to any other path
   if (isAuthenticated) {
-    // Redirect away from auth pages if already logged in
-    if (AUTH_PATHS.includes(pathname)) {
-      console.log(`[Middleware] Authenticated user accessing auth path ${pathname}. Redirecting to /dashboard.`);
-      return NextResponse.redirect(new URL('/dashboard', request.url));
-    }
-    // Allow access to all other protected routes (including settings)
     console.log(`[Middleware] Authenticated user accessing allowed path: ${pathname}. Allowing.`);
     return NextResponse.next();
   }
 
-  // Handle Unauthenticated Users
-  if (!isAuthenticated) {
-    // Allow access only to auth paths
-    if (AUTH_PATHS.includes(pathname)) {
-       console.log(`[Middleware] Unauthenticated user accessing allowed auth path: ${pathname}. Allowing.`);
-      return NextResponse.next();
-    }
-    // Redirect to login if trying to access any other protected path
-    console.log(`[Middleware] Unauthenticated user accessing protected path ${pathname}. Redirecting to /login.`);
-    return NextResponse.redirect(new URL('/login', request.url));
+  // If the user is NOT authenticated and trying to access a protected path, redirect to login
+  if (!isAuthenticated && !AUTH_PATHS.some(authPath => pathname.startsWith(authPath))) {
+    console.log(`[Middleware] Unauthenticated user accessing protected path ${pathname}. Redirecting to /auth/login.`);
+    // Preserve the original path as a query parameter for potential redirect after login
+    const loginUrl = new URL('/auth/login', request.url);
+    loginUrl.searchParams.set('redirectedFrom', pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
-  // Default fallback (should not be reached ideally)
-   console.log(`[Middleware] Default fallback for path: ${pathname}. Allowing.`);
+  // Default fallback (should ideally not be reached with the above logic)
+  console.log(`[Middleware] Default fallback for path: ${pathname}. Allowing.`);
   return NextResponse.next();
 }
 
@@ -61,7 +49,10 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      * - logo-*.png (logo files)
+     * - / (Root path often for landing page, handle separately if needed or include if protected)
      */
     '/((?!api|_next/static|_next/image|favicon.ico|logo-light.png|logo-dark.png).*)',
+    // Explicitly include root if it should be protected, otherwise handle public paths above
+    // '/'
   ],
 };

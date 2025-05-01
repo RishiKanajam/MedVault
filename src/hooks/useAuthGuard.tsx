@@ -1,120 +1,81 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation'; // Import usePathname
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth } from '@/firebase'; // Corrected import path if needed
 import { Loader2 } from 'lucide-react';
+import { useUserContext } from '@/context/UserContext'; // Use context to avoid duplicate listeners
 
-interface UseAuthGuardOptions {
-  requiredAuth?: boolean; // Does the route require authentication? (Default: true)
-  redirectIfAuthenticated?: string; // Path to redirect to if user IS authenticated (e.g., for login/signup pages)
-}
+// Define AUTH_PATHS and PUBLIC_PATHS for client-side checks
+const AUTH_PATHS = ['/auth/login', '/auth/signup'];
+const PUBLIC_PATHS = ['/']; // Example: Landing page at root
 
-interface AuthGuardResult {
-  user: User | null;
-  loading: boolean;
+interface ClientSideAuthGuardProps {
+  children: React.ReactNode;
 }
 
 /**
- * Hook to handle authentication state and protect routes client-side.
- * Redirects based on auth status. Module check is removed.
- * @param options Configuration for the auth guard.
- * @returns The authenticated user and loading state.
+ * Component to handle client-side authentication state checks and redirects.
+ * Shows a loading spinner until auth state is resolved.
+ * @param props Component props including children to render when authenticated.
  */
-export function useAuthGuard(options: UseAuthGuardOptions = {}): AuthGuardResult {
-  const {
-    requiredAuth = true,
-    redirectIfAuthenticated,
-  } = options;
-
+export function ClientSideAuthGuard({ children }: ClientSideAuthGuardProps) {
   const router = useRouter();
-  const pathname = usePathname(); // Get current path
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const pathname = usePathname();
+  const { authUser, loading: userContextLoading } = useUserContext(); // Get user and loading state from context
+  const [isChecking, setIsChecking] = useState(true); // Local loading state for initial check
 
   useEffect(() => {
-    console.log("[AuthGuard] Initializing listener...");
-    let isMounted = true; // Flag to prevent state updates on unmounted component
+     console.log("[ClientAuthGuard] Effect running. Path:", pathname, "Auth User:", authUser, "Context Loading:", userContextLoading);
 
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      if (!isMounted) return; // Don't update state if component unmounted
-
-      setUser(currentUser);
-      setLoading(true); // Reset loading on auth change
-
-      if (currentUser) {
-        console.log("[AuthGuard] User is authenticated:", currentUser.uid);
-        // User is logged in
-        if (redirectIfAuthenticated && pathname !== redirectIfAuthenticated) {
-          console.log(`[AuthGuard] User authenticated, redirecting from auth page to ${redirectIfAuthenticated}`);
-          router.replace(redirectIfAuthenticated);
-          // Keep loading true until redirect completes, don't process further
-          return;
-        }
-        // If not redirecting away from an auth page, stop loading
-         console.log("[AuthGuard] User authenticated, allowing access to route:", pathname);
-         if (isMounted) setLoading(false); // Allow rendering protected content
-
-      } else {
-        // User is logged out
-        console.log("[AuthGuard] User is not authenticated.");
-        if (requiredAuth) {
-           console.log("[AuthGuard] Route requires authentication.");
-           // Only redirect if not already on an auth path or public path
-            const isAllowedUnauthPath = AUTH_PATHS.includes(pathname) || PUBLIC_PATHS.includes(pathname);
-           if (!isAllowedUnauthPath) {
-              console.log("[AuthGuard] Redirecting to /login");
-              router.replace('/login');
-               // Keep loading true until redirect completes
-               return;
-           } else {
-               console.log("[AuthGuard] Already on an allowed unauthenticated path, allowing access.");
-               if (isMounted) setLoading(false); // Allow rendering login/signup/public
-           }
-        } else {
-           console.log("[AuthGuard] Route does not require auth.");
-          if (isMounted) setLoading(false); // Allow rendering public content
-        }
-      }
-    });
-
-    // Cleanup subscription on unmount
-    return () => {
-       console.log("[AuthGuard] Cleaning up auth listener.");
-       isMounted = false;
-       unsubscribe();
+    // Wait until the UserContext has finished its initial loading
+    if (userContextLoading) {
+       console.log("[ClientAuthGuard] Waiting for UserContext to load...");
+       setIsChecking(true);
+      return;
     }
-    // Add pathname to dependencies to re-evaluate redirects if path changes
-  }, [requiredAuth, redirectIfAuthenticated, router, pathname]);
 
-  return { user, loading };
-}
+     setIsChecking(false); // Context loaded, auth state is known
 
-// Optional: A wrapper component for easier usage in page layouts
-interface ProtectedRouteProps {
-  children: React.ReactNode;
-  authGuardOptions?: UseAuthGuardOptions;
-}
+    if (authUser) {
+      // User is authenticated
+       console.log("[ClientAuthGuard] User is authenticated.");
+       // Redirect away from auth pages if already logged in
+        if (AUTH_PATHS.some(authPath => pathname.startsWith(authPath))) {
+            console.log(`[ClientAuthGuard] Authenticated user on auth path ${pathname}. Redirecting to /dashboard.`);
+            router.replace('/dashboard');
+        }
+        // Otherwise, allow rendering children (protected route)
+    } else {
+      // User is not authenticated
+      console.log("[ClientAuthGuard] User is not authenticated.");
+      // Check if the current path is allowed for unauthenticated users
+       const isAllowedUnauthPath = AUTH_PATHS.some(authPath => pathname.startsWith(authPath)) || PUBLIC_PATHS.includes(pathname);
 
-export function ProtectedRoute({ children, authGuardOptions }: ProtectedRouteProps) {
-  // Use the hook to get loading status and handle redirects
-  const { loading: isLoading } = useAuthGuard(authGuardOptions);
+      if (!isAllowedUnauthPath) {
+        console.log(`[ClientAuthGuard] Unauthenticated user on protected path ${pathname}. Redirecting to /auth/login.`);
+        router.replace('/auth/login');
+      }
+       // If on an allowed path (like /auth/login), allow rendering children (the login/signup page)
+    }
 
-  if (isLoading) {
-    // Show a loading spinner or skeleton screen while checking auth
+  }, [authUser, userContextLoading, router, pathname]);
+
+  // Show loading spinner while the UserContext is loading or during the initial check/redirect phase
+  if (isChecking || userContextLoading) {
+      console.log("[ClientAuthGuard] Showing loading spinner...");
     return (
-      <div className="flex min-h-screen w-full items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="fixed inset-0 z-[200] flex items-center justify-center bg-background">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
       </div>
     );
   }
 
-  // If loading is complete, render the children (redirects handle unauthorized access)
+  // If auth state is resolved and no redirect is needed for the current path, render children
+  console.log("[ClientAuthGuard] Auth check complete, rendering children for path:", pathname);
   return <>{children}</>;
 }
 
-// Define AUTH_PATHS and PUBLIC_PATHS for use within the hook
-const AUTH_PATHS = ['/login', '/signup'];
-const PUBLIC_PATHS = ['/']; // Example: Landing page at root
-// Remove MODULE_SETUP_PATH as it's no longer used for redirection logic here
+// Remove the old hook export if it's no longer used elsewhere
+// export { useAuthGuard };

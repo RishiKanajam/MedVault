@@ -1,38 +1,36 @@
-// src/context/UserContext.tsx
 'use client'; // Mark as client component
 
-import { auth, db } from "@/firebase"; // Corrected import path
+import { auth, db } from "@/firebase"; // Your Firebase initialization
 import { onAuthStateChanged, User } from "firebase/auth";
-import { doc, onSnapshot, DocumentData } from "firebase/firestore";
+import { doc, onSnapshot, DocumentData, getDoc, setDoc } from "firebase/firestore"; // Added getDoc, setDoc
 import React, { createContext, useContext, useEffect, useState } from "react";
 
 interface UserProfile {
-  name: string | null; // Changed from displayName for consistency with Firestore doc
+  name: string | null;
   email: string | null;
-  photoURL: string | null;
-  clinicId?: string; // Optional clinic ID
+  photoURL?: string | null; // Made optional
+  clinicId?: string;
   settings?: {
-    modules?: { [key: string]: boolean } | null;
+    modules?: { [key: string]: boolean } | null; // Removed - no longer used
     theme?: string | null;
   };
-  // Add an index signature to allow dynamic properties if necessary, but prefer explicit typing
-   [key: string]: any;
+  // Add an index signature removed - prefer explicit typing
+  createdAt?: any; // Add createdAt field if needed
 }
 
 interface UserContextType {
-  authUser: User | null; // Renamed from 'user' to avoid conflict with common variable names
+  authUser: User | null;
   profile: UserProfile | null;
   loading: boolean;
 }
 
-// Initialize context with default values matching the interface
 const UserContext = createContext<UserContextType>({
   authUser: null,
   profile: null,
   loading: true,
 });
 
-export const useUserContext = () => useContext(UserContext); // Renamed hook for clarity
+export const useUserContext = () => useContext(UserContext);
 
 interface Props {
   children: React.ReactNode;
@@ -50,54 +48,70 @@ export const UserProvider = ({ children }: Props) => {
       console.log("[UserProvider] Auth state changed. User:", user?.uid);
       setAuthUser(user);
 
-      // Clean up previous Firestore listener if it exists
       if (unsubscribeFirestore) {
         console.log("[UserProvider] Cleaning up previous Firestore listener.");
         unsubscribeFirestore();
         unsubscribeFirestore = null;
       }
-       // Reset profile when user logs out
-       if (!user) {
+
+      if (!user) {
         setProfile(null);
-        setLoading(false); // Auth state determined, loading false
+        setLoading(false);
         return;
       }
 
-
-      // User is logged in, set up Firestore listener for their profile
+      // User is logged in, ensure Firestore doc exists and set up listener
       if (user) {
-        setLoading(true); // Start loading profile data
+        setLoading(true);
         const userDocRef = doc(db, "users", user.uid);
-        console.log(`[UserProvider] Setting up Firestore listener for user: ${user.uid}`);
+        console.log(`[UserProvider] Checking/setting up Firestore listener for user: ${user.uid}`);
 
+        // Check if document exists, create if not (e.g., legacy users or signup issue)
+        // This is a fallback, the signup flow should ideally create it.
+        try {
+          const docSnap = await getDoc(userDocRef);
+          if (!docSnap.exists()) {
+            console.warn(`[UserProvider] Firestore doc missing for ${user.uid}, creating default.`);
+            await setDoc(userDocRef, {
+              name: user.displayName || "User", // Use Auth display name as fallback
+              email: user.email,
+              createdAt: serverTimestamp(), // Assuming you import serverTimestamp
+            }, { merge: true }); // Use merge to be safe
+          }
+        } catch (error) {
+          console.error("[UserProvider] Error checking/creating user doc:", error);
+          // Decide how to handle this - maybe prevent login or set profile to null
+          setProfile(null);
+          setLoading(false);
+          return; // Exit if we can't ensure the doc exists
+        }
+
+
+        // Now set up the listener
         unsubscribeFirestore = onSnapshot(
           userDocRef,
           (docSnap) => {
             if (docSnap.exists()) {
-              console.log("[UserProvider] Profile data received:", docSnap.data());
+              console.log("[UserProvider] Profile data received/updated:", docSnap.data());
               setProfile(docSnap.data() as UserProfile);
             } else {
-              // Handle case where user exists in Auth but not Firestore (shouldn't happen with proper signup)
-              console.warn(`[UserProvider] No Firestore document found for user: ${user.uid}`);
-              setProfile(null); // Set profile to null if doc doesn't exist
+              // This case should be less likely now due to the check above
+              console.warn(`[UserProvider] No Firestore document found for user (after check): ${user.uid}`);
+              setProfile(null);
             }
-             // Loading is false once the first snapshot is received (or determined not to exist)
             setLoading(false);
           },
           (error) => {
-            // Handle listener errors
             console.error("[UserProvider] Firestore listener error:", error);
-            setProfile(null); // Clear profile on error
-            setLoading(false); // Stop loading even if there's an error
+            setProfile(null);
+            setLoading(false);
           }
         );
       } else {
-         // Should be handled above, but as a safeguard
          setLoading(false);
       }
     });
 
-    // Cleanup function for the auth listener AND any active Firestore listener
     return () => {
       console.log("[UserProvider] Cleaning up auth listener.");
       unsubscribeAuth();
@@ -106,7 +120,7 @@ export const UserProvider = ({ children }: Props) => {
         unsubscribeFirestore();
       }
     };
-  }, []); // Run only once on mount
+  }, []);
 
   return (
     <UserContext.Provider value={{ authUser, profile, loading }}>

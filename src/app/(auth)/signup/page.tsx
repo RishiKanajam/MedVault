@@ -17,7 +17,7 @@ import { Label } from '@/components/ui/label';
 import { Pill, Loader2 } from 'lucide-react';
 import { auth, db } from '@/firebase'; // Ensure these are correctly initialized and exported
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore'; // Import serverTimestamp
 import { useToast } from '@/hooks/use-toast';
 
 export default function SignupPage() {
@@ -27,22 +27,19 @@ export default function SignupPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [clinicId, setClinicId] = useState(''); // Assuming direct input for now
+  // Removed clinicId state
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSignup = async (event: React.FormEvent) => {
     event.preventDefault();
-    setError(null); // Clear previous errors
+    setError(null);
 
     if (password !== confirmPassword) {
       setError('Passwords do not match.');
       return;
     }
-    if (!clinicId.trim()) {
-       setError('Clinic ID is required.');
-       return;
-    }
+    // Removed clinicId check
 
     setIsLoading(true);
 
@@ -58,31 +55,25 @@ export default function SignupPage() {
       await updateProfile(user, { displayName: fullName });
       console.log('[Signup] Auth profile updated.');
 
-      // 3. Create Firestore user document with empty modules
+      // 3. Create Firestore user document
       console.log('[Signup] Attempting to create Firestore document for user:', user.uid);
       const userDocRef = doc(db, 'users', user.uid);
       await setDoc(userDocRef, {
         name: fullName,
         email: email,
-        clinicId: clinicId, // Store clinic ID in Firestore profile
-        settings: {
-           modules: {}, // Initialize modules as an empty object for first run
-           theme: 'system' // Default theme
-        }
-      }, { merge: true }); // Use merge: true to be safe, although it's a new doc
+        createdAt: serverTimestamp(), // Add creation timestamp
+        // Removed clinicId and settings.modules
+      });
       console.log('[Signup] Firestore document created.');
 
-      // Custom claims setting should ideally happen in a backend function triggered on user creation.
-      // console.log('[Signup] Note: Backend function needed to set clinicId custom claim for full access.');
 
-      toast({ title: "Account Created", description: "Welcome to MediSync Pro!" });
-      // 4. Redirect directly to dashboard
-      router.push('/dashboard');
+      toast({ title: "Account Created", description: "Welcome to MediSync Pro! Please log in." });
+      // 4. Redirect to login page
+      router.push('/auth/login'); // Changed redirect target
 
     } catch (err: any) {
       console.error('[Signup] Error during signup:', err);
 
-      // Provide more user-friendly error messages
       let message = 'An unknown error occurred during sign up.';
       if (err.code) {
         switch (err.code) {
@@ -95,11 +86,11 @@ export default function SignupPage() {
            case 'auth/invalid-email':
               message = 'Please enter a valid email address.';
               break;
-           case 'permission-denied': // Firestore permission error
+           case 'permission-denied':
              message = 'Could not save user profile. Please check permissions or contact support.';
              break;
            default:
-              message = err.message || message; // Use Firebase error message if available
+              message = err.message || message;
               break;
         }
       } else if (err.message) {
@@ -115,7 +106,6 @@ export default function SignupPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
-       {/* Use panel-primary for consistent styling */}
       <Card className="panel-primary w-full max-w-md">
         <CardHeader className="text-center">
            <div className="flex justify-center mb-4">
@@ -128,25 +118,21 @@ export default function SignupPage() {
           <form onSubmit={handleSignup} className="space-y-4">
              <div className="space-y-2">
               <Label htmlFor="fullName">Full Name</Label>
-              <Input id="fullName" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
+              <Input id="fullName" value={fullName} onChange={(e) => setFullName(e.target.value)} required disabled={isLoading}/>
             </div>
              <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="m@example.com" required />
+              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="m@example.com" required disabled={isLoading}/>
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required disabled={isLoading}/>
             </div>
              <div className="space-y-2">
               <Label htmlFor="confirmPassword">Confirm Password</Label>
-              <Input id="confirmPassword" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required />
+              <Input id="confirmPassword" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required disabled={isLoading}/>
             </div>
-             <div className="space-y-2">
-              <Label htmlFor="clinicId">Clinic ID</Label>
-              {/* TODO: Replace with a dropdown fetched from a 'clinics' collection if needed */}
-              <Input id="clinicId" value={clinicId} onChange={(e) => setClinicId(e.target.value)} required placeholder="Your Clinic Identifier" />
-            </div>
+             {/* Removed Clinic ID field */}
             {error && <p className="text-sm text-destructive text-center">{error}</p>}
             <Button type="submit" className="w-full" disabled={isLoading}>
                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
@@ -157,7 +143,7 @@ export default function SignupPage() {
          <CardFooter className="text-center text-sm">
            Already have an account?{' '}
             <Button variant="link" asChild className="p-0 h-auto ml-1">
-              <Link href="/login">
+              <Link href="/auth/login">
                 Login
               </Link>
            </Button>

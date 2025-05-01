@@ -1,7 +1,7 @@
-'use client';
+'use client'; // Required for hooks and event handlers
 
-import React, { useState, useEffect } from 'react'; // Added useEffect
-import { useRouter } from 'next/navigation';
+import React, { useState } from 'react';
+import { useRouter } from 'next/navigation'; // Import useRouter for navigation
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import {
@@ -15,46 +15,37 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Pill, Loader2 } from 'lucide-react';
-import { auth, db } from '@/firebase'; // Ensure Firebase is correctly initialized
-import { signInWithEmailAndPassword, onAuthStateChanged, User } from 'firebase/auth'; // Added onAuthStateChanged, User
-import { doc, getDoc } from 'firebase/firestore'; // Added getDoc, doc
+import { auth } from '@/firebase'; // Ensure Firebase is correctly initialized
+import { signInWithEmailAndPassword } from 'firebase/auth'; // Import sign-in function
 import { useToast } from '@/hooks/use-toast';
-import { useAuthGuard } from '@/hooks/useAuthGuard'; // Import the guard
+// Removed useAuthGuard as middleware and client-side guard in layout handle protection
+// import { useAuthGuard } from '@/hooks/useAuthGuard';
 
 export default function LoginPage() {
-  const router = useRouter();
+  const router = useRouter(); // Initialize useRouter
   const { toast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false); // Changed initial state to false
+  const [isLoading, setIsLoading] = useState(false); // State for loading indicator
   const [error, setError] = useState<string | null>(null);
 
-   // Use auth guard to redirect if already logged in
-   // Set requiredAuth to false for the login page itself
-   // Redirect authenticated users away from login to dashboard
-   const { loading: authLoading } = useAuthGuard({ redirectIfAuthenticated: '/dashboard', requiredAuth: false });
-
+  // Auth guard logic is now handled by middleware and the layout's client-side guard
 
   const handleLogin = async (event: React.FormEvent) => {
     event.preventDefault();
-    setError(null); // Clear previous errors
-    setIsLoading(true); // Set loading to true when login starts
+    setError(null);
+    setIsLoading(true); // Show spinner
 
     try {
-      // 1. Sign in with Firebase Auth
       console.log('[Login] Attempting sign-in...');
-      const userCred = await signInWithEmailAndPassword(auth, email, password);
-      console.log('[Login] Sign-in successful for user:', userCred.user.uid);
+      await signInWithEmailAndPassword(auth, email, password); // Sign in
+      console.log('[Login] Sign-in successful.');
 
-
-      // Login successful toast
       toast({ title: "Login Successful", description: `Welcome back!` });
 
-
-      // 2. Redirect to dashboard after successful login
       console.log('[Login] Redirecting to /dashboard');
-      router.push('/dashboard'); // Use push for navigation history
-      // No need to set isLoading to false here, as the component will unmount upon redirect
+      router.push('/dashboard'); // Redirect to dashboard on success
+      // Don't set isLoading to false here, component will unmount
 
     } catch (err: any) {
       console.error('[Login] Error:', err);
@@ -63,18 +54,17 @@ export default function LoginPage() {
           switch (err.code) {
             case 'auth/user-not-found':
             case 'auth/wrong-password':
-            case 'auth/invalid-credential': // More generic error
+            case 'auth/invalid-credential':
                message = 'Invalid email or password.';
                break;
             case 'auth/invalid-email':
                message = 'Please enter a valid email address.';
                break;
-            // Add other specific Firebase Auth error codes as needed
              case 'auth/network-request-failed':
                 message = 'Network error. Please check your connection.';
                 break;
             default:
-               message = err.message || message; // Use Firebase error message if available
+               message = err.message || message;
                break;
           }
        } else if (err.message) {
@@ -82,23 +72,21 @@ export default function LoginPage() {
        }
       setError(message);
       toast({ title: "Login Failed", description: message, variant: "destructive" });
-      setIsLoading(false); // Only set loading to false on error
+      setIsLoading(false); // Stop spinner only on error
     }
   };
 
-  // Show loading indicator while auth state is being checked by the guard
-  if (authLoading) {
-      return (
-        <div className="flex min-h-screen items-center justify-center bg-background p-4">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      );
+  // Show loading overlay if isLoading is true
+  if (isLoading) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+      </div>
+    );
   }
-
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
-       {/* Use panel-primary for consistent styling */}
       <Card className="panel-primary w-full max-w-sm">
         <CardHeader className="text-center">
            <div className="flex justify-center mb-4">
@@ -116,8 +104,8 @@ export default function LoginPage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Password</Label>
-                 {/* TODO: Implement password reset flow */}
                 <Button variant="link" asChild className="p-0 h-auto text-sm">
+                    {/* TODO: Implement password reset */}
                     <Link href="#">
                     Forgot your password?
                     </Link>
@@ -126,6 +114,7 @@ export default function LoginPage() {
               <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required disabled={isLoading} />
             </div>
              {error && <p className="text-sm text-destructive text-center">{error}</p>}
+            {/* Disable button when loading */}
             <Button type="submit" className="w-full" disabled={isLoading}>
                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               {isLoading ? 'Logging In...' : 'Login'}
@@ -135,7 +124,7 @@ export default function LoginPage() {
          <CardFooter className="text-center text-sm">
            Don't have an account?{' '}
             <Button variant="link" asChild className="p-0 h-auto ml-1">
-                <Link href="/signup">
+                <Link href="/auth/signup">
                 Sign up
                 </Link>
             </Button>

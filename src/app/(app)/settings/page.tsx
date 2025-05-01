@@ -1,169 +1,99 @@
-// src/app/(app)/settings/page.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
+// import { Switch } from '@/components/ui/switch'; // Switch no longer needed for modules
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { Settings as SettingsIcon, Sun, Moon, Languages, RefreshCw, Boxes, Truck, BrainCircuit, FlaskConical, ClipboardList, Palette } from 'lucide-react'; // Added Palette
+import { Settings as SettingsIcon, Sun, Moon, Languages, RefreshCw, Palette } from 'lucide-react'; // Removed module icons
 import { useToast } from '@/hooks/use-toast';
-import { useTheme } from 'next-themes'; // Import useTheme
-import { ThemeToggle } from '@/components/theme-toggle'; // Import ThemeToggle
+import { useTheme } from 'next-themes';
+import { ThemeToggle } from '@/components/theme-toggle';
+import { useUserContext } from '@/context/UserContext'; // Import user context
+import { doc, updateDoc } from 'firebase/firestore'; // Import firestore update
+import { db } from '@/firebase'; // Import firestore instance
 
-// TODO: Replace with actual Firestore/AsyncStorage hooks
-const useSettings = () => {
-    const [modules, setModules] = useState({
-        medTrack: true,
-        shipment: true,
-        rxAI: true,
-        pharmaNet: true,
-        patientHistory: true,
-    });
-    const [language, setLanguage] = useState('en');
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        // Simulate fetching settings
-        console.log("Fetching settings (simulated)...");
-        const fetchSettings = async () => {
-            // const storedModules = await AsyncStorage.getItem('modules');
-            // const storedLang = await AsyncStorage.getItem('language');
-            // TODO: Fetch from Firestore `clinics/{clinicId}/settings`
-            await new Promise(resolve => setTimeout(resolve, 300)); // Simulate delay
-            // if (storedModules) setModules(JSON.parse(storedModules));
-            // if (storedLang) setLanguage(storedLang);
-            setLoading(false);
-        }
-        fetchSettings();
-    }, []);
-
-    const saveModules = async (newModules: typeof modules) => {
-        setModules(newModules);
-        console.log("Saving modules (simulated):", newModules);
-        // await AsyncStorage.setItem('modules', JSON.stringify(newModules));
-        // TODO: Save to Firestore `clinics/{clinicId}/settings/modules`
-    };
-
-    const saveLanguage = async (newLang: string) => {
-        setLanguage(newLang);
-        console.log("Saving language (simulated):", newLang);
-        // await AsyncStorage.setItem('language', newLang);
-        // TODO: Save to Firestore `clinics/{clinicId}/settings/language`
-        // TODO: Implement i18n library update
-    };
-
-    return { modules, language, loading, saveModules, saveLanguage };
-};
-
+// Removed useSettings hook as module logic is gone
+// Language and theme are handled differently now
 
 export default function SettingsPage() {
   const { toast } = useToast();
-  const { theme, setTheme } = useTheme(); // Use next-themes hook
-  const { modules, language, loading: settingsLoading, saveModules, saveLanguage } = useSettings();
+  const { theme, setTheme, systemTheme } = useTheme();
+  const { authUser, profile, loading: userLoading } = useUserContext(); // Get user context
+  const [language, setLanguage] = useState('en'); // Local state for language, TODO: load from profile
+  const [loading, setLoading] = useState(true); // Combined loading state
   const [isSyncing, setIsSyncing] = useState(false);
 
-  // No need for local darkMode state, use 'theme' from useTheme
+   // Effect to manage loading state and potentially load language from profile
+  useEffect(() => {
+    if (!userLoading) {
+      // TODO: Load language from profile.settings.language if implemented
+      // if (profile?.settings?.language) {
+      //   setLanguage(profile.settings.language);
+      // }
+      setLoading(false);
+    }
+  }, [userLoading, profile]);
 
-  const handleModuleToggle = (moduleName: keyof typeof modules) => {
-    const newState = { ...modules, [moduleName]: !modules[moduleName] };
-    saveModules(newState);
-    toast({ title: "Module Updated", description: `${moduleName} setting changed.` });
+
+  // Removed handleModuleToggle
+
+  const handleLanguageChange = async (value: string) => {
+    if (!authUser) return;
+    setLanguage(value);
+    // TODO: Save language to Firestore profile
+    try {
+       const userDocRef = doc(db, 'users', authUser.uid);
+       await updateDoc(userDocRef, { 'settings.language': value }); // Example path
+       toast({ title: "Language Changed", description: `Language set to ${value}.` });
+       // TODO: Implement actual i18n library update if using one
+     } catch (error) {
+       console.error("Error saving language setting:", error);
+       toast({ title: "Error", description: "Could not save language setting.", variant: "destructive"});
+     }
   };
 
-  const handleLanguageChange = (value: string) => {
-    saveLanguage(value);
-    toast({ title: "Language Changed", description: `Language set to ${value}.` });
-  };
+   const handleThemeChange = async (newTheme: string) => {
+     if (!authUser) return;
+     setTheme(newTheme); // Update next-themes state
+     // Save theme preference to Firestore
+     try {
+       const userDocRef = doc(db, 'users', authUser.uid);
+       await updateDoc(userDocRef, { 'settings.theme': newTheme }); // Save preference
+       toast({ title: "Theme Updated", description: `Theme set to ${newTheme}.` });
+     } catch (error) {
+       console.error("Error saving theme setting:", error);
+       toast({ title: "Error", description: "Could not save theme preference.", variant: "destructive"});
+     }
+   };
+
 
   const handleSync = async () => {
     setIsSyncing(true);
-    // TODO: Implement manual sync logic (trigger Firestore sync or re-fetch data)
+    // TODO: Implement manual sync logic (e.g., re-fetch data using React Query invalidate)
     console.log('Manual sync triggered...');
+    // Example: queryClient.invalidateQueries(); // Invalidate all queries
     await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate sync delay
     setIsSyncing(false);
     toast({ title: "Sync Complete", description: "Data synchronized successfully." });
   };
 
-   if (settingsLoading) {
-     // TODO: Add Skeleton loaders for settings page
+   if (loading) {
+     // Use a simple spinner or skeleton loaders
      return <div className="flex justify-center items-center h-64"><RefreshCw className="animate-spin h-8 w-8 text-primary" /></div>;
    }
 
   return (
     <div className="space-y-6 animate-fadeIn">
-      <Card className="panel-primary"> {/* Use primary panel style */}
+      <Card className="panel-primary">
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><SettingsIcon className="w-5 h-5 text-primary" /> General Settings</CardTitle>
-          <CardDescription>Manage application preferences and modules.</CardDescription>
+          <CardDescription>Manage application preferences.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Module Toggles */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium">Enabled Modules</h3>
-             <Separator />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
-                {/* MedTrack */}
-                <div className="flex items-center justify-between space-x-2 p-3 rounded-md border bg-background">
-                    <Label htmlFor="medTrack-module" className="flex items-center gap-2 font-normal cursor-pointer">
-                        <Boxes className="w-4 h-4 text-primary"/> MedTrack Inventory
-                    </Label>
-                    <Switch
-                        id="medTrack-module"
-                        checked={modules.medTrack}
-                        onCheckedChange={() => handleModuleToggle('medTrack')}
-                    />
-                </div>
-                 {/* Shipment Tracker */}
-                 <div className="flex items-center justify-between space-x-2 p-3 rounded-md border bg-background">
-                    <Label htmlFor="shipment-module" className="flex items-center gap-2 font-normal cursor-pointer">
-                        <Truck className="w-4 h-4 text-info"/> Shipment Tracker
-                    </Label>
-                    <Switch
-                        id="shipment-module"
-                        checked={modules.shipment}
-                        onCheckedChange={() => handleModuleToggle('shipment')}
-                    />
-                </div>
-                {/* RxAI */}
-                 <div className="flex items-center justify-between space-x-2 p-3 rounded-md border bg-background">
-                    <Label htmlFor="rxAI-module" className="flex items-center gap-2 font-normal cursor-pointer">
-                         <BrainCircuit className="w-4 h-4 text-secondary"/> RxAI Support
-                    </Label>
-                    <Switch
-                        id="rxAI-module"
-                        checked={modules.rxAI}
-                        onCheckedChange={() => handleModuleToggle('rxAI')}
-                    />
-                </div>
-                 {/* PharmaNet */}
-                 <div className="flex items-center justify-between space-x-2 p-3 rounded-md border bg-background">
-                    <Label htmlFor="pharmaNet-module" className="flex items-center gap-2 font-normal cursor-pointer">
-                        <FlaskConical className="w-4 h-4 text-warning"/> PharmaNet & Alerts
-                    </Label>
-                    <Switch
-                        id="pharmaNet-module"
-                        checked={modules.pharmaNet}
-                        onCheckedChange={() => handleModuleToggle('pharmaNet')}
-                    />
-                </div>
-                {/* Patient History */}
-                 <div className="flex items-center justify-between space-x-2 p-3 rounded-md border bg-background">
-                    <Label htmlFor="patientHistory-module" className="flex items-center gap-2 font-normal cursor-pointer">
-                        <ClipboardList className="w-4 h-4 text-danger"/> Patient History
-                    </Label>
-                    <Switch
-                        id="patientHistory-module"
-                        checked={modules.patientHistory}
-                        onCheckedChange={() => handleModuleToggle('patientHistory')}
-                    />
-                </div>
-            </div>
-          </div>
-
-          <Separator />
+          {/* Removed Module Toggles Section */}
 
           {/* Appearance Settings */}
           <div className="space-y-4">
@@ -173,21 +103,18 @@ export default function SettingsPage() {
               <Label htmlFor="theme-toggle" className="flex items-center gap-2 font-normal cursor-pointer">
                  <Palette className="w-4 h-4 text-primary"/> Theme
               </Label>
-              <ThemeToggle /> {/* Use the ThemeToggle component */}
+              {/* Use Select for theme instead of ThemeToggle for explicit saving */}
+               <Select value={theme} onValueChange={handleThemeChange}>
+                 <SelectTrigger className="w-[180px]">
+                   <SelectValue placeholder="Select theme" />
+                 </SelectTrigger>
+                 <SelectContent className="overlay-tertiary">
+                   <SelectItem value="light">Light</SelectItem>
+                   <SelectItem value="dark">Dark</SelectItem>
+                   <SelectItem value="system">System</SelectItem>
+                 </SelectContent>
+               </Select>
             </div>
-
-            {/* TODO: Add Primary/Accent Color Picker */}
-            {/* <div className="flex items-center justify-between space-x-2 p-3 rounded-md border bg-background">
-               <Label className="flex items-center gap-2 font-normal">Accent Color</Label>
-               <Input type="color" defaultValue="#FFA500" className="w-20 h-8 p-0 border-none cursor-pointer rounded" />
-             </div> */}
-
-             {/* TODO: Add Font Size Slider */}
-              {/* <div className="flex items-center justify-between space-x-2 p-3 rounded-md border bg-background">
-               <Label className="flex items-center gap-2 font-normal">Font Size</Label>
-                <Slider defaultValue={[16]} max={24} min={12} step={1} className="w-[180px]" />
-             </div> */}
-
 
             <div className="flex items-center justify-between space-x-2 p-3 rounded-md border bg-background">
               <Label htmlFor="language-select" className="flex items-center gap-2 font-normal">
@@ -197,12 +124,10 @@ export default function SettingsPage() {
                 <SelectTrigger id="language-select" className="w-[180px]">
                   <SelectValue placeholder="Select language" />
                 </SelectTrigger>
-                 {/* Use tertiary overlay for select content */}
                 <SelectContent className="overlay-tertiary">
                   <SelectItem value="en">English</SelectItem>
                   <SelectItem value="es">Español</SelectItem>
                   <SelectItem value="fr">Français</SelectItem>
-                  {/* Add more languages as needed */}
                 </SelectContent>
               </Select>
             </div>
@@ -224,12 +149,10 @@ export default function SettingsPage() {
                 {isSyncing ? 'Syncing...' : 'Sync Now'}
               </Button>
              </div>
-             {/* Add Clear Cache / Offline Data option if needed */}
           </div>
 
         </CardContent>
       </Card>
-       {/* Add Account Settings Card (Password Change, Delete Account) if needed */}
     </div>
   );
 }
