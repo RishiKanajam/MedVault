@@ -1,3 +1,4 @@
+// src/app/(auth)/module-selection/page.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -9,7 +10,7 @@ import { Boxes, Truck, BrainCircuit, FlaskConical, ClipboardList, CheckSquare, L
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { auth, db } from '@/firebase'; // Import Firebase auth and db
-import { doc, updateDoc, getDoc } from 'firebase/firestore'; // Import Firestore functions
+import { doc, setDoc, getDoc } from 'firebase/firestore'; // Import setDoc and getDoc
 import { useAuthGuard } from '@/hooks/useAuthGuard'; // Import the auth guard hook
 
 export default function ModuleSelectionPage() {
@@ -26,12 +27,13 @@ export default function ModuleSelectionPage() {
     patientHistory: true,
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [isCheckingConfig, setIsCheckingConfig] = useState(true); // State for checking existing config
 
    // Redirect if modules are already set (e.g., user navigates back or finishes setup elsewhere)
    useEffect(() => {
      const checkExistingModules = async () => {
        if (user) {
-         setIsLoading(true); // Indicate we are checking existing config
+         setIsCheckingConfig(true); // Indicate we are checking existing config
          console.log("[ModuleSelection] Checking existing module config for user:", user.uid);
          try {
              const userDocRef = doc(db, 'users', user.uid);
@@ -39,24 +41,28 @@ export default function ModuleSelectionPage() {
              if (userDocSnap.exists() && userDocSnap.data()?.settings?.modules) {
                console.log("[ModuleSelection] Modules already configured, redirecting to dashboard.");
                router.replace('/dashboard');
-               // Keep loading true until redirection happens
+               // Don't set checking config false here, let loading state handle UI until redirect
                return;
              } else {
-               console.log("[ModuleSelection] No existing module config found.");
+               console.log("[ModuleSelection] No existing module config found or document missing.");
              }
          } catch (error) {
              console.error("[ModuleSelection] Error checking existing modules:", error);
              // Handle error appropriately, maybe show a toast or allow proceeding
+             toast({ title: "Error", description: "Could not verify module configuration.", variant: "destructive" });
          } finally {
-             setIsLoading(false); // Finish checking
+             setIsCheckingConfig(false); // Finish checking
          }
+       } else {
+          // If no user, stop checking
+          setIsCheckingConfig(false);
        }
      };
-     if (!authLoading && user) {
+     if (!authLoading) { // Only check when auth state is resolved
        checkExistingModules();
      }
      // eslint-disable-next-line react-hooks/exhaustive-deps
-   }, [user, authLoading]); // Add router to dependencies if used inside effect
+   }, [user, authLoading, router]); // Add router to dependencies
 
 
   const handleCheckboxChange = (moduleId: keyof typeof selectedModules) => {
@@ -78,10 +84,11 @@ export default function ModuleSelectionPage() {
 
     try {
       const userDocRef = doc(db, 'users', user.uid);
-      // IMPORTANT: Security rules must allow the authenticated user to write to their own document path `/users/{userId}`
-      await updateDoc(userDocRef, {
-        'settings.modules': selectedModules // Update only the modules part of settings
-      });
+      // Use setDoc with merge: true to create or update the document safely.
+      await setDoc(userDocRef, {
+        settings: { modules: selectedModules }
+      }, { merge: true }); // Use merge: true
+
       console.log('[ModuleSelection] Modules saved successfully.');
       toast({ title: "Modules Saved", description: "Your module preferences have been saved." });
       router.push('/dashboard'); // Redirect to dashboard after selection
@@ -108,7 +115,7 @@ export default function ModuleSelectionPage() {
   ] as const;
 
 
-   if (authLoading || isLoading) { // Show loader if checking auth OR checking/saving modules
+   if (authLoading || isCheckingConfig) { // Show loader if checking auth OR checking config
      return (
        <div className="flex min-h-screen items-center justify-center bg-background p-4">
          <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -119,7 +126,7 @@ export default function ModuleSelectionPage() {
      );
    }
 
-    // If auth check complete, user exists, and not currently saving/checking config
+    // If auth check complete, user exists, and config checked
    if (!user) {
       // This state should ideally be prevented by the redirect in useAuthGuard,
       // but handle defensively.
