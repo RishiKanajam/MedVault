@@ -25,7 +25,8 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 
 // TODO: Replace with actual auth state and module settings
-const isAuthenticated = false; // Placeholder
+// const isAuthenticated = false; // Placeholder - Temporarily set to true for testing
+const isAuthenticated = true;
 const modules = {
   medTrack: true,
   shipment: true,
@@ -127,7 +128,7 @@ export function AppSidebar() {
                   </Link>
                 </SidebarMenuButton>
             </SidebarMenuItem>
-             {/* Add Logout Button Here */}
+             {/* TODO: Add Logout Button Here (will be handled in AppLayout dropdown) */}
           </SidebarMenu>
         ) : (
            <SidebarMenu>

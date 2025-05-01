@@ -9,25 +9,38 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { LogIn } from 'lucide-react';
 
 // TODO: Replace with actual authentication check
-const isAuthenticated = false; // Placeholder for auth state
+const isAuthenticated = true; // Placeholder for auth state - Temporarily set to true for testing
 
 export default function Home() {
   const router = useRouter();
 
+  /*
   useEffect(() => {
     // Redirect to login if not authenticated
     // In a real app, this check would involve checking a context, cookie, or making an API call
     if (!isAuthenticated) {
       router.push('/login');
+    } else {
+        // If authenticated, redirect to dashboard directly from root page
+        router.push('/dashboard');
     }
   }, [isAuthenticated, router]);
 
   // If redirecting, render null or a loading indicator
-  if (!isAuthenticated) {
-    return null; // Or a loading spinner
-  }
+  // Render null while checking auth/redirecting to avoid flashing content
+  return null;
+  */
 
-  // Render the main dashboard/welcome page content if authenticated
+ // Redirect to dashboard immediately since we are assuming authenticated state for testing
+ useEffect(() => {
+    router.replace('/dashboard');
+ }, [router]);
+
+ return null; // Render nothing while redirecting
+
+
+  // Original content (can be uncommented if direct access to '/' is needed while authenticated)
+  /*
   return (
     <div className="flex min-h-screen w-full">
       <AppSidebar />
@@ -35,7 +48,7 @@ export default function Home() {
         <header className="sticky top-0 z-10 flex h-[57px] items-center gap-1 border-b bg-background px-4">
            <SidebarTrigger className="md:hidden" />
           <h1 className="text-xl font-semibold flex-1">Welcome to MediSync Pro</h1>
-          {/* Add User Menu/Logout Button here */}
+          {/* Add User Menu/Logout Button here * /}
         </header>
         <main className="flex-1 overflow-auto p-4">
           <Card>
@@ -45,11 +58,12 @@ export default function Home() {
             </CardHeader>
             <CardContent>
               <p>Welcome back! Select a module from the sidebar to get started.</p>
-              {/* Placeholder content - replace with actual dashboard widgets */}
+              {/* Placeholder content - replace with actual dashboard widgets * /}
             </CardContent>
           </Card>
         </main>
       </SidebarInset>
     </div>
   );
+  */
 }

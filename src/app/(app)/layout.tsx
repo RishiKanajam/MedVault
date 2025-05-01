@@ -17,12 +17,14 @@ import {
 
 
 // TODO: Replace with actual authentication check and user data retrieval
-const isAuthenticated = true; // Placeholder for auth state
+// const isAuthenticated = true; // Placeholder for auth state - Temporarily set to true for testing
+const isAuthenticated = true;
 const userName = "Dr. Jane Doe"; // Placeholder for user name
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
+  /*
   useEffect(() => {
     // Redirect to login if not authenticated
     if (!isAuthenticated) {
@@ -34,11 +36,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   if (!isAuthenticated) {
     return null; // Or a loading spinner
   }
+  */
 
   const handleLogout = () => {
     console.log("Logging out...");
     // TODO: Implement Firebase sign out logic
-    // router.push('/login');
+    router.push('/login'); // Redirect to login after logout
   }
 
   return (
