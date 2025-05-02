@@ -16,7 +16,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Pill, Loader2 } from 'lucide-react';
-import { auth, db } from '@/firebase'; // Ensure these are correctly initialized and exported
+import { auth, db } from '@/lib/firebase'; // Ensure these are correctly initialized and exported
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore'; // Import serverTimestamp
 import { useToast } from '@/hooks/use-toast';
@@ -37,6 +37,7 @@ export default function SignupPage() {
 
     if (password !== confirmPassword) {
       setError('Passwords do not match.');
+      toast({ title: "Signup Failed", description: "Passwords do not match.", variant: "destructive" });
       return;
     }
 
@@ -61,7 +62,7 @@ export default function SignupPage() {
         name: fullName,
         email: email,
         createdAt: serverTimestamp(), // Add creation timestamp
-        // Removed settings.modules initialization here
+        // Settings are no longer needed here as module selection is removed
       });
       console.log('[Signup] Firestore document created.');
 
@@ -89,6 +90,7 @@ export default function SignupPage() {
              message = 'Could not save user profile. Please check permissions or contact support.';
              break;
            default:
+              // Use Firebase error message if available, otherwise keep the generic one
               message = err.message || message;
               break;
         }
@@ -103,14 +105,8 @@ export default function SignupPage() {
     }
   };
 
-    // Show loading overlay if isLoading is true
-  if (isLoading) {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-      </div>
-    );
-  }
+    // Show loading overlay if isLoading is true - Removed for simplicity, using button state instead
+    // if (isLoading) { ... }
 
 
   return (
@@ -142,6 +138,7 @@ export default function SignupPage() {
               <Input id="confirmPassword" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required disabled={isLoading}/>
             </div>
             {error && <p className="text-sm text-destructive text-center">{error}</p>}
+            {/* Removed asChild from this button */}
             <Button type="submit" className="w-full" disabled={isLoading}>
                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               {isLoading ? 'Creating Account...' : 'Sign Up'}
@@ -150,7 +147,7 @@ export default function SignupPage() {
         </CardContent>
          <CardFooter className="text-center text-sm">
            Already have an account?{' '}
-            <Button variant="link" asChild className="p-0 h-auto ml-1 text-primary"> {/* Primary color link */}
+            <Button variant="link" asChild className="p-0 h-auto ml-1 text-primary"> {/* This button correctly uses asChild with Link */}
               <Link href="/auth/login">
                 Login
               </Link>
