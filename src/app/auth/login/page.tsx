@@ -92,11 +92,11 @@ export default function LoginPage() {
         </CardContent>
          <CardFooter className="text-center text-sm">
            Don't have an account?{' '}
-            <Button variant="link" asChild className="p-0 h-auto ml-1 text-primary">
-              <Link href="/auth/signup">
-                Sign up
-              </Link>
-           </Button>
+            <Link href="/auth/signup" passHref>
+               <Button variant="link" asChild className="p-0 h-auto ml-1 text-primary">
+                 <span>Sign up</span>
+               </Button>
+             </Link>
          </CardFooter>
       </Card>
   );
