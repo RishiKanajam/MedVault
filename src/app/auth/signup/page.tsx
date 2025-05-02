@@ -16,7 +16,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Pill, Loader2 } from 'lucide-react';
-import { auth, db } from '@/firebase'; // Corrected import path
+import { auth, db } from '@/firebase'; // Correct import path
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore'; // Import serverTimestamp
 import { useToast } from '@/hooks/use-toast';
@@ -62,7 +62,6 @@ export default function SignupPage() {
         name: fullName,
         email: email,
         createdAt: serverTimestamp(), // Add creation timestamp
-        // Settings are no longer needed here as module selection is removed
       });
       console.log('[Signup] Firestore document created.');
 
@@ -105,10 +104,6 @@ export default function SignupPage() {
     }
   };
 
-    // Show loading overlay if isLoading is true - Removed for simplicity, using button state instead
-    // if (isLoading) { ... }
-
-
   return (
     // The parent layout already handles centering
       <Card className="panel-primary w-full max-w-md"> {/* Use primary panel */}
@@ -138,7 +133,6 @@ export default function SignupPage() {
               <Input id="confirmPassword" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required disabled={isLoading}/>
             </div>
             {error && <p className="text-sm text-destructive text-center">{error}</p>}
-            {/* Removed asChild from this button */}
              <Button type="submit" className="w-full" disabled={isLoading}>
                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                {isLoading ? 'Creating Account...' : 'Sign Up'}
@@ -147,7 +141,7 @@ export default function SignupPage() {
         </CardContent>
          <CardFooter className="text-center text-sm">
            Already have an account?{' '}
-            <Button variant="link" asChild className="p-0 h-auto ml-1 text-primary"> {/* This button correctly uses asChild with Link */}
+            <Button variant="link" asChild className="p-0 h-auto ml-1 text-primary">
               <Link href="/auth/login">
                 Login
               </Link>
