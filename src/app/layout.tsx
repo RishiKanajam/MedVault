@@ -1,10 +1,10 @@
-
 // app/layout.tsx  (Server Component)
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import Providers from './providers'; // Keep React Query Provider if needed
+import { ThemeProvider } from "@/components/theme-provider"; // Keep ThemeProvider here
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
@@ -24,12 +24,20 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       {/* Add suppressHydrationWarning to body as well */}
       <body className={`${inter.variable} font-sans antialiased`} suppressHydrationWarning>
-         {/* Removed ThemeProvider and AuthProvider from root */}
-         <Providers> {/* React Query */}
-             {children}
-             <Toaster />
-         </Providers>
+         <ThemeProvider
+             attribute="class"
+             defaultTheme="system" // Default to system theme preference
+             enableSystem
+             disableTransitionOnChange
+         >
+             <Providers> {/* React Query */}
+                 {children}
+                 <Toaster />
+             </Providers>
+         </ThemeProvider>
       </body>
     </html>
   );
 }
+
+    

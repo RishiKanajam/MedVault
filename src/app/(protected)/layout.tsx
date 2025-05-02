@@ -1,13 +1,13 @@
-
 'use client';
-import React from 'react';
-import AuthProvider from '@/providers/AuthProvider'; // Import the specific AuthProvider
-import { ThemeProvider } from "@/components/theme-provider"; // Import ThemeProvider
-import { SidebarProvider } from '@/components/ui/sidebar'; // Ensure SidebarProvider is here if needed for layout components
-import { AppSidebar } from '@/components/app-sidebar'; // Import AppSidebar
+import React, { useState, useEffect, useContext } from 'react';
+import { useRouter } from 'next/navigation'; // Use App Router's useRouter
+import { AuthContext, AuthProvider } from '@/providers/AuthProvider'; // Import context and provider
+import { ThemeProvider } from "@/components/theme-provider";
+import { SidebarProvider } from '@/components/ui/sidebar';
+import { AppSidebar } from '@/components/app-sidebar';
 import { SidebarInset } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
-import { User, Wifi, WifiOff } from 'lucide-react';
+import { User, Wifi, WifiOff, LogOut, Settings as SettingsIcon } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme-toggle';
 import {
   DropdownMenu,
@@ -32,13 +32,13 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
 import { useTheme } from "next-themes";
-import { useAuth } from '@/providers/AuthProvider'; // Use the hook from AuthProvider
 import { signOut } from 'firebase/auth';
-import { auth, db } from '@/firebase'; // Use correct firebase path
+import { auth, db } from '@/lib/firebase'; // Use correct firebase path
 import { doc, updateDoc } from 'firebase/firestore';
-import { useRouter } from 'next/navigation'; // Use App Router's useRouter
+import { Loader2 } from 'lucide-react'; // Import Loader
 
-// --- Re-integrated Header Components from previous AppLayout ---
+
+// --- Re-integrated Header Components ---
 
 // Connectivity Indicator
 const ConnectivityIndicator = () => {
@@ -107,10 +107,8 @@ const AppLogo = () => {
 };
 
 
-// --- Main Protected Layout ---
-
+// --- Main Protected Layout: Wraps Protected Pages ---
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
-  // AuthProvider handles the loading state internally and renders children or spinner
   return (
     <ThemeProvider
         attribute="class"
@@ -118,26 +116,36 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
         enableSystem
         disableTransitionOnChange
     >
-      <AuthProvider>
-        <ProtectedLayoutContent>
-            {children}
-        </ProtectedLayoutContent>
-      </AuthProvider>
+       {/* AuthProvider now wraps the actual layout content */}
+       <AuthProvider>
+         <ProtectedLayoutContent>
+             {children}
+         </ProtectedLayoutContent>
+       </AuthProvider>
     </ThemeProvider>
   );
 }
 
+
 // --- Inner Content Component (requires AuthContext) ---
-// This component renders only when AuthProvider has finished loading and user is authenticated
+// This component handles rendering the protected UI or redirecting
 function ProtectedLayoutContent({ children }: { children: React.ReactNode }) {
     const router = useRouter();
-    const { user: authUser, profile } = useAuth(); // Get user and profile from the specific AuthContext
+    const { user: authUser, profile, authLoading } = useContext(AuthContext); // Use context
     const [isProfileModalOpen, setIsProfileModalOpen] = React.useState(false);
     const [isUpdatingProfile, setIsUpdatingProfile] = React.useState(false);
     const [profileFormData, setProfileFormData] = React.useState({ name: '', photoURL: '' });
     const { toast } = useToast();
 
-    React.useEffect(() => {
+    useEffect(() => {
+      // If loading is finished and there's no user, redirect to login
+      if (!authLoading && !authUser) {
+        console.log("[ProtectedLayoutContent] No authenticated user found after load. Redirecting to login.");
+        router.replace('/auth/login');
+      }
+    }, [authLoading, authUser, router]);
+
+    useEffect(() => {
         if (profile) {
             setProfileFormData({
                 name: profile.name || '',
@@ -150,7 +158,7 @@ function ProtectedLayoutContent({ children }: { children: React.ReactNode }) {
         try {
             await signOut(auth);
             toast({ title: "Logged Out", description: "You have been successfully logged out." });
-            // No need to push, middleware and AuthProvider state change will handle redirect
+            // Redirect handled by the useEffect hook above when authUser becomes null
         } catch (error) {
             console.error("Logout error:", error);
             toast({ title: "Logout Error", description: "Failed to log out.", variant: "destructive" });
@@ -179,6 +187,18 @@ function ProtectedLayoutContent({ children }: { children: React.ReactNode }) {
         }
     }
 
+    // If still loading or no user (and redirect hasn't happened yet), show nothing or a minimal loader
+    // The main loader is handled by AuthProvider itself
+    if (authLoading || !authUser) {
+       // Render minimal loader or null while redirecting
+        return (
+          <div className="flex items-center justify-center h-screen bg-background">
+            <Loader2 className="animate-spin h-12 w-12 text-primary" />
+          </div>
+        );
+    }
+
+    // Render the protected layout only when authenticated
     return (
          <SidebarProvider>
             <div className="flex min-h-screen w-full bg-background">
@@ -216,11 +236,11 @@ function ProtectedLayoutContent({ children }: { children: React.ReactNode }) {
                                         Profile
                                     </DropdownMenuItem>
                                     <DropdownMenuItem onSelect={() => router.push('/settings')} className="focus:bg-accent/10 focus:text-accent-foreground">
-                                        Settings
+                                        <SettingsIcon className="mr-2 h-4 w-4" /> Settings
                                     </DropdownMenuItem>
                                     <DropdownMenuSeparator className="bg-border" />
                                     <DropdownMenuItem onSelect={handleLogout} className="focus:bg-accent/10 focus:text-accent-foreground">
-                                        Logout
+                                         <LogOut className="mr-2 h-4 w-4" /> Logout
                                     </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
@@ -279,7 +299,7 @@ function ProtectedLayoutContent({ children }: { children: React.ReactNode }) {
                                 <Button type="button" variant="outline">Cancel</Button>
                             </DialogClose>
                             <Button type="submit" variant="default" disabled={isUpdatingProfile}>
-                                {/* {isUpdatingProfile ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null} */}
+                                {isUpdatingProfile ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
                                 {isUpdatingProfile ? 'Saving...' : 'Save changes'}
                             </Button>
                         </DialogFooter>
@@ -290,3 +310,5 @@ function ProtectedLayoutContent({ children }: { children: React.ReactNode }) {
         </SidebarProvider>
     );
 }
+
+    
