@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation'; // Keep useRouter for potential future use, but not for redirect here
 import { signInWithEmailAndPassword } from 'firebase/auth';
 
 import { auth } from '@/firebase';       // Correct firebase export path
@@ -15,7 +15,7 @@ import Link from 'next/link';
 import { Loader2, Pill } from 'lucide-react';
 
 export default function LoginPage() {
-  const router = useRouter(); // Correct hook usage
+  const router = useRouter(); // Keep router instance if needed elsewhere
   const { toast } = useToast();
 
   const [email, setEmail] = useState('');
@@ -30,11 +30,11 @@ export default function LoginPage() {
 
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      // Toast first, then redirect
+      // Toast first, AuthProviderWrapper will handle the redirect
       toast({ title: 'Login Successful', description: 'Redirecting to dashboard...' });
-      console.log("[Login] Redirecting to /dashboard after successful login."); // Added log
-      // Direct redirect to dashboard on success
-      router.replace('/dashboard'); // Use replace for better history management
+      console.log("[Login] Login successful. AuthProviderWrapper will handle redirect.");
+      // DO NOT redirect here - let the auth state change trigger the redirect in AuthProviderWrapper/AuthLogic
+      // router.replace('/dashboard'); // <-- REMOVED
     } catch (err: any) {
       console.error('[Login] Error:', err);
       let message = 'An unknown error occurred during login.';
@@ -56,12 +56,20 @@ export default function LoginPage() {
       setError(message);
       toast({ title: 'Login Failed', description: message, variant: 'destructive' });
     } finally {
-      setIsLoading(false); // Always set loading to false
+      // Set loading to false ONLY if there was an error.
+      // If login was successful, the redirect will happen, and this component might unmount.
+      // Keeping it loading prevents user interaction while waiting for redirect.
+      // If the component *doesn't* unmount quickly (e.g., due to slow redirect),
+      // we might need to reconsider this, but typically the redirect is fast.
+      if (error) {
+          setIsLoading(false);
+      }
+      // If login is successful, let it stay in the loading state until redirect happens
     }
   };
 
   return (
-    <Card className="w-full max-w-sm mx-auto my-24 panel-primary">
+    <Card className="w-full max-w-sm mx-auto my-auto panel-primary"> {/* Adjusted margin for centering */}
       <CardHeader className="text-center">
         <div className="flex justify-center mb-4">
           <Pill className="w-10 h-10 text-primary" />
@@ -110,9 +118,11 @@ export default function LoginPage() {
 
       <CardFooter className="text-center text-sm">
         Don’t have an account?{' '}
-        <Link href="/auth/signup" className="text-primary underline ml-1">
-          Sign up
-        </Link>
+        <Button variant="link" asChild className="p-0 h-auto ml-1 text-primary">
+          <Link href="/auth/signup">
+             Sign up
+          </Link>
+        </Button>
       </CardFooter>
     </Card>
   );
