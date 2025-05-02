@@ -8,14 +8,14 @@ import { Loader2 } from 'lucide-react'; // Use Loader2 for consistency
 
 // Component to handle auth state logic and conditional rendering/redirects
 function AuthLogic({ children }: { children: React.ReactNode }) {
-  const { user, authLoading } = useAuth();
+  const { user, authLoading } = useAuth(); // Get user and loading state from context
   const router = useRouter();
   const pathname = usePathname();
 
   const isAuthPage = pathname.startsWith('/auth');
 
   useEffect(() => {
-    // Don't run redirect logic until auth state is determined
+    // Skip redirect logic if still loading auth state initially
     if (authLoading) {
       console.log("[AuthLogic] Waiting for auth state...");
       return;
@@ -23,35 +23,29 @@ function AuthLogic({ children }: { children: React.ReactNode }) {
 
     console.log(`[AuthLogic] Auth loaded. User: ${!!user}, Path: ${pathname}, IsAuthPage: ${isAuthPage}`);
 
-    // Scenario 1: User is logged in
-    if (user) {
-      // If logged-in user is on an auth page (e.g., /auth/login), redirect them to dashboard
-      if (isAuthPage) {
-        console.log("[AuthLogic] User logged in, on auth page. Redirecting to /dashboard...");
-        router.replace('/dashboard');
-      } else {
-         console.log("[AuthLogic] User logged in, on protected page. Allowing access.");
-         // User is logged in and on a protected page, allow rendering (handled below)
-      }
+    // Redirect logic:
+    // 1. Logged in user on an auth page -> redirect to dashboard
+    if (user && isAuthPage) {
+      console.log("[AuthLogic] User logged in, on auth page. Redirecting to /dashboard...");
+      router.replace('/dashboard');
     }
-    // Scenario 2: User is logged out
-    else {
-      // If logged-out user is on a protected page, redirect them to login
-      if (!isAuthPage) {
-        console.log("[AuthLogic] User logged out, on protected page. Redirecting to /auth/login...");
-        router.replace('/auth/login');
-      } else {
-         console.log("[AuthLogic] User logged out, on auth page. Allowing access.");
-         // User is logged out and on an auth page, allow rendering (handled below)
-      }
+    // 2. Logged out user on a protected page -> redirect to login
+    else if (!user && !isAuthPage) {
+      console.log("[AuthLogic] User logged out, on protected page. Redirecting to /auth/login...");
+      const loginUrl = new URL('/auth/login', window.location.origin); // Use window.location.origin for base URL
+      loginUrl.searchParams.set('redirectedFrom', pathname);
+      router.replace(loginUrl.toString()); // Use replace to avoid history issues
+    } else {
+        console.log("[AuthLogic] No redirect needed based on current auth state and path.");
     }
+
   }, [user, authLoading, isAuthPage, pathname, router]);
 
   // --- Rendering Logic ---
 
-  // 1. Show loading spinner while auth state is being determined
+  // 1. Show global loading spinner ONLY while the initial auth check is happening.
   if (authLoading) {
-    console.log("[AuthLogic] Rendering global loading spinner...");
+    console.log("[AuthLogic] Rendering global loading spinner (initial auth check)...");
     return (
       <div className="flex items-center justify-center h-screen bg-background">
         <Loader2 className="animate-spin h-12 w-12 text-primary" />
@@ -59,24 +53,25 @@ function AuthLogic({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // 2. If auth is loaded, decide what to render based on auth status and route
-  // Render children (actual page content) if:
-  // - User is logged in AND on a protected page
-  // - User is logged out AND on an auth page
+  // 2. Once authLoading is false, render children immediately IF the conditions are met
+  //    (logged in on protected page OR logged out on auth page).
+  //    The redirect logic in useEffect will handle navigation away if needed.
+  //    This prevents showing the spinner during the brief moment *after* loading finishes
+  //    but *before* the redirect potentially kicks in.
   if ((user && !isAuthPage) || (!user && isAuthPage)) {
-     console.log("[AuthLogic] Rendering page content.");
+     console.log("[AuthLogic] Auth loaded. Rendering page content.");
      return <>{children}</>;
   }
 
-  // 3. In other cases (e.g., logged-in user on auth page *before* redirect finishes,
-  // or logged-out user on protected page *before* redirect finishes), show a spinner
-  // to prevent flashing incorrect content.
-  console.log("[AuthLogic] Conditions not met for rendering children, showing intermediate loading spinner.");
+  // 3. If conditions aren't met (e.g., logged-in user hits /auth/login directly),
+  //    show a temporary spinner while the redirect occurs. This prevents flashing
+  //    the login page briefly before navigating to the dashboard.
+  console.log("[AuthLogic] Auth loaded but waiting for redirect, showing intermediate spinner.");
   return (
-    <div className="flex items-center justify-center h-screen bg-background">
-      <Loader2 className="animate-spin h-12 w-12 text-primary" />
-    </div>
-  );
+     <div className="flex items-center justify-center h-screen bg-background">
+       <Loader2 className="animate-spin h-12 w-12 text-primary" />
+     </div>
+   );
 }
 
 

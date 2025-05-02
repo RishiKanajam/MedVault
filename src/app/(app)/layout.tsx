@@ -5,7 +5,7 @@ import React from 'react';
 import { SidebarProvider, Sidebar, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/app-sidebar';
 import { Header } from '@/components/app-header';
-import { UserProvider } from '@/context/UserContext'; // Context for user profile
+import { AuthProviderWrapper } from '@/providers/AuthProviderWrapper'; // Import the wrapper
 
 export default function AppLayout({
   children,
@@ -13,8 +13,10 @@ export default function AppLayout({
   children: React.ReactNode;
 }) {
   // This layout wraps all pages within the (app) group
+  // It uses AuthProviderWrapper to handle auth state and loading/redirects
+  // for these protected pages.
   return (
-    <UserProvider> {/* User profile context */}
+    <AuthProviderWrapper>
         <SidebarProvider>
             <Sidebar> {/* Collapsible dark sidebar */}
                 <AppSidebar />
@@ -26,6 +28,6 @@ export default function AppLayout({
                  </main>
             </SidebarInset>
         </SidebarProvider>
-    </UserProvider>
+    </AuthProviderWrapper>
   );
 }
