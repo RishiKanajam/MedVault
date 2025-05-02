@@ -21,8 +21,8 @@ export default function Home() {
        }
    }, [user, authLoading, router]);
 
-   // Show loading indicator while checking auth state
-   if (authLoading) {
+   // Show loading indicator while checking auth state OR if user is logged in but redirect hasn't completed
+   if (authLoading || user) {
         return (
           <div className="flex min-h-screen items-center justify-center bg-background">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -31,37 +31,33 @@ export default function Home() {
    }
 
    // Render landing page content only if user is not authenticated and loading is finished
-   if (!user) {
-        return (
-          <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
-             <Card className="panel-primary w-full max-w-md text-center animate-fadeIn">
-                <CardHeader>
-                  <div className="flex justify-center mb-4">
-                    <Pill className="w-12 h-12 text-primary" />
-                  </div>
-                 <CardTitle className="text-3xl font-bold">Welcome to MediSync Pro</CardTitle>
-                 <CardDescription>Your integrated solution for medical management and clinical support.</CardDescription>
-               </CardHeader>
-               <CardContent>
-                 <p className="mb-6 text-muted-foreground">Please log in or sign up to access your dashboard.</p>
-                 <div className="flex justify-center gap-4">
-                   <Button asChild>
-                      <Link href="/auth/login">
-                        <LogIn className="mr-2 h-4 w-4" /> Login
-                      </Link>
-                   </Button>
-                    <Button variant="outline" asChild>
-                      <Link href="/auth/signup">
-                         Sign Up
-                      </Link>
-                    </Button>
-                 </div>
-               </CardContent>
-             </Card>
-           </div>
-        );
-   }
-
-   // If user is logged in but redirection hasn't happened yet (should be brief)
-   return null; // Or return the loader again
+   // The check for `!user` is implicitly true if the above condition (authLoading || user) is false
+    return (
+        <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
+            <Card className="panel-primary w-full max-w-md text-center animate-fadeIn">
+            <CardHeader>
+                <div className="flex justify-center mb-4">
+                <Pill className="w-12 h-12 text-primary" />
+                </div>
+                <CardTitle className="text-3xl font-bold">Welcome to MediSync Pro</CardTitle>
+                <CardDescription>Your integrated solution for medical management and clinical support.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <p className="mb-6 text-muted-foreground">Please log in or sign up to access your dashboard.</p>
+                <div className="flex justify-center gap-4">
+                <Button asChild>
+                    <Link href="/auth/login">
+                    <LogIn className="mr-2 h-4 w-4" /> Login
+                    </Link>
+                </Button>
+                <Button variant="outline" asChild>
+                    <Link href="/auth/signup">
+                        Sign Up
+                    </Link>
+                </Button>
+                </div>
+            </CardContent>
+            </Card>
+        </div>
+    );
 }
