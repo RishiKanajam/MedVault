@@ -4,7 +4,6 @@
 import React from 'react';
 import { SidebarProvider, Sidebar, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/app-sidebar';
-import { Header } from '@/components/app-header';
 import { AuthProviderWrapper } from '@/providers/AuthProviderWrapper'; // Import the wrapper
 
 export default function AppLayout({
@@ -22,7 +21,6 @@ export default function AppLayout({
                 <AppSidebar />
             </Sidebar>
             <SidebarInset> {/* Main content area */}
-                <Header /> {/* Optional top header */}
                 <main className="flex-1 overflow-y-auto bg-background"> {/* Ensure content area scrolls */}
                      {children}
                  </main>

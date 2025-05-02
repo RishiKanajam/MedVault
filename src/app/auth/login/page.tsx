@@ -2,8 +2,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation'; // Correct import
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 
 import { auth } from '@/firebase';       // Correct firebase export path
@@ -12,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import Link from 'next/link';
 import { Loader2, Pill } from 'lucide-react';
 
 export default function LoginPage() {
@@ -32,6 +32,8 @@ export default function LoginPage() {
       await signInWithEmailAndPassword(auth, email, password);
       // Toast first, then redirect
       toast({ title: 'Login Successful', description: 'Redirecting to dashboard...' });
+      console.log("[Login] Redirecting to /dashboard after successful login."); // Added log
+      // Direct redirect to dashboard on success
       router.replace('/dashboard'); // Use replace for better history management
     } catch (err: any) {
       console.error('[Login] Error:', err);
@@ -108,11 +110,9 @@ export default function LoginPage() {
 
       <CardFooter className="text-center text-sm">
         Don’t have an account?{' '}
-        <Button variant="link" asChild className="p-0 h-auto ml-1 text-primary">
-          <Link href="/auth/signup">
-             Sign up
-          </Link>
-       </Button>
+        <Link href="/auth/signup" className="text-primary underline ml-1">
+          Sign up
+        </Link>
       </CardFooter>
     </Card>
   );

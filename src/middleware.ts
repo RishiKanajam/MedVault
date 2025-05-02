@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 
 // Define public paths that don't require authentication
 const PUBLIC_PATHS_PREFIX = ['/auth']; // Routes starting with /auth are public
+const PROTECTED_PATH_PREFIX = '/';
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -11,6 +12,7 @@ export function middleware(req: NextRequest) {
 
   console.log(`[Middleware] Path: ${pathname}, Is Authenticated: ${isAuthenticated}`);
 
+  const isProtectedRoute = !PUBLIC_PATHS_PREFIX.some(prefix => pathname.startsWith(prefix)) && pathname.startsWith(PROTECTED_PATH_PREFIX);
   const isPublicPath = PUBLIC_PATHS_PREFIX.some(prefix => pathname.startsWith(prefix));
 
   // 1. If accessing a public path (e.g., /auth/login, /auth/signup)
@@ -25,17 +27,18 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // 2. If accessing any other path (assumed protected)
-  // If not authenticated, redirect to login
-  if (!isAuthenticated) {
-    console.log(`[Middleware] Unauthenticated access to protected path ${pathname}. Redirecting to /auth/login.`);
-    const loginUrl = new URL('/auth/login', req.url); // Use req.url as base
-    loginUrl.searchParams.set('redirectedFrom', pathname); // Remember where they tried to go
-    return NextResponse.redirect(loginUrl);
+  // 2. If accessing a protected path (starts with / and is not public)
+  if (isProtectedRoute) {
+      // If not authenticated, redirect to login
+      if (!isAuthenticated) {
+          console.log(`[Middleware] Unauthenticated access to protected path ${pathname}. Redirecting to /auth/login.`);
+          const loginUrl = new URL('/auth/login', req.url); // Use req.url as base
+          loginUrl.searchParams.set('redirectedFrom', pathname);
+          return NextResponse.redirect(loginUrl);
+      }
+      // 3. If authenticated and accessing a protected path, allow access
+      console.log(`[Middleware] Authenticated access to protected path: ${pathname}. Allowing.`);
   }
-
-  // 3. If authenticated and accessing a protected path, allow access
-  console.log(`[Middleware] Authenticated access to protected path: ${pathname}. Allowing.`);
   return NextResponse.next();
 }
 
