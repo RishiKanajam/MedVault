@@ -31,15 +31,16 @@ export function middleware(req: NextRequest) {
   if (isProtectedRoute) {
       // If not authenticated, redirect to login
       if (!isAuthenticated) {
-          console.log(`[Middleware] Unauthenticated access to protected path ${pathname}. Redirecting to /auth/login.`);
-          const loginUrl = new URL('/auth/login', req.url); // Use req.url as base
+        console.log(`[Middleware] Unauthenticated access to protected path ${pathname}. Redirecting to /auth/login.`);
+        const loginUrl = new URL('/auth/login', req.url); // Use req.url as base
           loginUrl.searchParams.set('redirectedFrom', pathname);
-          return NextResponse.redirect(loginUrl);
+        return NextResponse.redirect(loginUrl);
       }
-      // 3. If authenticated and accessing a protected path, allow access
-      console.log(`[Middleware] Authenticated access to protected path: ${pathname}. Allowing.`);
+    // 3. If authenticated and accessing a protected path, allow access
+    console.log(`[Middleware] Authenticated access to protected path: ${pathname}. Allowing.`);
+    return NextResponse.next()
   }
-  return NextResponse.next();
+  
 }
 
 // Configure the middleware to run on specific paths
