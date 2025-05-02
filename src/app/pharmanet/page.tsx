@@ -1,4 +1,4 @@
-
+// src/app/pharmanet/page.tsx
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -103,7 +103,7 @@ export default function PharmaNetPage() {
   const { data: searchResults = [], isLoading: isLoadingSearch, error: searchError, refetch: refetchSearch } = useQuery<SearchResult[], Error>({
     queryKey: ['rxNormSearch', searchTerm],
     queryFn: () => searchRxNormApi(searchTerm),
-    enabled: false,
+    enabled: false, // Trigger search manually
     staleTime: 1000 * 60 * 5,
     gcTime: 1000 * 60 * 15,
     retry: 1,
@@ -151,8 +151,15 @@ export default function PharmaNetPage() {
    // --- Mutations ---
    const confirmDosageMutation = useMutation({
       mutationFn: confirmDosageDetails,
-      onSuccess: (data) => { setDosageConfirmationResult(data); setShowDosageConfirmation(true); },
-      onError: (error) => { toast({ title: "Confirmation Error", description: "Failed to get dosage confirmation prompt.", variant: "destructive" }); },
+      onSuccess: (data) => {
+         console.log("[PharmaNet] Dosage confirmation AI response:", data); // Debug log
+         setDosageConfirmationResult(data);
+         setShowDosageConfirmation(true);
+      },
+      onError: (error) => {
+          console.error("[PharmaNet] Dosage confirmation mutation error:", error); // Debug log
+          toast({ title: "Confirmation Error", description: "Failed to get dosage confirmation prompt.", variant: "destructive" });
+      },
    });
 
    const summarizeTrialMutation = useMutation({
@@ -171,35 +178,55 @@ export default function PharmaNetPage() {
   const handleSearch = (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!searchTerm.trim() || authLoading) return;
+    console.log("[PharmaNet] Performing search for:", searchTerm);
     setSelectedDrug(null);
     setShowFullDetails(false);
-    queryClient.removeQueries({ queryKey: ['rxNormDetails'] });
+    // queryClient.removeQueries({ queryKey: ['rxNormDetails'] }); // No need to clear cache here, it's keyed by rxcui
     refetchSearch();
   };
 
-   const handleSelectDrug = async (drug: SearchResult) => {
-     if (authLoading) return;
+   const handleSelectDrug = (drug: SearchResult) => {
+     if (authLoading || confirmDosageMutation.isPending) return;
+     console.log("[PharmaNet] Selected drug:", drug);
      setSelectedDrug(drug);
-     setShowFullDetails(false);
-     queryClient.removeQueries({ queryKey: ['rxNormDetails', drug.rxNormId, clinicId] }); // Clear specific cache entry
+     setShowFullDetails(false); // Reset details view
+     setDetailedInfo(null); // Clear previous detailed info state
+     setDosageConfirmationResult(null); // Clear previous confirmation result
+     queryClient.removeQueries({ queryKey: ['rxNormDetails', drug.rxNormId, clinicId] }); // Clear specific cache entry for this drug
+     console.log("[PharmaNet] Triggering dosage confirmation mutation for:", drug.name);
      confirmDosageMutation.mutate({ drugName: drug.name });
    };
 
+   // Added function to set detailed info explicitly - needed for clearing
+   const setDetailedInfo = (info: DetailedInfo) => {
+      queryClient.setQueryData(['rxNormDetails', selectedDrug?.rxNormId, clinicId], info);
+   }
+
    const handleConfirmDosageView = () => {
+      console.log("[PharmaNet] Dosage confirmation result:", dosageConfirmationResult);
       setShowDosageConfirmation(false);
        if (dosageConfirmationResult?.intentConfirmed) {
+           console.log("[PharmaNet] Intent confirmed, showing full details.");
            setShowFullDetails(true);
            refetchDetails(); // Explicitly refetch or rely on enabled flag
        } else {
+            console.log("[PharmaNet] Intent denied, not showing details.");
            toast({ title: "Access Cancelled", description: "Detailed dosage information not shown.", variant: "default" });
+           // Explicitly set data to null if access is denied
+           setDetailedInfo(null);
+           setShowFullDetails(false);
        }
-       setDosageConfirmationResult(null);
+       // Do not clear the result here, let it persist until next selection
+       // setDosageConfirmationResult(null);
    };
 
    const handleCancelDosageView = () => {
+       console.log("[PharmaNet] Dosage view cancelled by user.");
        setShowDosageConfirmation(false);
        setShowFullDetails(false);
-       setDosageConfirmationResult(null);
+       setDetailedInfo(null); // Clear details if cancelled
+       // Keep dosageConfirmationResult to potentially show the AI message again if needed
+       // setDosageConfirmationResult(null);
    }
 
    const handleSummarizeTrial = (trial: ClinicalTrial) => {
@@ -215,14 +242,14 @@ export default function PharmaNetPage() {
    const pageLoading = authLoading;
 
     if (pageLoading) {
-       return <div className="p-6"><Skeleton className="h-[70vh] w-full" /></div>; // Or a more specific skeleton
+       return <div className="p-6"><Skeleton className="h-[70vh] w-full bg-muted" /></div>; // Use muted bg
     }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-3 animate-fadeIn">
+    <div className="grid gap-6 lg:grid-cols-3 animate-fadeIn p-6"> {/* Added padding */}
       {/* Search and Results Column */}
       <div className="lg:col-span-1 flex flex-col gap-6">
-         <Card className="panel-primary">
+         <Card className="panel-primary"> {/* Use white panel */}
             <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                 <FlaskConical className="w-5 h-5 text-primary" /> PharmaNet Search
@@ -270,7 +297,7 @@ export default function PharmaNetPage() {
          </Card>
 
           {/* R&D Alerts Section */}
-          <Card className="panel-primary">
+          <Card className="panel-primary"> {/* Use white panel */}
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <AlertTriangle className="w-5 h-5 text-warning" /> R&D / Clinical Trial Alerts
@@ -310,7 +337,7 @@ export default function PharmaNetPage() {
 
       {/* Details Column */}
       <div className="lg:col-span-2">
-        <Card className="panel-primary sticky top-[76px]">
+        <Card className="panel-primary sticky top-[76px]"> {/* Use white panel */}
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <BookOpen className="w-5 h-5 text-primary" /> Drug Details
@@ -320,19 +347,21 @@ export default function PharmaNetPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="min-h-[60vh] space-y-4">
-             {(isLoadingDetails || confirmDosageMutation.isPending) && !detailedInfo && selectedDrug && (
+             {(isLoadingDetails || confirmDosageMutation.isPending) && selectedDrug && (
                  <div className="flex justify-center items-center h-40">
                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
                     <span className="ml-2 text-muted-foreground">
-                        {confirmDosageMutation.isPending ? 'Confirming...' : 'Loading details...'}
+                        {confirmDosageMutation.isPending ? 'Confirming access...' : 'Loading details...'}
                     </span>
                  </div>
              )}
-             {selectedDrug && !detailedInfo && !isLoadingDetails && !confirmDosageMutation.isPending && !detailsError && !showFullDetails && (
+             {/* Show placeholder only if a drug IS selected but details are not shown yet AND not loading/confirming */}
+             {selectedDrug && !showFullDetails && !isLoadingDetails && !confirmDosageMutation.isPending && !detailsError && (
                 <div className="p-6 text-center text-muted-foreground">
-                    Click "Confirm" in the dialog to view full dosage & interaction details.
+                     {dosageConfirmationResult ? dosageConfirmationResult.confirmationMessage : 'Click "Confirm" in the dialog to view full dosage & interaction details.'}
                 </div>
              )}
+             {/* Show details ONLY if showFullDetails is true */}
             {!isLoadingDetails && detailedInfo && showFullDetails && (
               <ScrollArea className="h-[calc(100vh - 250px)] pr-3">
                   <div className="space-y-6">
@@ -346,6 +375,8 @@ export default function PharmaNetPage() {
                         <h4 className="font-medium mb-2 text-base">Dosage & Interactions</h4>
                          <p className="text-sm bg-muted p-3 rounded-md border">
                             Full dosage and interaction details loaded successfully. Display formatted data here based on the structure of `detailedInfo`.
+                            {/* Example: Displaying raw details for debug */}
+                             {/* <pre className="text-xs whitespace-pre-wrap mt-2">{JSON.stringify(detailedInfo, null, 2)}</pre> */}
                          </p>
                     </div>
                     {detailedInfo.ingredients && detailedInfo.ingredients.length > 0 && (
@@ -359,6 +390,7 @@ export default function PharmaNetPage() {
                         </div>
                       </>
                     )}
+                     {/* TODO: Display other properties from detailedInfo */}
                   </div>
               </ScrollArea>
             )}
@@ -374,12 +406,15 @@ export default function PharmaNetPage() {
                 <AlertDialogHeader>
                 <AlertDialogTitle>Confirm Access</AlertDialogTitle>
                 <AlertDialogDescription>
-                    {dosageConfirmationResult?.confirmationMessage || 'Loading confirmation...'}
+                     {/* Display AI confirmation message or loading text */}
+                    {confirmDosageMutation.isPending ? 'Getting confirmation...' :
+                     dosageConfirmationResult?.confirmationMessage || 'Do you want to view sensitive dosage information?'}
                 </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                <AlertDialogCancel onClick={handleCancelDosageView}>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleConfirmDosageView}>Confirm</AlertDialogAction>
+                 {/* Disable buttons while mutation is pending */}
+                <AlertDialogCancel onClick={handleCancelDosageView} disabled={confirmDosageMutation.isPending}>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleConfirmDosageView} disabled={confirmDosageMutation.isPending}>Confirm</AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>

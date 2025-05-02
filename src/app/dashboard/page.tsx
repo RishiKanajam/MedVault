@@ -1,4 +1,4 @@
-
+// src/app/dashboard/page.tsx
 'use client';
 
 import React from 'react';
@@ -55,12 +55,12 @@ export default function DashboardPage() {
   const isLoading = authLoading || metricsLoading; // Loading depends on auth and metrics
 
   const metricCards = [
-    { title: "Total Medicines", value: metrics.totalMeds, icon: Boxes, href: "/inventory", color: "text-primary", iconColor: "text-primary" },
-    { title: "Expiring Soon", value: metrics.expiringSoon, icon: AlertTriangle, href: "/inventory?filter=expiring", color: "text-warning", iconColor: "text-warning" },
-    { title: "Expired Medicines", value: metrics.expired, icon: CalendarOff, href: "/inventory?filter=expired", color: "text-danger", iconColor: "text-danger" },
-    { title: "Cold-Chain Breaches", value: metrics.coldChainBreaches, icon: ThermometerSnowflake, href: "/inventory?filter=coldchain", color: "text-danger", iconColor: "text-danger" },
-    { title: "Active Shipments", value: metrics.activeShipments, icon: Truck, href: "/shipments", color: "text-info", iconColor: "text-info" },
-    { title: "Patient Records Added (6 mo)", value: recordsTrendData.reduce((sum, d) => sum + d.count, 0), icon: ClipboardList, href: "/history", color: "text-info", iconColor: "text-info" },
+    { title: "Total Medicines", value: metrics.totalMeds, icon: Boxes, href: "/inventory", color: "text-primary", iconColor: "text-primary" }, // Teal
+    { title: "Expiring Soon", value: metrics.expiringSoon, icon: AlertTriangle, href: "/inventory?filter=expiring", color: "text-warning", iconColor: "text-warning" }, // Warning Orange
+    { title: "Expired Medicines", value: metrics.expired, icon: CalendarOff, href: "/inventory?filter=expired", color: "text-danger", iconColor: "text-danger" }, // Danger Red
+    { title: "Cold-Chain Breaches", value: metrics.coldChainBreaches, icon: ThermometerSnowflake, href: "/inventory?filter=coldchain", color: "text-danger", iconColor: "text-danger" }, // Danger Red
+    { title: "Active Shipments", value: metrics.activeShipments, icon: Truck, href: "/shipments", color: "text-info", iconColor: "text-info" }, // Info Purple
+    { title: "Patient Records Added (6 mo)", value: recordsTrendData.reduce((sum, d) => sum + d.count, 0), icon: ClipboardList, href: "/history", color: "text-info", iconColor: "text-info" }, // Info Purple
  ];
 
    const quickActions = [
@@ -71,13 +71,12 @@ export default function DashboardPage() {
    ];
 
   return (
-    <div className="space-y-12 animate-fadeIn">
+    <div className="space-y-12 animate-fadeIn p-6"> {/* Added padding */}
        {/* Welcome Banner */}
-       <Card className="bg-surface text-foreground shadow-card relative overflow-hidden">
-          <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>
+       <Card className="panel-primary relative overflow-hidden"> {/* Use white panel */}
+          <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div> {/* Accent bar */}
          <CardHeader className="pl-8 pt-6 pb-6">
            <CardTitle className="text-2xl text-primary">
-              {/* Use profile name */}
              {isLoading ? <Skeleton className="h-8 w-48 bg-muted" /> : `Welcome back, ${profile?.name || 'User'}!`}
            </CardTitle>
            <CardDescription className="text-muted-foreground">
@@ -89,7 +88,7 @@ export default function DashboardPage() {
        {/* Metric Cards */}
        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
          {metricCards.map((metric, index) => (
-           <Card key={index} className="shadow-card bg-surface border-border rounded-lg">
+           <Card key={index} className="panel-secondary"> {/* Use secondary panel (light gray) */}
              <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 pt-4 px-4">
                <CardTitle className="text-sm font-medium text-muted-foreground">{metric.title}</CardTitle>
                <metric.icon className={`h-5 w-5 ${metric.iconColor}`} />
@@ -121,7 +120,7 @@ export default function DashboardPage() {
        {/* Charts Section */}
        <div className="grid gap-6 lg:grid-cols-2">
          {/* Expiry Status Bar Chart */}
-         <Card className="shadow-card bg-surface border-border rounded-lg col-span-1">
+         <Card className="panel-primary col-span-1"> {/* Use white panel */}
            <CardHeader>
              <CardTitle className="text-lg flex items-center gap-2"><BarChart3 className="text-primary" /> Medicine Expiry Status</CardTitle>
              <CardDescription>Overview of stock status based on expiry.</CardDescription>
@@ -150,7 +149,7 @@ export default function DashboardPage() {
          </Card>
 
          {/* Patient Records Line Chart */}
-         <Card className="shadow-card bg-surface border-border rounded-lg col-span-1">
+         <Card className="panel-primary col-span-1"> {/* Use white panel */}
            <CardHeader>
              <CardTitle className="text-lg flex items-center gap-2"><LineChart className="text-info" /> Patient Records Trend (6 Mo)</CardTitle>
               <CardDescription>Number of patient records added monthly.</CardDescription>
@@ -181,7 +180,7 @@ export default function DashboardPage() {
           <h2 className="text-xl font-semibold mb-4 text-foreground">Quick Actions</h2>
           <div className="grid gap-6 md:grid-cols-3">
              {quickActions.map((action, index) => (
-                <Card key={index} className="shadow-card bg-surface border border-border rounded-lg hover:border-primary hover:scale-[1.02] transition-all duration-200">
+                <Card key={index} className="panel-primary hover:border-primary hover:scale-[1.02] transition-all duration-200"> {/* Use white panel */}
                  <Link href={action.href} className="block h-full">
                     <CardContent className="pt-8 pb-6 flex flex-col items-center justify-center text-center h-full">
                         <action.icon className="h-10 w-10 text-primary mb-4" />
@@ -195,8 +194,8 @@ export default function DashboardPage() {
        </div>
 
        {/* Optional: Recent Activity Feed */}
-       <Card className="shadow-card bg-surface border-border rounded-lg">
-          <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>
+       <Card className="panel-primary relative overflow-hidden"> {/* Use white panel */}
+          <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div> {/* Accent bar */}
          <CardHeader className="pl-8">
            <CardTitle className="flex items-center gap-2 text-lg"><Activity className="h-5 w-5 text-primary" /> Recent Activity</CardTitle>
            <CardDescription>Overview of recent inventory changes and alerts.</CardDescription>

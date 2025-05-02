@@ -1,4 +1,4 @@
-
+// src/app/inventory/page.tsx
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -13,7 +13,7 @@ import {
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, Search, MoreHorizontal, Edit, Trash2, Truck, QrCode as QrCodeIcon } from 'lucide-react';
+import { PlusCircle, Search, MoreHorizontal, Edit, Trash2, Truck, QrCode as QrCodeIcon, Loader2, Calendar as CalendarIcon } from 'lucide-react'; // Added Loader2, CalendarIcon
 import { Input } from '@/components/ui/input';
 import {
   Dialog,
@@ -42,7 +42,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from "@/components/ui/calendar"
 import { format } from "date-fns"
-import { Calendar as CalendarIcon } from "lucide-react"
 import QRCode from 'qrcode.react'; // Import QR Code component
 import { cn } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -120,22 +119,22 @@ function getStatusInfo(expiry: string, qty: number): { label: string; variant: '
     sevenDaysFromNow.setDate(now.getDate() + 7);
 
     if (isNaN(expiryDate.getTime())) { // Handle invalid date format
-       return { label: 'Invalid Date', variant: 'destructive', color: 'text-destructive' };
+       return { label: 'Invalid Date', variant: 'destructive', color: 'text-danger' }; // Use danger color
     }
 
     if (expiryDate < now) {
-      return { label: 'Expired', variant: 'destructive', color: 'text-destructive' };
+      return { label: 'Expired', variant: 'destructive', color: 'text-danger' }; // Use danger color
     }
     if (qty <= 0) {
-       return { label: 'Out of Stock', variant: 'secondary', color: 'text-yellow-600' };
+       return { label: 'Out of Stock', variant: 'secondary', color: 'text-muted-foreground' }; // More muted
     }
     if (expiryDate < sevenDaysFromNow) {
-      return { label: 'Expiring Soon', variant: 'outline', color: 'text-orange-500' };
+      return { label: 'Expiring Soon', variant: 'outline', color: 'text-warning' }; // Use warning color
     }
-    return { label: 'In Stock', variant: 'default', color: 'text-green-600' };
+    return { label: 'In Stock', variant: 'default', color: 'text-primary-foreground' }; // Use primary bg with light text
   } catch (e) {
       console.error("Error parsing expiry date:", expiry, e);
-      return { label: 'Date Error', variant: 'destructive', color: 'text-destructive' };
+      return { label: 'Date Error', variant: 'destructive', color: 'text-danger' }; // Use danger color
   }
 }
 
@@ -334,319 +333,321 @@ export default function InventoryPage() {
    const pageLoading = authLoading || (isLoadingMedicines && !medicines?.length);
 
   return (
-    <Card className="panel-primary animate-fadeIn"> {/* Use primary panel */}
-      <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div>
-          <CardTitle>Medicine Inventory</CardTitle>
-          <CardDescription>Manage and track your medicine stock.</CardDescription>
-        </div>
-         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full md:w-auto">
-           <div className="relative flex-1 md:flex-initial md:w-64">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Search name, manufacturer, batch..."
-              className="pl-8 w-full"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          {/* TODO: Implement QR Scan Button */}
-          <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
-            <DialogTrigger asChild>
-                <Button onClick={handleOpenAddModal} disabled={!clinicId}>
-                    <PlusCircle className="mr-2 h-4 w-4" /> Add Medicine
-                </Button>
-            </DialogTrigger>
-            <DialogContent className="panel-primary sm:max-w-[450px]"> {/* Use primary panel */}
-                <DialogHeader>
-                    <DialogTitle>Add New Medicine</DialogTitle>
-                    <DialogDescription>Fill in the details for the new medicine.</DialogDescription>
-                </DialogHeader>
-                <form onSubmit={handleAddSubmit}>
-                    <div className="grid gap-4 py-4">
-                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="name" className="text-right">Name*</Label>
-                            <Input id="name" value={formData.name} onChange={handleInputChange} required className="col-span-3" />
-                         </div>
-                         <div className="grid grid-cols-4 items-center gap-4">
-                             <Label htmlFor="manufacturer" className="text-right">Manufacturer*</Label>
-                             <Input id="manufacturer" value={formData.manufacturer} onChange={handleInputChange} required className="col-span-3" />
-                         </div>
-                         <div className="grid grid-cols-4 items-center gap-4">
-                             <Label htmlFor="batch" className="text-right">Batch No.*</Label>
-                            <Input id="batch" value={formData.batch} onChange={handleInputChange} required className="col-span-3" />
-                         </div>
-                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="qty" className="text-right">Quantity</Label>
-                            <Input id="qty" type="number" min="0" value={formData.qty} onChange={handleInputChange} className="col-span-3" />
-                        </div>
-                         <div className="grid grid-cols-4 items-center gap-4">
-                           <Label htmlFor="expiry" className="text-right">Expiry Date*</Label>
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                <Button
-                                    variant={"outline"}
-                                    className={cn(
-                                    "col-span-3 justify-start text-left font-normal",
-                                    !expiryDate && "text-muted-foreground"
-                                    )}
-                                >
-                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                    {expiryDate ? format(expiryDate, "PPP") : <span>Pick a date</span>}
-                                </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="overlay-tertiary w-auto p-0"> {/* Use tertiary overlay */}
-                                <Calendar
-                                    mode="single"
-                                    selected={expiryDate}
-                                    onSelect={handleDateSelect}
-                                    initialFocus
-                                />
-                                </PopoverContent>
-                            </Popover>
-                         </div>
-                         {/* QR Code Preview (Ensure formData has necessary fields) */}
-                         {formData.name && formData.batch && formData.expiry && (
-                             <div className="grid grid-cols-4 items-center gap-4">
-                                <Label className="text-right">QR Code</Label>
-                                <div className="col-span-3 p-2 border rounded-md bg-white flex justify-center">
-                                     {/* Pass a temporary ID or structure for QR generation */}
-                                     <QRCode value={generateQRValue({...formData, id: 'temp-id'} as Medicine)} size={100} level="M" />
-                                </div>
-                             </div>
-                         )}
-                    </div>
-                    <DialogFooter>
-                        <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>
-                        <Button type="submit" disabled={addMutation.isPending}>
-                         {addMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Add Medicine'}
+    <div className="p-6"> {/* Added padding */}
+        <Card className="panel-primary animate-fadeIn"> {/* Use primary panel */}
+            <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div>
+                <CardTitle>Medicine Inventory</CardTitle>
+                <CardDescription>Manage and track your medicine stock.</CardDescription>
+                </div>
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full md:w-auto">
+                <div className="relative flex-1 md:flex-initial md:w-64">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                    type="search"
+                    placeholder="Search name, manufacturer, batch..."
+                    className="pl-8 w-full"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                </div>
+                {/* TODO: Implement QR Scan Button */}
+                <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
+                    <DialogTrigger asChild>
+                        <Button onClick={handleOpenAddModal} disabled={!clinicId}>
+                            <PlusCircle className="mr-2 h-4 w-4" /> Add Medicine
                         </Button>
-                    </DialogFooter>
-                </form>
-            </DialogContent>
-          </Dialog>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead className="hidden md:table-cell">Manufacturer</TableHead>
-              <TableHead className="hidden lg:table-cell">Batch No.</TableHead>
-              <TableHead>Quantity</TableHead>
-              <TableHead>Expiry Date</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {pageLoading && Array.from({ length: 5 }).map((_, index) => (
-                <TableRow key={`skel-${index}`}>
-                    <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                    <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
-                    <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-20" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-12" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                    <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
-                    <TableCell className="text-right"><Skeleton className="h-8 w-8 rounded-full" /></TableCell>
-                </TableRow>
-            ))}
-            {!pageLoading && isError && (
-                <TableRow>
-                    <TableCell colSpan={7} className="h-24 text-center text-destructive">
-                      Error loading inventory: {error?.message || 'Unknown error'}
-                    </TableCell>
-                </TableRow>
-             )}
-            {!pageLoading && !isError && filteredMedicines.length === 0 && (
-                <TableRow>
-                    <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                    No inventory items found{searchTerm ? ' matching your search' : ''}.
-                    </TableCell>
-                </TableRow>
-             )}
-            {!pageLoading && !isError && filteredMedicines.map((med) => {
-              const status = getStatusInfo(med.expiry, med.qty);
-              return (
-                <TableRow key={med.id}>
-                    <TableCell className="font-medium">{med.name}</TableCell>
-                    <TableCell className="hidden md:table-cell">{med.manufacturer}</TableCell>
-                    <TableCell className="hidden lg:table-cell">{med.batch}</TableCell>
-                    <TableCell>{med.qty}</TableCell>
-                    <TableCell>{format(new Date(med.expiry), "yyyy-MM-dd")}</TableCell>
-                    <TableCell>
-                    <Badge variant={status.variant} className={status.color}>
-                        {status.label}
-                    </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <Button variant="ghost" size="icon">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                    <span className="sr-only">Actions</span>
-                                </Button>
-                            </PopoverTrigger>
-                             {/* Use tertiary overlay for popover */}
-                            <PopoverContent className="overlay-tertiary w-40 p-1">
-                                <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => handleOpenEditModal(med)}>
-                                <Edit className="mr-2 h-4 w-4" /> Edit
-                                </Button>
-                                <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => handleOpenShipModal(med)}>
-                                <Truck className="mr-2 h-4 w-4" /> Ship
-                                </Button>
-                                <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                         <Button variant="ghost" size="sm" className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10">
-                                            <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                        </Button>
-                                    </AlertDialogTrigger>
-                                    {/* Use primary panel for alert dialog */}
-                                    <AlertDialogContent className="panel-primary">
-                                        <AlertDialogHeader>
-                                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                            This action cannot be undone. This will permanently delete the medicine record for "{med.name} (Batch: {med.batch})".
-                                        </AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                        <AlertDialogAction
-                                            onClick={() => handleDeleteConfirm(med.id)}
-                                            className={buttonVariants({ variant: "destructive" })}
-                                            disabled={deleteMutation.isPending}
+                    </DialogTrigger>
+                    <DialogContent className="panel-primary sm:max-w-[450px]"> {/* Use primary panel */}
+                        <DialogHeader>
+                            <DialogTitle>Add New Medicine</DialogTitle>
+                            <DialogDescription>Fill in the details for the new medicine.</DialogDescription>
+                        </DialogHeader>
+                        <form onSubmit={handleAddSubmit}>
+                            <div className="grid gap-4 py-4">
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="name" className="text-right">Name*</Label>
+                                    <Input id="name" value={formData.name} onChange={handleInputChange} required className="col-span-3" />
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="manufacturer" className="text-right">Manufacturer*</Label>
+                                    <Input id="manufacturer" value={formData.manufacturer} onChange={handleInputChange} required className="col-span-3" />
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="batch" className="text-right">Batch No.*</Label>
+                                    <Input id="batch" value={formData.batch} onChange={handleInputChange} required className="col-span-3" />
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="qty" className="text-right">Quantity</Label>
+                                    <Input id="qty" type="number" min="0" value={formData.qty} onChange={handleInputChange} className="col-span-3" />
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="expiry" className="text-right">Expiry Date*</Label>
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                        <Button
+                                            variant={"outline"}
+                                            className={cn(
+                                            "col-span-3 justify-start text-left font-normal",
+                                            !expiryDate && "text-muted-foreground"
+                                            )}
                                         >
-                                             {deleteMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Delete'}
-                                        </AlertDialogAction>
-                                        </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                </AlertDialog>
-                                <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => {
-                                    const canvas = document.getElementById(`qr-${med.id}`) as HTMLCanvasElement;
-                                    if (canvas) {
-                                        const pngUrl = canvas.toDataURL("image/png").replace("image/png", "image/octet-stream");
-                                        let downloadLink = document.createElement("a");
-                                        downloadLink.href = pngUrl;
-                                        downloadLink.download = `${med.name}_${med.batch}_qr.png`;
-                                        document.body.appendChild(downloadLink);
-                                        downloadLink.click();
-                                        document.body.removeChild(downloadLink);
-                                    }
-                                }}>
-                                    <QrCodeIcon className="mr-2 h-4 w-4" /> Download QR
-                                </Button>
-                                {/* Hidden QR Code Canvas for Download */}
-                                <div style={{ display: 'none' }}>
-                                    <QRCode id={`qr-${med.id}`} value={generateQRValue(med)} size={256} level="M" />
+                                            <CalendarIcon className="mr-2 h-4 w-4" />
+                                            {expiryDate ? format(expiryDate, "PPP") : <span>Pick a date</span>}
+                                        </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="overlay-tertiary w-auto p-0"> {/* Use tertiary overlay */}
+                                        <Calendar
+                                            mode="single"
+                                            selected={expiryDate}
+                                            onSelect={handleDateSelect}
+                                            initialFocus
+                                        />
+                                        </PopoverContent>
+                                    </Popover>
                                 </div>
-                            </PopoverContent>
-                        </Popover>
-                    </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </CardContent>
-       {/* Edit Modal */}
-        <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-            <DialogContent className="panel-primary sm:max-w-[450px]"> {/* Use primary panel */}
-                <DialogHeader>
-                    <DialogTitle>Edit Medicine</DialogTitle>
-                    <DialogDescription>Update the details for {selectedMedicine?.name}.</DialogDescription>
-                </DialogHeader>
-                 <form onSubmit={handleEditSubmit}>
-                     <div className="grid gap-4 py-4">
-                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="edit-name" className="text-right">Name*</Label>
-                            <Input id="name" value={formData.name} onChange={handleInputChange} required className="col-span-3" />
-                         </div>
-                         <div className="grid grid-cols-4 items-center gap-4">
-                             <Label htmlFor="edit-manufacturer" className="text-right">Manufacturer*</Label>
-                             <Input id="manufacturer" value={formData.manufacturer} onChange={handleInputChange} required className="col-span-3" />
-                         </div>
-                         <div className="grid grid-cols-4 items-center gap-4">
-                             <Label htmlFor="edit-batch" className="text-right">Batch No.*</Label>
-                            <Input id="batch" value={formData.batch} onChange={handleInputChange} required className="col-span-3" />
-                         </div>
-                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="edit-qty" className="text-right">Quantity</Label>
-                            <Input id="qty" type="number" min="0" value={formData.qty} onChange={handleInputChange} className="col-span-3" />
-                        </div>
-                         <div className="grid grid-cols-4 items-center gap-4">
-                           <Label htmlFor="edit-expiry" className="text-right">Expiry Date*</Label>
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                <Button
-                                    variant={"outline"}
-                                    className={cn(
-                                    "col-span-3 justify-start text-left font-normal",
-                                    !expiryDate && "text-muted-foreground"
-                                    )}
-                                >
-                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                    {expiryDate ? format(expiryDate, "PPP") : <span>Pick a date</span>}
+                                {/* QR Code Preview (Ensure formData has necessary fields) */}
+                                {formData.name && formData.batch && formData.expiry && (
+                                    <div className="grid grid-cols-4 items-center gap-4">
+                                        <Label className="text-right">QR Code</Label>
+                                        <div className="col-span-3 p-2 border rounded-md bg-white flex justify-center">
+                                            {/* Pass a temporary ID or structure for QR generation */}
+                                            <QRCode value={generateQRValue({...formData, id: 'temp-id'} as Medicine)} size={100} level="M" />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                            <DialogFooter>
+                                <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>
+                                <Button type="submit" disabled={addMutation.isPending}>
+                                {addMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Add Medicine'}
                                 </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="overlay-tertiary w-auto p-0"> {/* Use tertiary overlay */}
-                                <Calendar
-                                    mode="single"
-                                    selected={expiryDate}
-                                    onSelect={handleDateSelect}
-                                    initialFocus
-                                />
-                                </PopoverContent>
-                            </Popover>
-                         </div>
-                          {/* QR Code Preview */}
-                         {formData.name && formData.batch && formData.expiry && selectedMedicine && (
-                             <div className="grid grid-cols-4 items-center gap-4">
-                                <Label className="text-right">QR Code</Label>
-                                <div className="col-span-3 p-2 border rounded-md bg-white flex justify-center">
-                                     <QRCode value={generateQRValue({...formData, id: selectedMedicine.id})} size={100} level="M" />
+                            </DialogFooter>
+                        </form>
+                    </DialogContent>
+                </Dialog>
+                </div>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                <TableHeader>
+                    <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead className="hidden md:table-cell">Manufacturer</TableHead>
+                    <TableHead className="hidden lg:table-cell">Batch No.</TableHead>
+                    <TableHead>Quantity</TableHead>
+                    <TableHead>Expiry Date</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {pageLoading && Array.from({ length: 5 }).map((_, index) => (
+                        <TableRow key={`skel-${index}`}>
+                            <TableCell><Skeleton className="h-4 w-32 bg-muted" /></TableCell>
+                            <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-24 bg-muted" /></TableCell>
+                            <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-20 bg-muted" /></TableCell>
+                            <TableCell><Skeleton className="h-4 w-12 bg-muted" /></TableCell>
+                            <TableCell><Skeleton className="h-4 w-20 bg-muted" /></TableCell>
+                            <TableCell><Skeleton className="h-6 w-20 rounded-full bg-muted" /></TableCell>
+                            <TableCell className="text-right"><Skeleton className="h-8 w-8 rounded-full bg-muted" /></TableCell>
+                        </TableRow>
+                    ))}
+                    {!pageLoading && isError && (
+                        <TableRow>
+                            <TableCell colSpan={7} className="h-24 text-center text-destructive">
+                            Error loading inventory: {error?.message || 'Unknown error'}
+                            </TableCell>
+                        </TableRow>
+                    )}
+                    {!pageLoading && !isError && filteredMedicines.length === 0 && (
+                        <TableRow>
+                            <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                            No inventory items found{searchTerm ? ' matching your search' : ''}.
+                            </TableCell>
+                        </TableRow>
+                    )}
+                    {!pageLoading && !isError && filteredMedicines.map((med) => {
+                    const status = getStatusInfo(med.expiry, med.qty);
+                    return (
+                        <TableRow key={med.id}>
+                            <TableCell className="font-medium">{med.name}</TableCell>
+                            <TableCell className="hidden md:table-cell">{med.manufacturer}</TableCell>
+                            <TableCell className="hidden lg:table-cell">{med.batch}</TableCell>
+                            <TableCell>{med.qty}</TableCell>
+                            <TableCell>{format(new Date(med.expiry), "yyyy-MM-dd")}</TableCell>
+                            <TableCell>
+                            <Badge variant={status.variant} className={status.color}>
+                                {status.label}
+                            </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button variant="ghost" size="icon">
+                                            <MoreHorizontal className="h-4 w-4" />
+                                            <span className="sr-only">Actions</span>
+                                        </Button>
+                                    </PopoverTrigger>
+                                    {/* Use tertiary overlay for popover */}
+                                    <PopoverContent className="overlay-tertiary w-40 p-1">
+                                        <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => handleOpenEditModal(med)}>
+                                        <Edit className="mr-2 h-4 w-4" /> Edit
+                                        </Button>
+                                        <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => handleOpenShipModal(med)}>
+                                        <Truck className="mr-2 h-4 w-4" /> Ship
+                                        </Button>
+                                        <AlertDialog>
+                                            <AlertDialogTrigger asChild>
+                                                <Button variant="ghost" size="sm" className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10">
+                                                    <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                                </Button>
+                                            </AlertDialogTrigger>
+                                            {/* Use primary panel for alert dialog */}
+                                            <AlertDialogContent className="panel-primary">
+                                                <AlertDialogHeader>
+                                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                    This action cannot be undone. This will permanently delete the medicine record for "{med.name} (Batch: {med.batch})".
+                                                </AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                <AlertDialogAction
+                                                    onClick={() => handleDeleteConfirm(med.id)}
+                                                    className={buttonVariants({ variant: "destructive" })}
+                                                    disabled={deleteMutation.isPending}
+                                                >
+                                                    {deleteMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Delete'}
+                                                </AlertDialogAction>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
+                                        <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => {
+                                            const canvas = document.getElementById(`qr-${med.id}`) as HTMLCanvasElement;
+                                            if (canvas) {
+                                                const pngUrl = canvas.toDataURL("image/png").replace("image/png", "image/octet-stream");
+                                                let downloadLink = document.createElement("a");
+                                                downloadLink.href = pngUrl;
+                                                downloadLink.download = `${med.name}_${med.batch}_qr.png`;
+                                                document.body.appendChild(downloadLink);
+                                                downloadLink.click();
+                                                document.body.removeChild(downloadLink);
+                                            }
+                                        }}>
+                                            <QrCodeIcon className="mr-2 h-4 w-4" /> Download QR
+                                        </Button>
+                                        {/* Hidden QR Code Canvas for Download */}
+                                        <div style={{ display: 'none' }}>
+                                            <QRCode id={`qr-${med.id}`} value={generateQRValue(med)} size={256} level="M" />
+                                        </div>
+                                    </PopoverContent>
+                                </Popover>
+                            </TableCell>
+                        </TableRow>
+                    );
+                    })}
+                </TableBody>
+                </Table>
+            </CardContent>
+            {/* Edit Modal */}
+                <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+                    <DialogContent className="panel-primary sm:max-w-[450px]"> {/* Use primary panel */}
+                        <DialogHeader>
+                            <DialogTitle>Edit Medicine</DialogTitle>
+                            <DialogDescription>Update the details for {selectedMedicine?.name}.</DialogDescription>
+                        </DialogHeader>
+                        <form onSubmit={handleEditSubmit}>
+                            <div className="grid gap-4 py-4">
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="edit-name" className="text-right">Name*</Label>
+                                    <Input id="name" value={formData.name} onChange={handleInputChange} required className="col-span-3" />
                                 </div>
-                             </div>
-                         )}
-                     </div>
-                     <DialogFooter>
-                         <DialogClose asChild><Button type="button" variant="outline" onClick={resetForm}>Cancel</Button></DialogClose>
-                         <Button type="submit" disabled={updateMutation.isPending}>
-                            {updateMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : 'Save Changes'}
-                         </Button>
-                     </DialogFooter>
-                 </form>
-            </DialogContent>
-       </Dialog>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="edit-manufacturer" className="text-right">Manufacturer*</Label>
+                                    <Input id="manufacturer" value={formData.manufacturer} onChange={handleInputChange} required className="col-span-3" />
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="edit-batch" className="text-right">Batch No.*</Label>
+                                    <Input id="batch" value={formData.batch} onChange={handleInputChange} required className="col-span-3" />
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="edit-qty" className="text-right">Quantity</Label>
+                                    <Input id="qty" type="number" min="0" value={formData.qty} onChange={handleInputChange} className="col-span-3" />
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="edit-expiry" className="text-right">Expiry Date*</Label>
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                        <Button
+                                            variant={"outline"}
+                                            className={cn(
+                                            "col-span-3 justify-start text-left font-normal",
+                                            !expiryDate && "text-muted-foreground"
+                                            )}
+                                        >
+                                            <CalendarIcon className="mr-2 h-4 w-4" />
+                                            {expiryDate ? format(expiryDate, "PPP") : <span>Pick a date</span>}
+                                        </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="overlay-tertiary w-auto p-0"> {/* Use tertiary overlay */}
+                                        <Calendar
+                                            mode="single"
+                                            selected={expiryDate}
+                                            onSelect={handleDateSelect}
+                                            initialFocus
+                                        />
+                                        </PopoverContent>
+                                    </Popover>
+                                </div>
+                                {/* QR Code Preview */}
+                                {formData.name && formData.batch && formData.expiry && selectedMedicine && (
+                                    <div className="grid grid-cols-4 items-center gap-4">
+                                        <Label className="text-right">QR Code</Label>
+                                        <div className="col-span-3 p-2 border rounded-md bg-white flex justify-center">
+                                            <QRCode value={generateQRValue({...formData, id: selectedMedicine.id})} size={100} level="M" />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                            <DialogFooter>
+                                <DialogClose asChild><Button type="button" variant="outline" onClick={resetForm}>Cancel</Button></DialogClose>
+                                <Button type="submit" disabled={updateMutation.isPending}>
+                                    {updateMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : 'Save Changes'}
+                                </Button>
+                            </DialogFooter>
+                        </form>
+                    </DialogContent>
+            </Dialog>
 
-       {/* Ship Modal */}
-        <Dialog open={isShipModalOpen} onOpenChange={setIsShipModalOpen}>
-            <DialogContent className="panel-primary sm:max-w-[425px]"> {/* Use primary panel */}
-                <DialogHeader>
-                    <DialogTitle>Create Shipment</DialogTitle>
-                     <DialogDescription>Initiate a shipment for {selectedMedicine?.name} (Batch: {selectedMedicine?.batch}).</DialogDescription>
-                </DialogHeader>
-                <form onSubmit={handleCreateShipment}>
-                     <div className="grid gap-4 py-4">
-                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="courier" className="text-right">Courier*</Label>
-                            <Input id="courier" placeholder="e.g., FedEx, UPS" required className="col-span-3" />
-                         </div>
-                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="pickupDate" className="text-right">Pickup Date*</Label>
-                            <Input id="pickupDate" type="date" required className="col-span-3" />
-                         </div>
-                     </div>
-                     <DialogFooter>
-                         <DialogClose asChild><Button type="button" variant="outline" onClick={() => setSelectedMedicine(null)}>Cancel</Button></DialogClose>
-                         <Button type="submit" disabled={shipmentMutation.isPending}>
-                            {shipmentMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : 'Create Shipment'}
-                         </Button>
-                     </DialogFooter>
-                 </form>
-            </DialogContent>
-        </Dialog>
-    </Card>
+            {/* Ship Modal */}
+                <Dialog open={isShipModalOpen} onOpenChange={setIsShipModalOpen}>
+                    <DialogContent className="panel-primary sm:max-w-[425px]"> {/* Use primary panel */}
+                        <DialogHeader>
+                            <DialogTitle>Create Shipment</DialogTitle>
+                            <DialogDescription>Initiate a shipment for {selectedMedicine?.name} (Batch: {selectedMedicine?.batch}).</DialogDescription>
+                        </DialogHeader>
+                        <form onSubmit={handleCreateShipment}>
+                            <div className="grid gap-4 py-4">
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="courier" className="text-right">Courier*</Label>
+                                    <Input id="courier" placeholder="e.g., FedEx, UPS" required className="col-span-3" />
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="pickupDate" className="text-right">Pickup Date*</Label>
+                                    <Input id="pickupDate" type="date" required className="col-span-3" />
+                                </div>
+                            </div>
+                            <DialogFooter>
+                                <DialogClose asChild><Button type="button" variant="outline" onClick={() => setSelectedMedicine(null)}>Cancel</Button></DialogClose>
+                                <Button type="submit" disabled={shipmentMutation.isPending}>
+                                    {shipmentMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : 'Create Shipment'}
+                                </Button>
+                            </DialogFooter>
+                        </form>
+                    </DialogContent>
+                </Dialog>
+            </Card>
+    </div>
   );
 }

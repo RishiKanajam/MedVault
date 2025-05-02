@@ -1,5 +1,4 @@
-
-// src/app/(protected)/history/page.tsx
+// src/app/history/page.tsx
 'use client';
 
 import React, { useState } from 'react';
@@ -141,14 +140,14 @@ export default function PatientHistoryPage() {
 
   // Display loading skeletons if auth or data is loading
   if (authLoading) {
-     return <div className="p-6"><Skeleton className="h-[70vh] w-full" /></div>;
+     return <div className="p-6"><Skeleton className="h-[70vh] w-full bg-muted" /></div>; // Use muted bg
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-3">
+    <div className="grid gap-6 lg:grid-cols-3 p-6"> {/* Added padding */}
       {/* Patient List Column */}
       <div className="lg:col-span-1 flex flex-col gap-6">
-        <Card className="panel-primary">
+        <Card className="panel-primary"> {/* Use white panel */}
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <User className="w-5 h-5 text-primary" /> Patients
@@ -171,9 +170,9 @@ export default function PatientHistoryPage() {
             <ScrollArea className="h-[calc(100vh-250px)]">
               {isLoadingPatients ? (
                 <div className="p-4 space-y-2">
-                    <Skeleton className="h-10 w-full" />
-                    <Skeleton className="h-10 w-full" />
-                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full bg-muted" />
+                    <Skeleton className="h-10 w-full bg-muted" />
+                    <Skeleton className="h-10 w-full bg-muted" />
                 </div>
               ) : filteredPatients.length > 0 ? (
                 <Table>
@@ -205,7 +204,7 @@ export default function PatientHistoryPage() {
 
       {/* Patient Records Column */}
       <div className="lg:col-span-2">
-        <Card className="panel-primary sticky top-[76px]"> {/* Adjust top position */}
+        <Card className="panel-primary sticky top-[76px]"> {/* Use white panel */}
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
@@ -221,7 +220,7 @@ export default function PatientHistoryPage() {
                   <PlusCircle className="mr-2 h-4 w-4" /> Add Record
                 </Button>
               </SheetTrigger>
-              <SheetContent className="overlay-secondary"> {/* Use secondary overlay */}
+              <SheetContent className="panel-primary"> {/* Use white panel for sheet */}
                 <SheetHeader>
                   <SheetTitle>Add New Record for {selectedPatient?.name}</SheetTitle>
                   <SheetDescription>Fill in the details and upload any relevant files.</SheetDescription>
@@ -267,7 +266,7 @@ export default function PatientHistoryPage() {
               <ScrollArea className="h-[calc(100vh - 200px)]">
                  <div className="space-y-4 p-1">
                     {patientRecords.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((record) => (
-                    <Card key={record.id} className="overflow-hidden panel-primary"> {/* Use panel-primary for consistency */}
+                    <Card key={record.id} className="overflow-hidden panel-secondary"> {/* Use secondary light gray panel */}
                         <CardHeader className="p-4 bg-muted/30 border-b flex flex-row justify-between items-center">
                             <div>
                                 <CardTitle className="text-base flex items-center gap-2"><Calendar className="w-4 h-4" /> {record.date}</CardTitle>

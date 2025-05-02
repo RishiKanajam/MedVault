@@ -1,5 +1,5 @@
-
-'use client'; // Mark as client component
+// src/app/shipments/page.tsx
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -13,7 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, Truck, Map, List, Loader2 } from 'lucide-react'; // Added Map, List, Loader2
+import { PlusCircle, Truck, Map, List, Loader2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -26,13 +26,13 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'; // Import Select
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'; // Import Popover
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/providers/AuthProvider';
 import { Skeleton } from '@/components/ui/skeleton';
-import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api'; // Import Google Maps components
+import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
 
 // --- Types ---
 interface Shipment {
@@ -186,7 +186,7 @@ export default function ShipmentsPage() {
   const pageLoading = authLoading || (isLoadingShipments && shipments.length === 0); // Loading state
 
   if (pageLoading) {
-     return <div className="p-6"><Skeleton className="h-[70vh] w-full" /></div>;
+     return <div className="p-6"><Skeleton className="h-[70vh] w-full bg-muted" /></div>; // Use muted bg
   }
 
   if (isShipmentsError) {
@@ -195,8 +195,8 @@ export default function ShipmentsPage() {
 
 
   return (
-    <div className="space-y-6 animate-fadeIn">
-       <Card className="panel-primary">
+    <div className="space-y-6 animate-fadeIn p-6"> {/* Added padding */}
+       <Card className="panel-primary"> {/* Use primary white panel */}
           <CardHeader className="flex flex-row items-center justify-between">
             <div className="space-y-1">
               <CardTitle>Shipment Tracking</CardTitle>
@@ -217,7 +217,7 @@ export default function ShipmentsPage() {
                             <PlusCircle className="mr-2 h-4 w-4" /> Create Shipment
                         </Button>
                     </DialogTrigger>
-                    <DialogContent className="panel-primary sm:max-w-[450px]">
+                    <DialogContent className="panel-primary sm:max-w-[450px]"> {/* Use primary white panel */}
                         <DialogHeader>
                             <DialogTitle>Create New Shipment</DialogTitle>
                             <DialogDescription>Select medicine and provide shipment details.</DialogDescription>
@@ -234,7 +234,7 @@ export default function ShipmentsPage() {
                                         <SelectTrigger id="medicineId" className="col-span-3" disabled={isLoadingMedStubs}>
                                             <SelectValue placeholder={isLoadingMedStubs ? "Loading..." : "Select medicine"} />
                                         </SelectTrigger>
-                                        <SelectContent className="overlay-tertiary">
+                                        <SelectContent className="overlay-tertiary"> {/* Use light gray tertiary overlay */}
                                             {medicineStubs.map(med => (
                                                 <SelectItem key={med.id} value={med.id}>{med.name}</SelectItem>
                                             ))}
@@ -294,7 +294,7 @@ export default function ShipmentsPage() {
                                <PopoverTrigger asChild>
                                    <Button variant="ghost" size="sm">Details</Button>
                                </PopoverTrigger>
-                               <PopoverContent className="overlay-secondary w-60"> {/* Use secondary overlay */}
+                               <PopoverContent className="overlay-secondary w-60"> {/* Use secondary overlay (light gray) */}
                                    <div className="space-y-1 text-sm">
                                        <p><strong>Medicine:</strong> {shipment.medicineName || shipment.medicineId}</p>
                                        <p><strong>Tracking:</strong> {shipment.trackingNo || 'N/A'}</p>
@@ -310,7 +310,7 @@ export default function ShipmentsPage() {
                     ))}
                     {shipments.length === 0 && (
                         <TableRow>
-                            <TableCell colSpan={7} className="h-24 text-center">No shipments found.</TableCell>
+                            <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">No shipments found.</TableCell>
                         </TableRow>
                     )}
                   </TableBody>
@@ -319,7 +319,7 @@ export default function ShipmentsPage() {
              {viewMode === 'map' && (
                 <div>
                     {mapLoadError && <div className="text-destructive p-4">Error loading map. Please check API key and network.</div>}
-                    {!isMapLoaded && !mapLoadError && <Skeleton className="h-[60vh] w-full rounded-md" />}
+                    {!isMapLoaded && !mapLoadError && <Skeleton className="h-[60vh] w-full rounded-md bg-muted" />} {/* Muted skeleton */}
                     {isMapLoaded && !mapLoadError && (
                         <GoogleMap
                             mapContainerStyle={mapContainerStyle}
@@ -340,7 +340,7 @@ export default function ShipmentsPage() {
                     )}
                      {/* Display selected shipment details below map */}
                      {selectedShipment && (
-                         <Card className="mt-4 panel-primary">
+                         <Card className="mt-4 panel-secondary"> {/* Use secondary panel (light gray) */}
                              <CardHeader>
                                  <CardTitle className="text-base">Selected Shipment: {selectedShipment.trackingNo || selectedShipment.id}</CardTitle>
                              </CardHeader>

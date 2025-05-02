@@ -1,10 +1,11 @@
-// app/layout.tsx  (Server Component)
+// app/layout.tsx
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
-import Providers from './providers'; // Keep React Query Provider if needed
-import { ThemeProvider } from "@/components/theme-provider"; // Keep ThemeProvider here
+import Providers from './providers'; // For React Query
+import { ThemeProvider } from "@/components/theme-provider";
+import { AuthProviderWrapper } from '@/providers/AuthProviderWrapper'; // Client component wrapper
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
@@ -19,19 +20,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    // Add suppressHydrationWarning to the html tag to help mitigate hydration errors,
-    // especially those caused by browser extensions modifying the DOM.
+    // Add suppressHydrationWarning to mitigate common browser extension issues
     <html lang="en" suppressHydrationWarning>
-      {/* Add suppressHydrationWarning to body as well */}
       <body className={`${inter.variable} font-sans antialiased`} suppressHydrationWarning>
          <ThemeProvider
              attribute="class"
-             defaultTheme="system" // Default to system theme preference
+             defaultTheme="system"
              enableSystem
              disableTransitionOnChange
          >
              <Providers> {/* React Query */}
-                 {children}
+                 <AuthProviderWrapper> {/* Manages auth state and protected routes */}
+                     {children}
+                 </AuthProviderWrapper>
                  <Toaster />
              </Providers>
          </ThemeProvider>
@@ -39,5 +40,3 @@ export default function RootLayout({
     </html>
   );
 }
-
-    

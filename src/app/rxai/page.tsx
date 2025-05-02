@@ -1,4 +1,4 @@
-
+// src/app/rxai/page.tsx
 'use client';
 
 import React, { useState } from 'react';
@@ -149,13 +149,17 @@ export default function RxAiPage() {
 
         if (isNaN(input.age) || isNaN(input.weight)) throw new Error("Age and Weight must be valid numbers.");
 
+        console.log("[RxAI] Calling generatePrescription with input:", input); // Debug log
         const prescriptionResult = await generatePrescription(input);
+        console.log("[RxAI] Received result:", prescriptionResult); // Debug log
+
         if (prescriptionResult.prescription === "Error generating prescription.") throw new Error(prescriptionResult.rationale);
 
         setResult(prescriptionResult);
         toast({ title: isSecondOpinion ? "Second Opinion Received" : "Recommendation Generated", description: "AI analysis complete." });
 
     } catch (err) {
+        console.error("[RxAI] Error during generation:", err); // Debug log
         const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
         setError(`Failed to generate ${isSecondOpinion ? 'second opinion' : 'recommendation'}: ${errorMessage}`);
         toast({ title: "AI Error", description: errorMessage, variant: "destructive" });
@@ -199,12 +203,12 @@ export default function RxAiPage() {
 
 
   if (authLoading) {
-       return <div className="p-6"><Skeleton className="h-[70vh] w-full" /></div>;
+       return <div className="p-6"><Skeleton className="h-[70vh] w-full bg-muted" /></div>; // Use muted bg
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-2 animate-fadeIn">
-      <Card className="panel-primary lg:col-span-1">
+    <div className="grid gap-6 lg:grid-cols-2 animate-fadeIn p-6"> {/* Added padding */}
+      <Card className="panel-primary lg:col-span-1"> {/* Use white panel */}
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
              <BrainCircuit className="w-6 h-6 text-primary" /> RxAI Clinical Decision Support
@@ -282,13 +286,13 @@ export default function RxAiPage() {
         </form>
       </Card>
 
-      <Card className="panel-primary lg:col-span-1">
+      <Card className="panel-primary lg:col-span-1"> {/* Use white panel */}
         <CardHeader>
           <CardTitle>AI Recommendation</CardTitle>
           <CardDescription>Review the AI analysis below. Verify before clinical use.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {isLoading && !result && ( <div className="space-y-6"><Skeleton className="h-8 w-3/4" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-5/6" /><Separator/><Skeleton className="h-8 w-1/2" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-3/4" /></div> )}
+          {isLoading && !result && ( <div className="space-y-6"><Skeleton className="h-8 w-3/4 bg-muted" /><Skeleton className="h-4 w-full bg-muted" /><Skeleton className="h-4 w-5/6 bg-muted" /><Separator/><Skeleton className="h-8 w-1/2 bg-muted" /><Skeleton className="h-4 w-full bg-muted" /><Skeleton className="h-4 w-full bg-muted" /><Skeleton className="h-4 w-3/4 bg-muted" /></div> )}
           {error && ( <div className="text-destructive flex items-center gap-2 p-4 bg-destructive/10 rounded-md border border-destructive/50"><AlertCircle className="w-5 h-5" /><p>{error}</p></div> )}
           {result && (
             <div className="space-y-6">
