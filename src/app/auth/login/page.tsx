@@ -2,7 +2,7 @@
 'use client'; // Mark as client component
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation'; // Import useRouter
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -21,22 +21,22 @@ import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link'; // Import Link
 
 export default function LoginPage() {
-  const router = useRouter();
+  const router = useRouter(); // Initialize useRouter
   const { toast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false); // State for login action loading
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null); // State for login error
 
   const handleLogin = async (event: React.FormEvent) => {
     event.preventDefault();
-    setError(null);
-    setIsLoading(true); // Show spinner for login action
+    setError(null); // Clear previous errors
+    setIsLoading(true); // Show spinner
 
     try {
       await signInWithEmailAndPassword(auth, email, password); // Sign in
       toast({ title: "Login Successful", description: `Welcome back!` });
-      router.push('/dashboard'); // Redirect to dashboard on success
+      router.replace('/dashboard'); // Redirect to dashboard on success using replace
 
     } catch (err: any) {
       console.error('[Login] Error:', err);
@@ -51,9 +51,10 @@ export default function LoginPage() {
             default: message = err.message || message; break;
           }
        } else if (err.message) { message = err.message; }
-      setError(message);
+      setError(message); // Set the error message state
       toast({ title: "Login Failed", description: message, variant: "destructive" });
-      setIsLoading(false); // Stop spinner only on error
+    } finally {
+        setIsLoading(false); // Always hide spinner after attempt
     }
   };
 
@@ -76,14 +77,14 @@ export default function LoginPage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Password</Label>
-                {/* <Button variant="link" asChild className="p-0 h-auto text-sm text-primary">
-                    <Link href="#">Forgot your password?</Link>
-                </Button> */}
+                {/* Add forgot password link if needed */}
               </div>
               <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required disabled={isLoading}/>
             </div>
+             {/* Display error message below the form */}
              {error && <p className="text-sm text-destructive text-center">{error}</p>}
             <Button type="submit" className="w-full" disabled={isLoading}>
+                {/* Show spinner and different text when loading */}
                 {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                 {isLoading ? 'Logging In...' : 'Login'}
             </Button>
