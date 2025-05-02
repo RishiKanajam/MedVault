@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation'; // Keep useRouter for potential future use, but not for redirect here
+import { useRouter, useSearchParams } from 'next/navigation'; // Import useSearchParams
 import { signInWithEmailAndPassword } from 'firebase/auth';
 
 import { auth } from '@/firebase';       // Correct firebase export path
@@ -15,7 +15,8 @@ import Link from 'next/link';
 import { Loader2, Pill } from 'lucide-react';
 
 export default function LoginPage() {
-  const router = useRouter(); // Keep router instance if needed elsewhere
+  const router = useRouter();
+  const searchParams = useSearchParams(); // Get search params
   const { toast } = useToast();
 
   const [email, setEmail] = useState('');
@@ -30,18 +31,19 @@ export default function LoginPage() {
 
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      // Toast first, AuthProviderWrapper will handle the redirect
+      // Toast first, then redirect
       toast({ title: 'Login Successful', description: 'Redirecting to dashboard...' });
-      console.log("[Login] Login successful. AuthProviderWrapper will handle redirect.");
-      // DO NOT redirect here - let the auth state change trigger the redirect in AuthProviderWrapper/AuthLogic
-      // router.replace('/dashboard'); // <-- REMOVED
+      const redirectedFrom = searchParams.get('redirectedFrom');
+      console.log("[Login] Login successful. Redirecting...");
+      router.replace(redirectedFrom || '/dashboard'); // Redirect to original destination or dashboard
     } catch (err: any) {
       console.error('[Login] Error:', err);
       let message = 'An unknown error occurred during login.';
+      // Map Firebase error codes to user-friendly messages
       switch (err.code) {
         case 'auth/user-not-found':
         case 'auth/wrong-password':
-        case 'auth/invalid-credential':
+        case 'auth/invalid-credential': // This handles the reported error
           message = 'Invalid email or password.';
           break;
         case 'auth/invalid-email':
@@ -50,21 +52,16 @@ export default function LoginPage() {
         case 'auth/network-request-failed':
           message = 'Network error. Please check your connection.';
           break;
+        case 'auth/too-many-requests':
+            message = 'Access temporarily disabled due to too many failed login attempts. Please reset your password or try again later.';
+            break;
         default:
           message = err.message || message;
       }
       setError(message);
       toast({ title: 'Login Failed', description: message, variant: 'destructive' });
     } finally {
-      // Set loading to false ONLY if there was an error.
-      // If login was successful, the redirect will happen, and this component might unmount.
-      // Keeping it loading prevents user interaction while waiting for redirect.
-      // If the component *doesn't* unmount quickly (e.g., due to slow redirect),
-      // we might need to reconsider this, but typically the redirect is fast.
-      if (error) {
-          setIsLoading(false);
-      }
-      // If login is successful, let it stay in the loading state until redirect happens
+      setIsLoading(false); // Ensure loading is always set to false after attempt
     }
   };
 
