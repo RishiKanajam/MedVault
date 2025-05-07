@@ -1,6 +1,9 @@
-
 // src/app/auth/layout.tsx
 import React from 'react';
+// AuthProviderWrapper is NOT used here to prevent full-screen loading on auth pages.
+// If auth pages need access to auth context (e.g., to redirect already logged-in users),
+// a simpler, non-loading AuthProvider could be used, or middleware can handle it.
+// For this setup, middleware and AuthLogic on protected routes handle redirects.
 
 // Simple layout for authentication pages, centers content
 export default function AuthLayout({

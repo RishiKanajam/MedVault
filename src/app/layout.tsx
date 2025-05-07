@@ -5,7 +5,7 @@ import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import Providers from './providers'; // For React Query
 import { ThemeProvider } from "@/components/theme-provider";
-// Removed AuthProviderWrapper import and usage from here
+// AuthProviderWrapper is removed from here. It will be used in specific layouts.
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
@@ -23,7 +23,6 @@ export default function RootLayout({
     // Add suppressHydrationWarning to mitigate common browser extension issues
     // Important: Ensure this is only on <html>, not duplicated on <body>
     <html lang="en" suppressHydrationWarning>
-      {/* Removed duplicate suppressHydrationWarning from body */}
       <body className={`${inter.variable} font-sans antialiased`}>
          <ThemeProvider
              attribute="class"
@@ -31,8 +30,12 @@ export default function RootLayout({
              enableSystem
              disableTransitionOnChange
          >
-             <Providers> {/* React Query */}
-                 {/* AuthProviderWrapper is NOT used here. It's in the protected route layout */}
+            {/*
+              Providers (like React Query) and Toaster can be here.
+              AuthProvider (which provides the context) will be part of AuthProviderWrapper,
+              which is used in layouts that require auth state (e.g., (app)/layout.tsx).
+            */}
+             <Providers>
                  {children}
                  <Toaster />
              </Providers>
