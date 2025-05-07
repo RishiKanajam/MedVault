@@ -3,7 +3,7 @@ import Link from 'next/link';
 import {
   LayoutDashboard,
   Boxes,
-  Ship, // Consider Truck icon from previous version if 'Ship' is not ideal
+  // Ship, // Consider Truck icon from previous version if 'Ship' is not ideal
   BrainCircuit,
   FlaskConical,
   Settings,
@@ -73,15 +73,15 @@ export function AppSidebar() {
   const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({});
 
    // Extract module settings from the profile
-   const moduleSettings = profile?.settings?.modules;
+   const moduleSettings = profile?.settings?.modules; // Adjusted to new profile structure
    const modulesLoading = userLoading; // Loading state depends on user context loading
 
 
   const handleLogout = async () => {
      try {
       await signOut(auth);
-      toast({ title: "Logged Out" });
-      router.push('/login'); // Redirect to login after successful logout
+      toast({ title: "Logged Out", description: "You have been successfully logged out." });
+      router.push('/auth/login'); // Redirect to login after successful logout
     } catch (error) {
       console.error("Logout error:", error);
       toast({ title: "Logout Error", description: "Failed to log out.", variant: "destructive" });
@@ -110,12 +110,30 @@ export function AppSidebar() {
 
 
   // Filter items based on module settings from the user's profile
+  // For anonymous users, moduleSettings will be undefined, so they see all items by default
+  // unless specific logic is added to restrict for anonymous users.
   const filteredItems = sidebarItems.filter(item =>
-     item.moduleKey === 'dashboard' || (moduleSettings && moduleSettings[item.moduleKey])
+     item.moduleKey === 'dashboard' || (authUser && !authUser.isAnonymous && moduleSettings && moduleSettings[item.moduleKey]) || (authUser && authUser.isAnonymous) // Guests see all modules by default
    );
 
 
    const isLoading = modulesLoading; // Use the loading state from context
+
+  const getDisplayName = () => {
+    if (authUser?.isAnonymous) return "Guest User";
+    return profile?.name || authUser?.displayName || "User";
+  };
+
+  const getDisplayEmail = () => {
+    if (authUser?.isAnonymous) return "guest@example.com";
+    return authUser?.email || "";
+  }
+
+  const getAvatarFallback = () => {
+    if (authUser?.isAnonymous) return "G";
+    const name = profile?.name || authUser?.displayName;
+    return name ? name.charAt(0).toUpperCase() : <User className="h-5 w-5" />;
+  }
 
   return (
     <Sidebar className="bg-sidebar text-sidebar-foreground border-r border-sidebar-border w-[var(--sidebar-width)]">
@@ -131,7 +149,7 @@ export function AppSidebar() {
 
       <SidebarContent className="flex-1 overflow-y-auto px-2">
         <SidebarMenu>
-          {isLoading ? (
+          {isLoading && !authUser ? ( // Show skeleton only if truly loading and no authUser yet
              Array.from({ length: 6 }).map((_, index) => (
                <SidebarMenuItem key={index}>
                  <div className={cn(
@@ -177,7 +195,7 @@ export function AppSidebar() {
                                 const isSubItemActive = pathname === subItem.href;
                                 return (
                                    <SidebarMenuSubItem key={subItem.label}>
-                                     <SidebarMenuSubButton asChild isActive={isSubItemActive}>
+                                     <SidebarMenuSubButton asChild isActive={isSubItemActive} href={subItem.href}>
                                        <Link href={subItem.href}>
                                           <span>{subItem.label}</span>
                                         </Link>
@@ -189,7 +207,7 @@ export function AppSidebar() {
                         </CollapsibleContent>
                     </Collapsible>
                   ) : (
-                    <SidebarMenuButton asChild tooltip={sidebarState === 'collapsed' ? item.label : undefined} isActive={isActive} variant="ghost">
+                    <SidebarMenuButton asChild tooltip={sidebarState === 'collapsed' ? item.label : undefined} isActive={isActive} variant="ghost" href={item.href!}>
                         <Link href={item.href!}>
                           <item.icon />
                           {sidebarState === 'expanded' && <span>{item.label}</span>}
@@ -208,7 +226,7 @@ export function AppSidebar() {
       <SidebarFooter className="p-2 space-y-2">
           <SidebarMenu>
             <SidebarMenuItem>
-               <SidebarMenuButton asChild tooltip={sidebarState === 'collapsed' ? "Settings" : undefined} isActive={pathname === '/settings'} variant="ghost">
+               <SidebarMenuButton asChild tooltip={sidebarState === 'collapsed' ? "Settings" : undefined} isActive={pathname === '/settings'} variant="ghost" href="/settings">
                   <Link href="/settings">
                     <Settings />
                     {sidebarState === 'expanded' && <span>Settings</span>}
@@ -225,17 +243,15 @@ export function AppSidebar() {
               {/* Make Avatar clickable to open profile modal - Example, can be linked to settings or modal */}
              <div className="flex items-center gap-2 overflow-hidden">
                  <Avatar className="h-8 w-8">
-                     {/* Use profile data */}
-                     <AvatarImage src={profile?.photoURL || undefined} alt={profile?.name || 'User'} data-ai-hint="user avatar placeholder" />
+                     <AvatarImage src={authUser?.isAnonymous ? undefined : (profile?.photoURL || authUser?.photoURL || undefined)} alt={getDisplayName()} data-ai-hint="user avatar placeholder" />
                      <AvatarFallback className="bg-sidebar-hover text-sidebar-foreground">
-                         {profile?.name ? profile.name.charAt(0).toUpperCase() : <User className="h-5 w-5" />}
+                         {getAvatarFallback()}
                      </AvatarFallback>
                  </Avatar>
                  {sidebarState === 'expanded' && (
                      <div className="flex flex-col text-xs truncate">
-                         {/* Use profile data */}
-                         <span className="font-medium">{profile?.name || 'User'}</span>
-                         <span className="text-sidebar-foreground/70">{authUser?.email || ''}</span>
+                         <span className="font-medium">{getDisplayName()}</span>
+                         <span className="text-sidebar-foreground/70">{getDisplayEmail()}</span>
                      </div>
                  )}
               </div>

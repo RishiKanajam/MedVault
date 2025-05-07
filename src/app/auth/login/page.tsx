@@ -3,7 +3,7 @@
 
 import React, { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation'; // Import useSearchParams
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, signInAnonymously } from 'firebase/auth'; // Added signInAnonymously
 
 import { auth } from '@/firebase';       // Correct firebase export path
 import { useToast } from '@/hooks/use-toast';
@@ -12,7 +12,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import Link from 'next/link';
-import { Loader2, Pill } from 'lucide-react';
+import { Loader2, Pill, User as UserIcon } from 'lucide-react'; // Added UserIcon for Guest button
 
 export default function LoginPage() {
   const router = useRouter();
@@ -22,6 +22,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isGuestLoading, setIsGuestLoading] = useState(false); // Loading state for guest login
   const [error, setError] = useState<string | null>(null);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -43,7 +44,7 @@ export default function LoginPage() {
       switch (err.code) {
         case 'auth/user-not-found':
         case 'auth/wrong-password':
-        case 'auth/invalid-credential': // This handles the reported error
+        case 'auth/invalid-credential':
           message = 'Invalid email or password.';
           break;
         case 'auth/invalid-email':
@@ -61,18 +62,38 @@ export default function LoginPage() {
       setError(message);
       toast({ title: 'Login Failed', description: message, variant: 'destructive' });
     } finally {
-      setIsLoading(false); // Ensure loading is always set to false after attempt
+      setIsLoading(false);
     }
   };
 
+  const handleGuestLogin = async () => {
+    setError(null);
+    setIsGuestLoading(true);
+    try {
+      await signInAnonymously(auth);
+      toast({ title: 'Guest Login Successful', description: 'Redirecting to dashboard...' });
+      const redirectedFrom = searchParams.get('redirectedFrom');
+      console.log("[Login] Guest login successful. Redirecting...");
+      router.replace(redirectedFrom || '/dashboard');
+    } catch (err: any) {
+      console.error('[Login] Guest login error:', err);
+      const message = err.message || 'Failed to sign in as guest.';
+      setError(message);
+      toast({ title: 'Guest Login Failed', description: message, variant: 'destructive' });
+    } finally {
+      setIsGuestLoading(false);
+    }
+  };
+
+
   return (
-    <Card className="w-full max-w-sm mx-auto my-auto panel-primary"> {/* Adjusted margin for centering */}
+    <Card className="w-full max-w-sm mx-auto my-auto panel-primary">
       <CardHeader className="text-center">
         <div className="flex justify-center mb-4">
           <Pill className="w-10 h-10 text-primary" />
         </div>
         <CardTitle className="text-2xl font-bold">MediSync Pro Login</CardTitle>
-        <CardDescription>Enter your email below to login to your account</CardDescription>
+        <CardDescription>Enter your email below to login to your account or continue as a guest.</CardDescription>
       </CardHeader>
 
       <CardContent>
@@ -86,7 +107,7 @@ export default function LoginPage() {
               onChange={e => setEmail(e.target.value)}
               placeholder="you@example.com"
               required
-              disabled={isLoading}
+              disabled={isLoading || isGuestLoading}
             />
           </div>
 
@@ -98,7 +119,7 @@ export default function LoginPage() {
               value={password}
               onChange={e => setPassword(e.target.value)}
               required
-              disabled={isLoading}
+              disabled={isLoading || isGuestLoading}
             />
           </div>
 
@@ -106,11 +127,23 @@ export default function LoginPage() {
             <p className="text-sm text-destructive text-center mt-2">{error}</p>
           )}
 
-          <Button type="submit" className="w-full flex justify-center items-center" disabled={isLoading}>
+          <Button type="submit" className="w-full flex justify-center items-center" disabled={isLoading || isGuestLoading}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {isLoading ? 'Logging In…' : 'Login'}
           </Button>
         </form>
+
+        <div className="mt-4 flex items-center">
+          <div className="flex-grow border-t border-border"></div>
+          <span className="mx-2 text-xs text-muted-foreground">OR</span>
+          <div className="flex-grow border-t border-border"></div>
+        </div>
+
+        <Button variant="outline" className="w-full mt-4 flex justify-center items-center" onClick={handleGuestLogin} disabled={isLoading || isGuestLoading}>
+           {isGuestLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+           {isGuestLoading ? 'Joining as Guest...' : <><UserIcon className="mr-2 h-4 w-4" /> Continue as Guest</>}
+        </Button>
+
       </CardContent>
 
       <CardFooter className="text-center text-sm">

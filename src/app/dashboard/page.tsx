@@ -5,7 +5,7 @@ import React from 'react';
 import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Boxes, AlertTriangle, CalendarOff, Truck, ThermometerSnowflake, Activity, BrainCircuit, BarChart3, LineChart, ClipboardList } from 'lucide-react';
+import { Boxes, AlertTriangle, CalendarOff, Truck, ThermometerSnowflake, Activity, BrainCircuit, BarChart3, LineChart, FileText as ClipboardList } from 'lucide-react'; // Renamed FileText to ClipboardList
 import { Skeleton } from '@/components/ui/skeleton';
 import { Bar, BarChart as RechartsBarChart, Line as RechartsLineElement, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, Legend, LineChart as RechartsLineChartComponent, Cell } from 'recharts';
 import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from "@/components/ui/chart";
@@ -21,8 +21,8 @@ const useDashboardMetrics = () => {
      React.useEffect(() => {
          // Simulate API call
          const timer = setTimeout(() => {
-             // TODO: Replace with actual API call to fetch dashboard metrics
-             // Example: fetch('/api/dashboard/metrics').then(res => res.json()).then(data => setMetrics(data));
+             // TODO: Replace with actual API call to fetch dashboard metrics based on clinicId
+             // Example: fetch(`/api/dashboard/metrics?clinicId=${profile.clinicId}`).then(res => res.json()).then(data => setMetrics(data));
              setMetrics({ totalMeds: 138, expiringSoon: 5, expired: 3, coldChainBreaches: 1, activeShipments: 4 });
              setLoading(false);
          }, 700);
@@ -33,7 +33,7 @@ const useDashboardMetrics = () => {
 
 // Mock chart data (with comments for future API integration)
 const expiryChartData = [
-  // TODO: Replace with data fetched from API for expiry chart
+  // TODO: Replace with data fetched from API for expiry chart (scoped by clinicId)
   { status: 'Expired', count: 3, fill: 'hsl(var(--danger-hsl))' },
   { status: 'Expiring', count: 5, fill: 'hsl(var(--warning-hsl))' },
   { status: 'Safe', count: 130, fill: 'hsl(var(--primary-hsl))' },
@@ -46,7 +46,7 @@ const expiryChartConfig = {
 } satisfies ChartConfig;
 
 const recordsTrendData = [
-  // TODO: Replace with data fetched from API for records trend
+  // TODO: Replace with data fetched from API for records trend (scoped by clinicId)
   { month: 'Jan', count: 15 }, { month: 'Feb', count: 20 }, { month: 'Mar', count: 18 },
   { month: 'Apr', count: 25 }, { month: 'May', count: 22 }, { month: 'Jun', count: 30 },
 ];
@@ -56,13 +56,20 @@ const recordsChartConfig = {
 
 
 export default function DashboardPage() {
-  const { profile, authLoading } = useAuth();
+  const { user, profile, authLoading } = useAuth();
   const { metrics, loading: metricsLoading } = useDashboardMetrics();
 
-  // Combined loading state
-  const isLoading = authLoading || metricsLoading;
+  // Combined loading state for page content (auth already handled by AuthProvider)
+  const isLoadingContent = metricsLoading;
 
-  if (isLoading) {
+  const getWelcomeMessage = () => {
+    if (user?.isAnonymous) return "Welcome, Guest!";
+    if (profile?.name) return `Welcome back, ${profile.name}!`;
+    return "Welcome back!";
+  };
+
+
+  if (isLoadingContent) { // Show skeleton if metrics are loading (auth is handled by AuthProvider)
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-6">
         <div className="space-y-12 w-full">
@@ -124,7 +131,7 @@ export default function DashboardPage() {
           <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>
          <CardHeader className="pl-8 pt-6 pb-6">
            <CardTitle className="text-2xl text-primary">
-             {`Welcome back, ${profile?.name || 'User'}!`}
+            {getWelcomeMessage()}
            </CardTitle>
            <CardDescription className="text-muted-foreground">
              Here's a quick overview of your MediSync Pro workspace.
@@ -163,7 +170,7 @@ export default function DashboardPage() {
          <Card className="panel-primary col-span-1">
            <CardHeader>
              <CardTitle className="text-lg flex items-center gap-2"><BarChart3 className="text-primary" /> Medicine Expiry Status</CardTitle>
-             <CardDescription>Overview of stock status based on expiry. {/* TODO: Fetch this data */}</CardDescription>
+             <CardDescription>Overview of stock status based on expiry. {/* TODO: Fetch this data based on clinicId */}</CardDescription>
            </CardHeader>
            <CardContent className="h-[300px] p-4">
                <ChartContainer config={expiryChartConfig} className="h-full w-full">
@@ -187,7 +194,7 @@ export default function DashboardPage() {
          <Card className="panel-primary col-span-1">
            <CardHeader>
              <CardTitle className="text-lg flex items-center gap-2"><LineChart className="text-info" /> Patient Records Trend (6 Mo)</CardTitle>
-              <CardDescription>Number of patient records added monthly. {/* TODO: Fetch this data */}</CardDescription>
+              <CardDescription>Number of patient records added monthly. {/* TODO: Fetch this data based on clinicId */}</CardDescription>
            </CardHeader>
            <CardContent className="h-[300px] p-4">
                 <ChartContainer config={recordsChartConfig} className="h-full w-full">
@@ -227,7 +234,7 @@ export default function DashboardPage() {
           <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>
          <CardHeader className="pl-8">
            <CardTitle className="flex items-center gap-2 text-lg"><Activity className="h-5 w-5 text-primary" /> Recent Activity</CardTitle>
-           <CardDescription>Overview of recent inventory changes and alerts. {/* TODO: Fetch this data */}</CardDescription>
+           <CardDescription>Overview of recent inventory changes and alerts. {/* TODO: Fetch this data based on clinicId */}</CardDescription>
          </CardHeader>
          <CardContent className="pl-8">
               <p className="text-sm text-muted-foreground">No recent activity to display. {/* TODO: Implement recent activity feed */}</p>

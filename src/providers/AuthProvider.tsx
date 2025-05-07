@@ -10,27 +10,25 @@ interface UserProfile {
   name: string | null;
   email: string | null;
   photoURL?: string | null;
-  clinicId?: string; // Assuming clinicId might be part of the profile
+  clinicId?: string | null; // Clinic ID can be null, especially for guests
   settings?: {
     theme?: string | null;
     language?: string | null;
-    // Modules settings removed as per previous requests
-  };
+    // modules settings removed as per previous requests
+  } | null; // Settings can be null
   createdAt?: any;
 }
 
 interface AuthContextType {
   user: User | null;
   profile: UserProfile | null;
-  isUserLoading: boolean; // True until onAuthStateChanged fires for the first time and user object is known
-  isProfileLoading: boolean; // True while profile is being fetched for a logged-in user
+  authLoading: boolean; // Combined loading state for user and profile
 }
 
 export const AuthContext = createContext<AuthContextType>({
   user: null,
   profile: null,
-  isUserLoading: true,
-  isProfileLoading: false,
+  authLoading: true,
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -38,17 +36,15 @@ export const useAuth = () => useContext(AuthContext);
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [isUserLoading, setIsUserLoading] = useState(true);
-  const [isProfileLoading, setIsProfileLoading] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true); // Single loading state
 
   let profileUnsubscribe: (() => void) | null = null;
 
   useEffect(() => {
     console.log("[AuthProvider] Setting up auth state listener...");
     const unsubAuth = onAuthStateChanged(auth, (currentUser) => {
-      console.log("[AuthProvider] Auth state determined. User UID:", currentUser?.uid);
+      console.log("[AuthProvider] Auth state determined. User UID:", currentUser?.uid, "Is Anonymous:", currentUser?.isAnonymous);
       setUser(currentUser);
-      setIsUserLoading(false); // Auth user state is now resolved (either null or a User object)
 
       // Clean up previous profile listener if user changes or logs out
       if (profileUnsubscribe) {
@@ -59,52 +55,63 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       }
 
       if (currentUser) {
-        console.log(`[AuthProvider] User signed in (${currentUser.uid}). Setting up profile listener...`);
-        setIsProfileLoading(true); // Profile fetching starts
-        const userDocRef = doc(db, 'users', currentUser.uid);
-        profileUnsubscribe = onSnapshot(
-          userDocRef,
-          (snap) => {
-            if (snap.exists()) {
-              const profileData = snap.data() as UserProfile;
-              console.log("[AuthProvider] Profile data received:", profileData);
-              setProfile(profileData);
-            } else {
-              console.warn(`[AuthProvider] No profile document found for user ${currentUser.uid}. This might happen if signup didn't complete Firestore write.`);
-              setProfile(null); // Explicitly set to null if doc doesn't exist
+        // For anonymous users, we don't expect a profile document in 'users' collection by default.
+        // So, profile will remain null, and loading should resolve.
+        if (currentUser.isAnonymous) {
+          console.log(`[AuthProvider] Anonymous user signed in (${currentUser.uid}). No profile to fetch by default.`);
+          setProfile(null);
+          setAuthLoading(false); // Auth and profile (none) state resolved
+        } else {
+          // For non-anonymous users, attempt to fetch profile.
+          console.log(`[AuthProvider] Non-anonymous user signed in (${currentUser.uid}). Setting up profile listener...`);
+          // setAuthLoading(true); // No, keep it true until profile is loaded or confirmed not to exist
+          const userDocRef = doc(db, 'users', currentUser.uid);
+          profileUnsubscribe = onSnapshot(
+            userDocRef,
+            (snap) => {
+              if (snap.exists()) {
+                const profileData = snap.data() as UserProfile;
+                console.log("[AuthProvider] Profile data received:", profileData);
+                setProfile(profileData);
+              } else {
+                console.warn(`[AuthProvider] No profile document found for user ${currentUser.uid}.`);
+                setProfile(null);
+              }
+              setAuthLoading(false); // Auth and profile state resolved
+            },
+            (error) => {
+              console.error("[AuthProvider] Error listening to profile:", error);
+              setProfile(null);
+              setAuthLoading(false); // Auth and profile state resolved (with error)
             }
-            setIsProfileLoading(false); // Profile fetching ends
-          },
-          (error) => {
-            console.error("[AuthProvider] Error listening to profile:", error);
-            setProfile(null); // Clear profile on error
-            setIsProfileLoading(false); // Profile fetching ends on error
-          }
-        );
+          );
+        }
       } else {
         console.log("[AuthProvider] User signed out. No profile to fetch.");
-        setProfile(null); // Ensure profile is null when logged out
-        setIsProfileLoading(false); // No profile to load
+        setProfile(null);
+        setAuthLoading(false); // Auth (logged out) state resolved
       }
     });
 
-    // Cleanup function for the auth listener
     return () => {
       console.log("[AuthProvider] Cleaning up auth listener.");
       unsubAuth();
-      // Cleanup profile listener if it exists
       if (profileUnsubscribe) {
         console.log("[AuthProvider] Cleaning up profile listener on unmount.");
         profileUnsubscribe();
       }
     };
-  }, []); // Empty dependency array is correct here
+  }, []);
 
-  // AuthProvider itself does not render a loading spinner.
-  // AuthProviderWrapper (or AuthLogic) handles the UI for loading states.
   return (
-    <AuthContext.Provider value={{ user, profile, isUserLoading, isProfileLoading }}>
-      {children}
+    <AuthContext.Provider value={{ user, profile, authLoading }}>
+      {authLoading ? (
+        <div className="flex min-h-screen items-center justify-center bg-background">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        </div>
+      ) : (
+        children
+      )}
     </AuthContext.Provider>
   );
 }
