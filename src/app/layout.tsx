@@ -5,7 +5,7 @@ import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import Providers from './providers'; // For React Query
 import { ThemeProvider } from "@/components/theme-provider";
-// AuthProviderWrapper is removed from here. It will be used in specific layouts.
+import { AuthProviderWrapper } from '@/providers/AuthProviderWrapper'; // Import the wrapper
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
@@ -30,15 +30,12 @@ export default function RootLayout({
              enableSystem
              disableTransitionOnChange
          >
-            {/*
-              Providers (like React Query) and Toaster can be here.
-              AuthProvider (which provides the context) will be part of AuthProviderWrapper,
-              which is used in layouts that require auth state (e.g., (app)/layout.tsx).
-            */}
-             <Providers>
-                 {children}
-                 <Toaster />
-             </Providers>
+            <AuthProviderWrapper> {/* Wrap with AuthProviderWrapper */}
+                 <Providers>
+                     {children}
+                     <Toaster />
+                 </Providers>
+            </AuthProviderWrapper>
          </ThemeProvider>
       </body>
     </html>

@@ -41,7 +41,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from '@/hooks/use-toast';
 import { useRouter, usePathname } from 'next/navigation';
 import { Skeleton } from "@/components/ui/skeleton";
-import { useUserContext } from '@/context/UserContext'; // Use the context hook
+import { useAuth } from '@/providers/AuthProvider'; // Use the consolidated AuthContext hook
 import { signOut } from 'firebase/auth';
 import { auth } from '@/firebase';
 
@@ -66,15 +66,15 @@ interface SubmenuItemConfig {
 
 export function AppSidebar() {
   const { state: sidebarState } = useSidebar();
-  const { authUser, profile, loading: userLoading } = useUserContext(); // Get user and profile from context
+  const { user, profile, authLoading } = useAuth(); // Get user and profile from AuthContext
   const { toast } = useToast();
   const router = useRouter();
   const pathname = usePathname();
   const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({});
 
    // Extract module settings from the profile
-   const moduleSettings = profile?.settings?.modules; // Adjusted to new profile structure
-   const modulesLoading = userLoading; // Loading state depends on user context loading
+   const moduleSettings = profile?.settings?.modules; 
+   const modulesLoading = authLoading; // Loading state depends on auth context loading
 
 
   const handleLogout = async () => {
@@ -109,29 +109,26 @@ export function AppSidebar() {
   ];
 
 
-  // Filter items based on module settings from the user's profile
-  // For anonymous users, moduleSettings will be undefined, so they see all items by default
-  // unless specific logic is added to restrict for anonymous users.
   const filteredItems = sidebarItems.filter(item =>
-     item.moduleKey === 'dashboard' || (authUser && !authUser.isAnonymous && moduleSettings && moduleSettings[item.moduleKey]) || (authUser && authUser.isAnonymous) // Guests see all modules by default
+     item.moduleKey === 'dashboard' || (user && !user.isAnonymous && moduleSettings && moduleSettings[item.moduleKey]) || (user && user.isAnonymous) 
    );
 
 
-   const isLoading = modulesLoading; // Use the loading state from context
+   const isLoading = modulesLoading; 
 
   const getDisplayName = () => {
-    if (authUser?.isAnonymous) return "Guest User";
-    return profile?.name || authUser?.displayName || "User";
+    if (user?.isAnonymous) return "Guest User";
+    return profile?.name || user?.displayName || "User";
   };
 
   const getDisplayEmail = () => {
-    if (authUser?.isAnonymous) return "guest@example.com";
-    return authUser?.email || "";
+    if (user?.isAnonymous) return "guest@example.com";
+    return user?.email || "";
   }
 
   const getAvatarFallback = () => {
-    if (authUser?.isAnonymous) return "G";
-    const name = profile?.name || authUser?.displayName;
+    if (user?.isAnonymous) return "G";
+    const name = profile?.name || user?.displayName;
     return name ? name.charAt(0).toUpperCase() : <User className="h-5 w-5" />;
   }
 
@@ -149,7 +146,7 @@ export function AppSidebar() {
 
       <SidebarContent className="flex-1 overflow-y-auto px-2">
         <SidebarMenu>
-          {isLoading && !authUser ? ( // Show skeleton only if truly loading and no authUser yet
+          {isLoading && !user ? ( 
              Array.from({ length: 6 }).map((_, index) => (
                <SidebarMenuItem key={index}>
                  <div className={cn(
@@ -235,15 +232,13 @@ export function AppSidebar() {
             </SidebarMenuItem>
           </SidebarMenu>
 
-           {/* User Info Section - Uses profile from context */}
            <div className={cn(
              "flex items-center gap-2 p-2 rounded-md hover:bg-sidebar-hover",
              sidebarState === 'collapsed' ? 'justify-center' : 'justify-between'
             )}>
-              {/* Make Avatar clickable to open profile modal - Example, can be linked to settings or modal */}
              <div className="flex items-center gap-2 overflow-hidden">
                  <Avatar className="h-8 w-8">
-                     <AvatarImage src={authUser?.isAnonymous ? undefined : (profile?.photoURL || authUser?.photoURL || undefined)} alt={getDisplayName()} data-ai-hint="user avatar placeholder" />
+                     <AvatarImage src={user?.isAnonymous ? undefined : (profile?.photoURL || user?.photoURL || undefined)} alt={getDisplayName()} data-ai-hint="user avatar placeholder" />
                      <AvatarFallback className="bg-sidebar-hover text-sidebar-foreground">
                          {getAvatarFallback()}
                      </AvatarFallback>
