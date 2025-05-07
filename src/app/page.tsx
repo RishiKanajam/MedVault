@@ -1,7 +1,9 @@
 
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useState } from 'react'; // Import useState
+import { signInAnonymously } from 'firebase/auth'; // Import signInAnonymously
+import { auth } from '@/firebase'; // Import auth
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
@@ -9,6 +11,7 @@ import { LogIn, Pill, Loader2, User as UserIcon } from 'lucide-react'; // Added 
 import Link from 'next/link';
 // Note: This page is NOT wrapped by AuthProvider, so useAuth() won't work here
 // to get auth state. Redirection for already logged-in users trying to access
+import { useToast } from '@/hooks/use-toast'; // Import useToast
 // this page will primarily be handled by the middleware.
 // Client-side checks here would require a separate, minimal auth state check if desired.
 
@@ -16,6 +19,20 @@ export default function Home() {
    const router = useRouter();
 
    // This page assumes it's public.
+   const [isGuestLoading, setIsGuestLoading] = useState(false);
+   const { toast } = useToast();
+
+   const handleGuestLogin = async () => {
+     setIsGuestLoading(true);
+     try {
+       await signInAnonymously(auth);
+       // Firebase automatically handles the session, middleware redirects to /dashboard
+     } catch (error: any) {
+       toast({ title: 'Guest Login Failed', description: error.message, variant: 'destructive' });
+     } finally {
+       setIsGuestLoading(false);
+     }
+   };
    // Middleware will redirect authenticated users trying to access '/' to '/dashboard'.
    // So, this content is primarily for unauthenticated users.
 
@@ -64,22 +81,15 @@ export default function Home() {
                     </Link>
                 </Button>
                 </div>
-                {/* Guest login can be added back here if signInAnonymously is re-enabled and handled */}
-                {/* <div className="mt-4 flex items-center">
+                <div className="mt-4 flex items-center">
                   <div className="flex-grow border-t border-border"></div>
                   <span className="mx-2 text-xs text-muted-foreground">OR</span>
                   <div className="flex-grow border-t border-border"></div>
                 </div>
-                <Button variant="outline" className="w-full mt-2" onClick={async () => {
-                    // Placeholder: Actual guest login would involve Firebase auth
-                    // For now, this button could link to /dashboard if guest access is implicit
-                    // or trigger a signInAnonymously() call from firebase.ts
-                    console.log("Attempting guest access (placeholder)...");
-                    // await signInAnonymously(auth); // If you have this function
-                    router.push('/dashboard'); // This would be handled by middleware if guests are treated as unauth
-                }}>
-                   <UserIcon className="mr-2 h-4 w-4" /> Continue as Guest
-                </Button> */}
+                <Button variant="outline" className="w-full mt-2 flex justify-center items-center" onClick={handleGuestLogin} disabled={isGuestLoading}>
+                   {isGuestLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                   {isGuestLoading ? 'Joining as Guest...' : <><UserIcon className="mr-2 h-4 w-4" /> Continue as Guest</>}
+                </Button>
             </CardContent>
             </Card>
         </div>
