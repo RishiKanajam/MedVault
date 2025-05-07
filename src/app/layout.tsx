@@ -5,7 +5,6 @@ import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import Providers from './providers'; // For React Query
 import { ThemeProvider } from "@/components/theme-provider";
-import { AuthProviderWrapper } from '@/providers/AuthProviderWrapper'; // Import the wrapper
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
@@ -21,7 +20,6 @@ export default function RootLayout({
 }>) {
   return (
     // Add suppressHydrationWarning to mitigate common browser extension issues
-    // Important: Ensure this is only on <html>, not duplicated on <body>
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans antialiased`}>
          <ThemeProvider
@@ -30,12 +28,11 @@ export default function RootLayout({
              enableSystem
              disableTransitionOnChange
          >
-            <AuthProviderWrapper> {/* Wrap with AuthProviderWrapper */}
-                 <Providers>
-                     {children}
-                     <Toaster />
-                 </Providers>
-            </AuthProviderWrapper>
+            {/* AuthProviderWrapper is removed from here */}
+            <Providers> {/* This is for React Query */}
+                {children}
+                <Toaster />
+            </Providers>
          </ThemeProvider>
       </body>
     </html>
