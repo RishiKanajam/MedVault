@@ -1,6 +1,6 @@
 // app/auth/login/page.tsx
 'use client';
-import React, { useEffect } from 'react'; // Ensure React and useEffect are imported
+import React from 'react'; // Ensure React is imported
 import { useRouter, useSearchParams } from 'next/navigation';
 import { signInWithEmailAndPassword, signInAnonymously } from 'firebase/auth';
 import { auth } from '@/firebase'; // Correct path
@@ -11,28 +11,21 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import Link from 'next/link';
 import { Loader2, Pill, User as UserIcon } from 'lucide-react';
-import { useAuth } from '@/providers/AuthProvider'; // Import useAuth
+// Removed useAuth import as LoginPage is outside AuthProvider scope for its primary rendering
 
 export default function LoginPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const searchParams = useSearchParams(); // Keep if needed for redirectedFrom logic, though middleware often handles this
   const { toast } = useToast();
-  const { user, authLoading: contextAuthLoading } = useAuth(); // Get user and authLoading from context
 
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
-  const [isSubmitting, setIsSubmitting] = React.useState(false); // Renamed isLoading to isSubmitting for clarity
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isGuestLoading, setIsGuestLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
-  useEffect(() => {
-    // If auth state is resolved (contextAuthLoading is false) and user is authenticated, redirect.
-    if (!contextAuthLoading && user) {
-      console.log('[Login Page] User is already authenticated via context. Redirecting to dashboard.');
-      router.replace('/dashboard');
-    }
-  }, [user, contextAuthLoading, router]);
-
+  // Middleware should handle redirecting already authenticated users.
+  // No useEffect based on contextAuthLoading or user needed here.
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,9 +36,8 @@ export default function LoginPage() {
       console.log("[Login Page] Attempting email/password login...");
       await signInWithEmailAndPassword(auth, email, password);
       toast({ title: 'Login Successful', description: 'Redirecting to dashboard...' });
-      // const redirectedFrom = searchParams.get('redirectedFrom'); // Keep for specific cases if needed later
       console.log(`[Login Page] Email/Password Login successful. Forcing redirect to /dashboard.`);
-      router.replace('/dashboard'); // Consistently redirect to /dashboard
+      router.replace('/dashboard'); 
     } catch (err: any) {
       console.error('[Login Page] Email/Password Login Error:', err);
       let message = 'An unknown error occurred during login.';
@@ -84,7 +76,7 @@ export default function LoginPage() {
       await signInAnonymously(auth);
       toast({ title: 'Guest Login Successful', description: 'Redirecting to dashboard...' });
       console.log("[Login Page] Guest login successful, forcing redirect to /dashboard");
-      router.replace('/dashboard'); // Consistently redirect to /dashboard
+      router.replace('/dashboard');
     } catch (error: any) {
       console.error('[Login Page] Guest Login Error:', error);
       let message = 'An unknown error occurred during guest login.';
@@ -106,19 +98,8 @@ export default function LoginPage() {
     }
   };
 
-  // Show a loader if the AuthProvider is still loading the auth state,
-  // or if the user is already authenticated and the redirect useEffect is about to run.
-  // This prevents the login form from flashing if the user is already logged in.
-  if (contextAuthLoading || (!contextAuthLoading && user)) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-4">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="ml-2 text-muted-foreground">Loading session...</p>
-      </div>
-    );
-  }
-
-
+  // The login form is rendered directly.
+  // Middleware handles authenticated users. AuthProvider handles loading for protected routes.
   return (
     <Card className="w-full max-w-sm mx-auto my-auto panel-primary">
       <CardHeader className="text-center">
