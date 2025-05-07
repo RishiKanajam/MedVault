@@ -3,7 +3,7 @@
 import React from 'react'; // Ensure React is imported for JSX
 import { useRouter, useSearchParams } from 'next/navigation';
 import { signInWithEmailAndPassword, signInAnonymously } from 'firebase/auth';
-import { auth } from '@/firebase';
+import { auth } from '@/firebase'; // Correct path
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -27,14 +27,14 @@ export default function LoginPage() {
     e.preventDefault();
     setError(null);
     setIsLoading(true);
-
+    console.log("[Login Page] handleLogin initiated.");
     try {
       console.log("[Login Page] Attempting email/password login...");
       await signInWithEmailAndPassword(auth, email, password);
       toast({ title: 'Login Successful', description: 'Redirecting to dashboard...' });
-      const redirectedFrom = searchParams.get('redirectedFrom');
-      console.log(`[Login Page] Login successful. Redirecting to ${redirectedFrom || '/dashboard'}`);
-      router.replace(redirectedFrom || '/dashboard');
+      // const redirectedFrom = searchParams.get('redirectedFrom'); // Keep for specific cases if needed later
+      console.log(`[Login Page] Email/Password Login successful. Forcing redirect to /dashboard.`);
+      router.replace('/dashboard'); // Consistently redirect to /dashboard
     } catch (err: any) {
       console.error('[Login Page] Email/Password Login Error:', err);
       let message = 'An unknown error occurred during login.';
@@ -60,18 +60,20 @@ export default function LoginPage() {
       toast({ title: 'Login Failed', description: message, variant: 'destructive' });
     } finally {
       setIsLoading(false);
+      console.log("[Login Page] handleLogin finished.");
     }
   };
 
   const handleGuestLogin = async () => {
     setIsGuestLoading(true);
-    setError(null); 
+    setError(null);
+    console.log("[Login Page] handleGuestLogin initiated.");
     try {
       console.log("[Login Page] Attempting guest login...");
       await signInAnonymously(auth);
       toast({ title: 'Guest Login Successful', description: 'Redirecting to dashboard...' });
-      console.log("[Login Page] Guest login successful, redirecting to /dashboard");
-      router.replace('/dashboard');
+      console.log("[Login Page] Guest login successful, forcing redirect to /dashboard");
+      router.replace('/dashboard'); // Consistently redirect to /dashboard
     } catch (error: any) {
       console.error('[Login Page] Guest Login Error:', error);
       let message = 'An unknown error occurred during guest login.';
@@ -89,6 +91,7 @@ export default function LoginPage() {
       toast({ title: 'Guest Login Failed', description: message, variant: 'destructive' });
     } finally {
       setIsGuestLoading(false);
+      console.log("[Login Page] handleGuestLogin finished.");
     }
   };
 

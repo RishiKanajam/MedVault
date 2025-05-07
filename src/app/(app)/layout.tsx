@@ -2,45 +2,56 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import AuthProvider, { useAuth } from '@/providers/AuthProvider'; // AuthProvider handles its own loading spinner
-import { useRouter } from 'next/navigation';
+import AuthProvider, { useAuth } from '@/providers/AuthProvider';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation'; // Added usePathname
 import { SidebarProvider, Sidebar, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/app-sidebar';
 import { Loader2 } from 'lucide-react';
 
-// This component contains the logic to protect routes after auth state is resolved.
 function ProtectedRouteLogic({ children }: { children: React.ReactNode }) {
-  const { user, authLoading } = useAuth(); // authLoading comes from AuthProvider
+  const { user, authLoading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname(); // Get current path
 
   useEffect(() => {
-    // If loading is finished and there's no user, redirect to login
-    if (!authLoading && !user) {
-      console.log('[ProtectedRouteLogic] Auth loaded, no user. Redirecting to login.');
-      router.replace('/auth/login');
+    console.log(`[ProtectedRouteLogic] Effect triggered. AuthLoading: ${authLoading}, User: ${user ? user.uid : 'null'}, Pathname: ${pathname}`);
+    if (!authLoading) { // Only act once auth state is resolved
+      if (!user) {
+        console.log('[ProtectedRouteLogic] Auth loaded, no user. Redirecting to /auth/login.');
+        router.replace('/auth/login');
+      } else {
+        // If user is authenticated but somehow not on /dashboard (e.g., direct navigation to an internal app route that isn't dashboard)
+        // and not already trying to go to dashboard (to prevent redirect loops if dashboard is the intended page)
+        // This might be redundant if middleware handles all cases, but can be a client-side fallback.
+        // Only redirect if the current path is NOT a sub-path of /dashboard already
+        if (pathname !== '/dashboard' && !pathname.startsWith('/dashboard/')) {
+           console.log(`[ProtectedRouteLogic] Auth loaded, user exists. Current path ${pathname} is not dashboard. Redirecting to /dashboard.`);
+           // router.replace('/dashboard'); // Temporarily disabled to see if middleware/login handles it.
+        } else {
+           console.log(`[ProtectedRouteLogic] Auth loaded, user exists. Already on or navigating to dashboard path: ${pathname}. No redirect needed from here.`);
+        }
+      }
     }
-  }, [user, authLoading, router]);
+  }, [user, authLoading, router, pathname]);
 
-  // If auth is still loading, AuthProvider is already displaying a spinner.
-  // So, we don't need to show another spinner here unless authLoading is false AND user is null (being redirected).
+  // If auth is loading, AuthProvider is displaying a spinner.
   if (authLoading) {
-    // AuthProvider handles this spinner. We can return null or a minimal placeholder if needed,
-    // but usually AuthProvider's spinner covers this.
-    return null;
+    console.log('[ProtectedRouteLogic] Auth is loading. AuthProvider spinner is active.');
+    return null; // AuthProvider handles this.
   }
 
-  // If auth is loaded and user exists, render the children (the protected page content).
+  // If auth is loaded AND user exists, render children.
   if (user) {
+    console.log('[ProtectedRouteLogic] Auth loaded, user exists. Rendering protected content.');
     return <>{children}</>;
   }
 
-  // If auth is loaded, no user, and redirect is in progress, can show a specific spinner or null.
-  // For simplicity, returning null as AuthProvider covers initial load and redirect should be quick.
-  console.log('[ProtectedRouteLogic] Auth loaded, no user, redirect should be in progress.');
+  // If auth is loaded, no user, and redirect to login is in progress
+  console.log('[ProtectedRouteLogic] Auth loaded, no user. Redirect to /auth/login should be in progress or already happened.');
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">
       <Loader2 className="h-12 w-12 animate-spin text-primary" />
-      <p className="ml-2">Redirecting...</p>
+      <p className="ml-2 text-muted-foreground">Redirecting to login...</p>
     </div>
   );
 }
@@ -50,8 +61,9 @@ export default function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
+  console.log("[AppLayout] Rendering...");
   return (
-    <AuthProvider> {/* AuthProvider now wraps only protected routes and manages its own spinner */}
+    <AuthProvider>
       <ProtectedRouteLogic>
         <SidebarProvider>
             <Sidebar>

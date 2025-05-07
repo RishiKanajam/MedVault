@@ -1,61 +1,44 @@
 
 'use client';
 
-import React, { useState } from 'react'; // Import useState
-import { signInAnonymously } from 'firebase/auth'; // Import signInAnonymously
-import { auth } from '@/firebase'; // Import auth
+import React, { useState } from 'react';
+import { signInAnonymously } from 'firebase/auth';
+import { auth } from '@/firebase'; // Correct path
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { LogIn, Pill, Loader2, User as UserIcon } from 'lucide-react'; // Added UserIcon
+import { LogIn, Pill, Loader2, User as UserIcon } from 'lucide-react';
 import Link from 'next/link';
-// Note: This page is NOT wrapped by AuthProvider, so useAuth() won't work here
-// to get auth state. Redirection for already logged-in users trying to access
-import { useToast } from '@/hooks/use-toast'; // Import useToast
-// this page will primarily be handled by the middleware.
-// Client-side checks here would require a separate, minimal auth state check if desired.
+import { useToast } from '@/hooks/use-toast';
 
 export default function Home() {
    const router = useRouter();
-
-   // This page assumes it's public.
    const [isGuestLoading, setIsGuestLoading] = useState(false);
    const { toast } = useToast();
 
-   const handleGuestLogin = async () => {
-     setIsGuestLoading(true);
-     try {
-       await signInAnonymously(auth);
-       // Firebase automatically handles the session, middleware redirects to /dashboard
-     } catch (error: any) {
-       toast({ title: 'Guest Login Failed', description: error.message, variant: 'destructive' });
-     } finally {
-       setIsGuestLoading(false);
-     }
-   };
    // Middleware will redirect authenticated users trying to access '/' to '/dashboard'.
    // So, this content is primarily for unauthenticated users.
 
-   // If we still want a client-side check for robustness (e.g., if middleware is bypassed or for faster UX):
-   // We'd need a way to check auth state without the full AuthProvider context here,
-   // or accept that middleware is the primary gatekeeper.
-   // For simplicity with the new structure, we rely on middleware for this redirect.
-
-   // Simulate a loading state if needed for initial rendering, though typically not needed for a static landing page.
-   // const [pageLoading, setPageLoading] = React.useState(true);
-   // useEffect(() => {
-   //   // Simulate content load
-   //   const timer = setTimeout(() => setPageLoading(false), 300); // Adjust as needed
-   //   return () => clearTimeout(timer);
-   // }, []);
-
-   // if (pageLoading) {
-   //   return (
-   //     <div className="flex min-h-screen items-center justify-center bg-background">
-   //       <Loader2 className="h-12 w-12 animate-spin text-primary" />
-   //     </div>
-   //   );
-   // }
+   const handleGuestLogin = async () => {
+     setIsGuestLoading(true);
+     console.log("[Landing Page] Guest login initiated.");
+     try {
+       await signInAnonymously(auth);
+       // Firebase automatically handles the session.
+       // Middleware should detect the new session on next navigation and redirect to /dashboard.
+       // Explicit redirect here can sometimes race with middleware or auth state propagation.
+       // Forcing a hard navigation to a known protected route like /dashboard helps ensure middleware kicks in.
+       console.log("[Landing Page] Guest login successful with Firebase. Attempting to navigate to /dashboard to trigger middleware/auth checks.");
+       toast({ title: 'Guest Login Successful', description: 'Redirecting to dashboard...' });
+       router.push('/dashboard'); // Navigate to dashboard, AuthProvider and middleware will handle the rest
+     } catch (error: any) {
+       console.error("[Landing Page] Guest Login Error:", error);
+       toast({ title: 'Guest Login Failed', description: error.message, variant: 'destructive' });
+     } finally {
+       setIsGuestLoading(false);
+       console.log("[Landing Page] Guest login finished.");
+     }
+   };
 
     return (
         <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
