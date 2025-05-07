@@ -1,34 +1,45 @@
-// src/lib/firebase.ts
+// src/firebase.ts
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
-// import { getFunctions, Functions } from 'firebase/functions'; // Uncomment if using Firebase Functions
+import { getAnalytics, Analytics } from "firebase/analytics"; // Import Analytics
 
-// Log missing variables to help debugging
-if (!process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
-    console.warn("Firebase Warning: NEXT_PUBLIC_FIREBASE_API_KEY is not set in the environment. Authentication will fail.");
-}
-// Add similar checks for other required variables if needed
-
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "MISSING_API_KEY",
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
+  apiKey: "AIzaSyA-1DgJPuu_iF_jXi0ocA2HSJXsaG0Nhvw",
+  authDomain: "gen-lang-client-0637093427.firebaseapp.com",
+  projectId: "gen-lang-client-0637093427",
+  storageBucket: "gen-lang-client-0637093427.appspot.com", // Corrected to .appspot.com
+  messagingSenderId: "200280322925",
+  appId: "1:200280322925:web:d93f0f3b70c4f59211e064",
+  measurementId: "G-XCLS8JGY2G"
 };
+
 
 // Initialize Firebase
 let app: FirebaseApp;
+let analytics: Analytics | null = null; // Initialize analytics as null
+
 if (!getApps().length) {
   app = initializeApp(firebaseConfig);
-  console.log("Firebase initialized");
+  console.log("Firebase initialized with new config");
+  if (typeof window !== 'undefined') { // Ensure analytics is initialized only on client
+    analytics = getAnalytics(app);
+    console.log("Firebase Analytics initialized");
+  }
 } else {
   app = getApps()[0];
   console.log("Using existing Firebase app instance");
+  if (typeof window !== 'undefined' && !analytics) { // Initialize analytics if not already
+     try {
+        analytics = getAnalytics(app);
+        console.log("Firebase Analytics initialized for existing app instance");
+     } catch (e) {
+        console.warn("Could not initialize Analytics for existing app instance", e);
+     }
+  }
 }
 
 const auth: Auth = getAuth(app);
@@ -40,4 +51,4 @@ const storage: FirebaseStorage = getStorage(app);
 // import { enableIndexedDbPersistence } from 'firebase/firestore';
 // if (typeof window !== 'undefined') { ... }
 
-export { app, auth, db, storage /*, functions */ };
+export { app, auth, db, storage, analytics /*, functions */ };
