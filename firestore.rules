@@ -1,0 +1,32 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // User Profiles: Allow users to read/write their own profile document.
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Clinic Data: Allow access based on clinicId custom claim
+    match /clinics/{clinicId} {
+      // Allow read/write if user has matching clinicId claim
+      allow read, write: if request.auth != null && request.auth.token.clinicId == clinicId;
+      
+      // Allow access to subcollections
+      match /{collection}/{docId} {
+        allow read, write: if request.auth != null && request.auth.token.clinicId == clinicId;
+      }
+    }
+
+    // Allow users to read their own data
+    match /users/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Optional: Public 'clinics' list (if needed for dropdowns, etc.)
+    // match /clinics/{clinicId} {
+    //   allow read: if request.auth != null; // Allow any authenticated user to read clinic info? Adjust as needed.
+    // }
+  }
+}
