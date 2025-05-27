@@ -10,6 +10,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of the backend code
 COPY . .
 
-EXPOSE 5001
+EXPOSE 8080
 
 CMD ["python", "sensor_data_service.py"] 
