@@ -2,8 +2,8 @@ import { NextResponse, NextRequest } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { getAuth } from 'firebase-admin/auth';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { db } from '@/lib/firebase';
-import { collection, addDoc } from 'firebase/firestore';
+import { getFirestore } from 'firebase-admin/firestore';
+import { collection, addDoc } from 'firebase-admin/firestore';
 
 function ensureFirebaseAdmin() {
   if (!getApps().length) {
@@ -207,8 +207,9 @@ export async function POST(req: NextRequest) {
           throw new Error('User is not associated with a clinic');
         }
 
-        const historyRef = collection(db, 'clinics', clinicId, 'history');
-        await addDoc(historyRef, {
+        const db = getFirestore();
+        const historyRef = db.collection('clinics').doc(clinicId).collection('history');
+        await historyRef.add({
           timestamp: new Date(),
           type: 'RxAI Consultation',
           patientInfo: {

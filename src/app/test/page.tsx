@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
-import { auth, db } from '@/lib/firebase';
+import { auth, db } from '@/firebase';
 import { collection, addDoc } from 'firebase/firestore';
 
 export default function TestPage() {
