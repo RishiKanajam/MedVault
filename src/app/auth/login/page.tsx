@@ -6,7 +6,7 @@
 // TODO: Replace dummy data with real API calls where marked.
 
 'use client';
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@/firebase';
@@ -18,7 +18,7 @@ import { Label } from '@/components/ui/label';
 import Link from 'next/link';
 import { Loader2, Pill } from 'lucide-react';
 
-export default function LoginPage() {
+function LoginContent(props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
@@ -176,5 +176,13 @@ export default function LoginPage() {
         </CardFooter>
       </Card>
     </div>
+  );
+}
+
+export default function LoginPage(props) {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <LoginContent {...props} />
+    </Suspense>
   );
 }

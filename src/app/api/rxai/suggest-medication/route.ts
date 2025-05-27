@@ -5,29 +5,18 @@ import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { db } from '@/lib/firebase';
 import { collection, addDoc } from 'firebase/firestore';
 
-// Initialize Firebase Admin if not already initialized
-if (!getApps().length) {
-  try {
+function ensureFirebaseAdmin() {
+  if (!getApps().length) {
     if (!process.env.FIREBASE_PROJECT_ID || !process.env.FIREBASE_CLIENT_EMAIL || !process.env.FIREBASE_PRIVATE_KEY) {
-      console.error('Missing Firebase Admin configuration:', {
-        hasProjectId: !!process.env.FIREBASE_PROJECT_ID,
-        hasClientEmail: !!process.env.FIREBASE_CLIENT_EMAIL,
-        hasPrivateKey: !!process.env.FIREBASE_PRIVATE_KEY
-      });
       throw new Error('Missing Firebase Admin configuration');
     }
-
     initializeApp({
       credential: cert({
         projectId: process.env.FIREBASE_PROJECT_ID,
         clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+        privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
       }),
     });
-    console.log('Firebase Admin initialized successfully in suggest-medication route');
-  } catch (error) {
-    console.error('Error initializing Firebase Admin:', error);
-    throw error;
   }
 }
 
@@ -42,6 +31,7 @@ export async function POST(req: NextRequest) {
   let decodedToken;
   
   try {
+    ensureFirebaseAdmin();
     console.log('Received request to suggest medication');
     
     const sessionCookie = req.headers.get('cookie')?.split(';').find(c => c.trim().startsWith('__session='));

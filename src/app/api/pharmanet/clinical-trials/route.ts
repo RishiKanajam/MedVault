@@ -1,10 +1,27 @@
 import { NextResponse } from 'next/server';
 import { auth } from 'firebase-admin';
+import { initializeApp, getApps, cert } from 'firebase-admin/app';
+
+function ensureFirebaseAdmin() {
+  if (!getApps().length) {
+    if (!process.env.FIREBASE_PROJECT_ID || !process.env.FIREBASE_CLIENT_EMAIL || !process.env.FIREBASE_PRIVATE_KEY) {
+      throw new Error('Missing Firebase Admin configuration');
+    }
+    initializeApp({
+      credential: cert({
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+      }),
+    });
+  }
+}
 
 const CLINICAL_TRIALS_API_URL = 'https://clinicaltrials.gov/api/query/study_fields';
 
 export async function GET(req: Request) {
   try {
+    ensureFirebaseAdmin();
     const sessionCookie = req.headers.get('cookie')?.split(';').find(c => c.trim().startsWith('__session='));
     if (!sessionCookie) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

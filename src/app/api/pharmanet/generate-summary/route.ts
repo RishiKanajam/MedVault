@@ -1,5 +1,7 @@
+// import { getAuth } from '@clerk/nextjs/server';
+// TODO: If authentication is needed, use Firebase Auth instead of Clerk.
+// If not needed, remove all Clerk-related logic from this file.
 import { NextResponse } from 'next/server';
-import { getAuth } from '@clerk/nextjs/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 // Initialize Gemini
@@ -7,10 +9,10 @@ const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY || '');
 
 export async function POST(req: Request) {
   try {
-    const { userId } = getAuth(req);
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    // const { userId } = getAuth(req);
+    // if (!userId) {
+    //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // }
 
     const body = await req.json();
     const { trialId } = body;
