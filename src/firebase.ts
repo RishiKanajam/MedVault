@@ -17,17 +17,32 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID // Optional
 };
 
+// Debug logging
+console.log('Firebase Config Values:', {
+  apiKey: firebaseConfig.apiKey ? 'Set' : 'Not Set',
+  authDomain: firebaseConfig.authDomain ? 'Set' : 'Not Set',
+  projectId: firebaseConfig.projectId ? 'Set' : 'Not Set',
+  storageBucket: firebaseConfig.storageBucket ? 'Set' : 'Not Set',
+  messagingSenderId: firebaseConfig.messagingSenderId ? 'Set' : 'Not Set',
+  appId: firebaseConfig.appId ? 'Set' : 'Not Set',
+  measurementId: firebaseConfig.measurementId ? 'Set' : 'Not Set'
+});
 
 // Initialize Firebase
 let app: FirebaseApp;
 let analytics: Analytics | null = null; // Initialize analytics as null
 
 if (!getApps().length) {
-  app = initializeApp(firebaseConfig);
-  console.log("Firebase initialized with new config");
-  if (typeof window !== 'undefined') { // Ensure analytics is initialized only on client
-    analytics = getAnalytics(app);
-    console.log("Firebase Analytics initialized");
+  try {
+    app = initializeApp(firebaseConfig);
+    console.log("Firebase initialized successfully");
+    if (typeof window !== 'undefined') { // Ensure analytics is initialized only on client
+      analytics = getAnalytics(app);
+      console.log("Firebase Analytics initialized");
+    }
+  } catch (error) {
+    console.error("Firebase initialization error:", error);
+    throw error;
   }
 } else {
   app = getApps()[0];
