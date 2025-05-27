@@ -8,25 +8,27 @@ import { getAnalytics, Analytics } from "firebase/analytics"; // Import Analytic
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID // Optional
+  apiKey: typeof window !== 'undefined' ? process.env.NEXT_PUBLIC_FIREBASE_API_KEY : undefined,
+  authDomain: typeof window !== 'undefined' ? process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN : undefined,
+  projectId: typeof window !== 'undefined' ? process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID : undefined,
+  storageBucket: typeof window !== 'undefined' ? process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET : undefined,
+  messagingSenderId: typeof window !== 'undefined' ? process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID : undefined,
+  appId: typeof window !== 'undefined' ? process.env.NEXT_PUBLIC_FIREBASE_APP_ID : undefined,
+  measurementId: typeof window !== 'undefined' ? process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID : undefined
 };
 
 // Debug logging
-console.log('Firebase Config Values:', {
-  apiKey: firebaseConfig.apiKey ? 'Set' : 'Not Set',
-  authDomain: firebaseConfig.authDomain ? 'Set' : 'Not Set',
-  projectId: firebaseConfig.projectId ? 'Set' : 'Not Set',
-  storageBucket: firebaseConfig.storageBucket ? 'Set' : 'Not Set',
-  messagingSenderId: firebaseConfig.messagingSenderId ? 'Set' : 'Not Set',
-  appId: firebaseConfig.appId ? 'Set' : 'Not Set',
-  measurementId: firebaseConfig.measurementId ? 'Set' : 'Not Set'
-});
+if (typeof window !== 'undefined') {
+  console.log('Firebase Config Values:', {
+    apiKey: firebaseConfig.apiKey ? 'Set' : 'Not Set',
+    authDomain: firebaseConfig.authDomain ? 'Set' : 'Not Set',
+    projectId: firebaseConfig.projectId ? 'Set' : 'Not Set',
+    storageBucket: firebaseConfig.storageBucket ? 'Set' : 'Not Set',
+    messagingSenderId: firebaseConfig.messagingSenderId ? 'Set' : 'Not Set',
+    appId: firebaseConfig.appId ? 'Set' : 'Not Set',
+    measurementId: firebaseConfig.measurementId ? 'Set' : 'Not Set'
+  });
+}
 
 // Initialize Firebase
 let app: FirebaseApp;
@@ -34,9 +36,13 @@ let analytics: Analytics | null = null; // Initialize analytics as null
 
 if (!getApps().length) {
   try {
-    app = initializeApp(firebaseConfig);
-    console.log("Firebase initialized successfully");
-    if (typeof window !== 'undefined') { // Ensure analytics is initialized only on client
+    if (typeof window === 'undefined') {
+      console.log('Running on server side, skipping Firebase initialization');
+      // Initialize a dummy app for server-side
+      app = initializeApp({ projectId: 'dummy' });
+    } else {
+      app = initializeApp(firebaseConfig);
+      console.log("Firebase initialized successfully");
       analytics = getAnalytics(app);
       console.log("Firebase Analytics initialized");
     }
