@@ -1,5 +1,6 @@
 // src/app/rxai/page.tsx
 'use client';
+export const dynamic = 'force-dynamic';
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
