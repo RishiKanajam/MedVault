@@ -12,6 +12,7 @@ import { Bar, BarChart as RechartsBarChart, Line as RechartsLineElement, Respons
 import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from "@/components/ui/chart";
 import { useAuth } from '@/providers/AuthProvider';
 import { useToast } from '@/hooks/use-toast';
+import { AuthProvider } from '@/providers/AuthProvider';
 
 // Dashboard Page for MediSync Pro
 // Purpose: Shows workspace overview, metrics, charts, and quick actions for all modules.
@@ -62,18 +63,17 @@ const recordsChartConfig = {
   count: { label: "Records Added", color: "hsl(var(--primary-hsl))" },
 } satisfies ChartConfig;
 
-
-export default function DashboardPage() {
-  const { user, profile, authLoading } = useAuth();
+function DashboardPageInner() {
+  const { user, profile, loading } = useAuth();
   const { metrics, loading: metricsLoading } = useDashboardMetrics(profile?.clinicId ?? undefined);
   const { toast } = useToast();
 
   // Show welcome back toast on mount
   React.useEffect(() => {
-    if (!authLoading) {
+    if (!loading) {
       toast({ title: 'Welcome back', description: 'Glad to see you again!' });
     }
-  }, [authLoading, toast]);
+  }, [loading, toast]);
 
   // Combined loading state for page content (auth already handled by AuthProvider)
   const isLoadingContent = metricsLoading;
@@ -197,5 +197,13 @@ export default function DashboardPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function DashboardPageWrapper() {
+  return (
+    <AuthProvider>
+      <DashboardPageInner />
+    </AuthProvider>
   );
 }
