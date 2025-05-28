@@ -5,8 +5,6 @@ import { getFirestore, Firestore, enableIndexedDbPersistence } from 'firebase/fi
 import { getStorage, FirebaseStorage } from 'firebase/storage';
 import { getAnalytics, Analytics } from "firebase/analytics"; // Import Analytics
 
-// Your web app's Firebase configuration
-console.log('API KEY FROM ENV:', process.env.NEXT_PUBLIC_FIREBASE_API_KEY);
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
