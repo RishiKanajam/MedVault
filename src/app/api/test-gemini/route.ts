@@ -1,14 +1,12 @@
 import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-// Initialize Gemini
-if (!process.env.GOOGLE_AI_API_KEY) {
-  throw new Error('GOOGLE_AI_API_KEY is not set in environment variables');
-}
-
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY);
-
 export async function GET() {
+  const apiKey = process.env.GOOGLE_AI_API_KEY;
+  if (!apiKey) {
+    throw new Error('GOOGLE_AI_API_KEY is not set in environment variables');
+  }
+  const genAI = new GoogleGenerativeAI(apiKey);
   try {
     const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
     const result = await model.generateContent('Say "Gemini API is working!"');
