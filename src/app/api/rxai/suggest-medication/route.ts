@@ -21,13 +21,6 @@ function ensureFirebaseAdmin() {
   }
 }
 
-// Initialize Gemini
-if (!process.env.GOOGLE_AI_API_KEY) {
-  throw new Error('GOOGLE_AI_API_KEY is not set in environment variables');
-}
-
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY);
-
 export async function POST(req: NextRequest) {
   let decodedToken;
   
@@ -122,6 +115,12 @@ export async function POST(req: NextRequest) {
         ]
       }
     `;
+
+    const apiKey = process.env.GOOGLE_AI_API_KEY;
+    if (!apiKey) {
+      throw new Error('GOOGLE_AI_API_KEY is not set in environment variables');
+    }
+    const genAI = new GoogleGenerativeAI(apiKey);
 
     try {
       console.log('Generating AI response...');
