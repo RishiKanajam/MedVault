@@ -1,3 +1,4 @@
+'use client';
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
@@ -14,7 +15,8 @@ import {
   User,
   LogOut,
   BarChart,
-  Truck // Added Truck icon as an alternative
+  Truck, // Added Truck icon as an alternative
+  Loader2
 } from 'lucide-react';
 import {
   Sidebar,
@@ -66,7 +68,7 @@ interface SubmenuItemConfig {
 
 export function AppSidebar() {
   const { state: sidebarState } = useSidebar();
-  const { user, profile, authLoading } = useAuth(); // Get user and profile from AuthContext
+  const { user, profile, loading } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
   const pathname = usePathname();
@@ -74,19 +76,27 @@ export function AppSidebar() {
 
    // Extract module settings from the profile
    // const moduleSettings = profile?.settings?.modules; 
-   const modulesLoading = authLoading; // Loading state depends on auth context loading
+   const modulesLoading = loading; // Loading state depends on auth context loading
 
+   console.log('[AppSidebar] user:', user, 'profile:', profile, 'loading:', loading);
 
   const handleLogout = async () => {
-     try {
+    if (!auth) return;
+    try {
       await signOut(auth);
-      toast({ title: "Logged Out", description: "You have been successfully logged out." });
-      router.push('/auth/login'); // Redirect to login after successful logout
+      toast({
+        title: 'Logged out successfully',
+        description: 'You have been logged out of your account.',
+      });
     } catch (error) {
-      console.error("Logout error:", error);
-      toast({ title: "Logout Error", description: "Failed to log out.", variant: "destructive" });
+      console.error('Error logging out:', error);
+      toast({
+        title: 'Error logging out',
+        description: 'There was a problem logging out. Please try again.',
+        variant: 'destructive',
+      });
     }
-  }
+  };
 
    const toggleSubmenu = (key: string) => {
     setOpenSubmenus(prev => ({ ...prev, [key]: !prev[key] }));
@@ -125,6 +135,20 @@ export function AppSidebar() {
   const getAvatarFallback = () => {
     const name = profile?.name || user?.displayName;
     return name ? name.charAt(0).toUpperCase() : <User className="h-5 w-5" />;
+  }
+
+  // If we're still loading auth state, show a loading indicator
+  if (isLoading) {
+    return (
+      <div className="flex h-full w-full items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // If we're not authenticated, don't show the sidebar
+  if (!user || !profile) {
+    return null;
   }
 
   return (
@@ -219,7 +243,7 @@ export function AppSidebar() {
       <SidebarFooter className="p-2 space-y-2">
           <SidebarMenu>
             <SidebarMenuItem>
-               <SidebarMenuButton asChild tooltip={sidebarState === 'collapsed' ? "Settings" : undefined} isActive={pathname === '/settings'} variant="ghost" href="/settings">
+               <SidebarMenuButton asChild tooltip={sidebarState === 'collapsed' ? "Settings" : undefined} isActive={pathname === '/settings'} variant="ghost">
                   <Link href="/settings">
                     <Settings />
                     {sidebarState === 'expanded' && <span>Settings</span>}
@@ -247,10 +271,14 @@ export function AppSidebar() {
                  )}
               </div>
               {sidebarState === 'expanded' && (
-                 <Button variant="ghost" size="icon" onClick={handleLogout} className="h-8 w-8 text-sidebar-foreground hover:bg-sidebar-hover hover:text-sidebar-foreground">
-                     <LogOut className="h-4 w-4" />
-                     <span className="sr-only">Logout</span>
-                 </Button>
+                 <Link
+                   href="/logout"
+                   className="flex items-center gap-2 p-2 rounded-md hover:bg-sidebar-hover"
+                   onClick={handleLogout}
+                 >
+                   <LogOut className="h-4 w-4" />
+                   <span className="sr-only">Logout</span>
+                 </Link>
               )}
            </div>
       </SidebarFooter>

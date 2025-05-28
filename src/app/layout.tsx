@@ -5,6 +5,7 @@ import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import Providers from './providers'; // For React Query
 import { ThemeProvider } from "@/components/theme-provider";
+import { AuthProvider } from '@/providers/AuthProvider';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
@@ -28,10 +29,12 @@ export default function RootLayout({
              enableSystem
              disableTransitionOnChange
          >
-            <Providers> {/* This is for React Query */}
-                {children}
-                <Toaster />
-            </Providers>
+            <AuthProvider>
+              <Providers> {/* This is for React Query */}
+                  {children}
+                  <Toaster />
+              </Providers>
+            </AuthProvider>
          </ThemeProvider>
       </body>
     </html>

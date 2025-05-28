@@ -2,8 +2,8 @@
 'use client';
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { auth, db } from '@/firebase';
-import { doc, onSnapshot, DocumentData, getDoc } from 'firebase/firestore';
+import { auth, db, isClient } from '@/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
@@ -13,6 +13,7 @@ interface UserProfile {
   email: string;
   clinicId: string;
   role: 'admin' | 'staff';
+  photoURL?: string;
 }
 
 interface AuthContextType {
@@ -36,38 +37,63 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(async (user) => {
-      setUser(user);
-      setLoading(true);
+    console.log('[AuthProvider] useEffect running. isClient:', isClient, 'auth:', !!auth);
+    let unsubscribe: (() => void) | undefined;
 
-      if (user) {
-        try {
-          const profileDoc = await getDoc(doc(db, 'users', user.uid));
-          if (profileDoc.exists()) {
-            setProfile({
-              uid: user.uid,
-              ...profileDoc.data(),
-            } as UserProfile);
-          }
-        } catch (error) {
-          console.error('Error fetching user profile:', error);
-        }
-      } else {
-        setProfile(null);
-        // Redirect to login if not on auth pages
-        if (!window.location.pathname.startsWith('/auth')) {
-          router.push('/auth/login');
-        }
+    const initializeAuth = async () => {
+      // If we're on the server or auth isn't available, set loading to false and return
+      if (!isClient || !auth) {
+        setLoading(false);
+        return;
       }
 
-      setLoading(false);
-    });
+      try {
+        // Set up auth state listener
+        unsubscribe = onAuthStateChanged(auth, async (user) => {
+          console.log('[AuthProvider] onAuthStateChanged fired. user:', user);
+          if (user) {
+            try {
+              // Get user profile from Firestore
+              const profileDoc = await getDoc(doc(db!, 'users', user.uid));
+              if (profileDoc.exists()) {
+                const data = profileDoc.data();
+                console.log('[AuthProvider] profileDoc data:', data);
+                setProfile({
+                  uid: user.uid,
+                  ...data,
+                } as UserProfile);
+              }
+            } catch (error) {
+              console.error('Error fetching user profile:', error);
+            }
+          } else {
+            setProfile(null);
+            // Only redirect if we're not already on an auth page
+            if (!window.location.pathname.startsWith('/auth')) {
+              router.push('/auth/login');
+            }
+          }
+          setUser(user);
+          setLoading(false);
+        });
+      } catch (error) {
+        console.error('Error initializing auth:', error);
+        setLoading(false);
+      }
+    };
 
-    return () => unsubscribe();
+    initializeAuth();
+
+    // Cleanup subscription
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, [router]);
 
+  // Show loading state only during initial auth check
   if (loading) {
-    console.log("[AuthProvider] Rendering global loading spinner because loading is true.");
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -76,16 +102,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     );
   }
 
-  console.log(`[AuthProvider] Rendering children. User: ${user?.uid}, loading: ${loading}`);
-
-  const value = {
-    user,
-    profile,
-    loading,
-  };
-
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={{ user, profile, loading }}>
       {children}
     </AuthContext.Provider>
   );

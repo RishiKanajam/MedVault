@@ -18,7 +18,7 @@ import { Label } from '@/components/ui/label';
 import Link from 'next/link';
 import { Loader2, Pill } from 'lucide-react';
 
-function LoginContent(props) {
+function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
@@ -53,23 +53,8 @@ function LoginContent(props) {
         body: JSON.stringify({ idToken }),
       });
 
-      // Check if the response is JSON
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        const text = await response.text();
-        console.error('Non-JSON response:', text);
-        throw new Error('Server returned an invalid response');
-      }
-
-      const data = await response.json();
-
       if (!response.ok) {
-        console.error('Session creation failed:', data);
-        throw new Error(data.details || data.error || 'Failed to create session');
-      }
-
-      if (!data.success) {
-        console.error('Session creation unsuccessful:', data);
+        const data = await response.json();
         throw new Error(data.details || data.error || 'Failed to create session');
       }
 
@@ -99,8 +84,6 @@ function LoginContent(props) {
           default:
             errorMessage = error.message || errorMessage;
         }
-      } else {
-        errorMessage = error.message || errorMessage;
       }
 
       setError(errorMessage);
@@ -114,8 +97,6 @@ function LoginContent(props) {
     }
   };
 
-  // The login form is rendered directly.
-  // Middleware handles authenticated users. AuthProvider handles loading for protected routes.
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <Card className="w-full max-w-sm mx-auto my-auto panel-primary">
@@ -139,6 +120,7 @@ function LoginContent(props) {
                 placeholder="you@example.com"
                 required
                 disabled={isSubmitting}
+                autoComplete="email"
               />
             </div>
 
@@ -151,10 +133,10 @@ function LoginContent(props) {
                 onChange={e => setPassword(e.target.value)}
                 required
                 disabled={isSubmitting}
+                autoComplete="current-password"
               />
             </div>
 
-            {/* Error message with aria-live for accessibility */}
             {error && (
               <p className="text-sm text-destructive text-center mt-2" aria-live="polite">{error}</p>
             )}
@@ -179,10 +161,14 @@ function LoginContent(props) {
   );
 }
 
-export default function LoginPage(props) {
+export default function LoginPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <LoginContent {...props} />
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    }>
+      <LoginContent />
     </Suspense>
   );
 }

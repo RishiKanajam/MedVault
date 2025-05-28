@@ -7,12 +7,6 @@ export function middleware(req: NextRequest) {
   const sessionCookie = req.cookies.get('__session')
   const isAuthenticated = !!sessionCookie
 
-  // —— Bypass middleware for /dashboard so client-side guard can take over ——
-  //    Remove `|| pathname === '/dashboard'` when you switch to real session-cookie auth.
-  if (process.env.NODE_ENV === 'development' || pathname === '/dashboard') {
-    console.log('[Middleware] Skipping auth check for dashboard in dev.')
-    return NextResponse.next()
-  }
 
   // —— Your existing logic below —— 
   if (isAuthenticated) {
