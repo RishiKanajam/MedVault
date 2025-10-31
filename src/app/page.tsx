@@ -1,19 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
-import { signInAnonymously } from 'firebase/auth';
-import { auth } from '@/firebase'; // Correct path
-import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { LogIn, Pill, Loader2, User as UserIcon } from 'lucide-react';
+import { LogIn, Pill } from 'lucide-react';
 import Link from 'next/link';
-import { useToast } from '@/hooks/use-toast';
 
 export default function Home() {
-   const router = useRouter();
-   const { toast } = useToast();
-
    // Middleware will redirect authenticated users trying to access '/' to '/dashboard'.
    // So, this content is primarily for unauthenticated users.
 

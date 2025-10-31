@@ -22,7 +22,7 @@ export default function RootLayout({
   return (
     // Add suppressHydrationWarning to mitigate common browser extension issues
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.variable} font-sans antialiased`}>
+      <body suppressHydrationWarning className={`${inter.variable} font-sans antialiased`}>
          <ThemeProvider
              attribute="class"
              defaultTheme="system" // Default to system theme preference

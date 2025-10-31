@@ -36,6 +36,9 @@ function LoginContent() {
     try {
       // Sign in with Firebase
       console.log('Attempting to sign in with Firebase...');
+      if (!auth) {
+        throw new Error('Firebase auth is not initialized');
+      }
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       console.log('Firebase sign in successful, getting ID token...');
       
@@ -98,22 +101,28 @@ function LoginContent() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-sm mx-auto my-auto panel-primary">
-        <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
-            <Pill className="w-10 h-10 text-primary" />
-          </div>
-          <CardTitle className="text-2xl font-bold">MediSync Pro Login</CardTitle>
-          <CardDescription>Enter your email below to login to your account.</CardDescription>
-        </CardHeader>
+    <div className="flex min-h-screen items-center justify-center bg-muted/40 px-4 py-10">
+      <div className="w-full max-w-md space-y-6">
+        <div className="text-center space-y-2">
+          <Pill className="mx-auto h-10 w-10 text-primary" />
+          <h1 className="text-2xl font-semibold text-foreground">Sign in to MedVault</h1>
+          <p className="text-sm text-muted-foreground">
+            Access your clinical command center with your email and password.
+          </p>
+        </div>
 
-        <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div className="space-y-1">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
+        <Card className="rounded-3xl border border-border/60 bg-background/95 shadow-xl">
+          <CardHeader className="space-y-1">
+            <CardTitle className="text-xl font-semibold text-foreground">Welcome back</CardTitle>
+            <CardDescription>Enter your credentials to continue.</CardDescription>
+          </CardHeader>
+
+          <CardContent className="space-y-4">
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="space-y-1">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
@@ -146,17 +155,16 @@ function LoginContent() {
               {isSubmitting ? 'Logging In…' : 'Login'}
             </Button>
           </form>
-        </CardContent>
+          </CardContent>
 
-        <CardFooter className="text-center text-sm">
-          Don't have an account?{' '}
-          <Button variant="link" asChild className="p-0 h-auto ml-1 text-primary">
-            <Link href="/auth/signup">
-              Sign up
-            </Link>
-          </Button>
-        </CardFooter>
-      </Card>
+          <CardFooter className="justify-center text-sm text-muted-foreground">
+            Don't have an account?{' '}
+            <Button variant="link" asChild className="ml-1 h-auto p-0 text-primary">
+              <Link href="/auth/signup">Sign up</Link>
+            </Button>
+          </CardFooter>
+        </Card>
+      </div>
     </div>
   );
 }

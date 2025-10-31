@@ -22,7 +22,7 @@ description: string;
  * @param report The adverse event report to submit.
  * @returns A promise that resolves to the ID of the submitted report.
  */
-export async function submitAdverseEventReport(report: AdverseEventReport): Promise<string> {
+export async function submitAdverseEventReport(_report: AdverseEventReport): Promise<string> {
   // TODO: Implement this by calling the openFDA API.
 
   return '12345';

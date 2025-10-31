@@ -31,7 +31,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { CalendarIcon, PlusCircle, Snowflake } from 'lucide-react';
+import { CalendarIcon, PlusCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -71,8 +71,6 @@ export function AddMedicineButton({ onMedicineAdded }: { onMedicineAdded?: () =>
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
   const { user, profile } = useAuth();
-  const [qrValue, setQrValue] = useState<string>('');
-
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -101,7 +99,12 @@ export function AddMedicineButton({ onMedicineAdded }: { onMedicineAdded?: () =>
     }
 
     try {
-      const medicineRef = doc(db, 'clinics', profile.clinicId, 'medicines', data.batchNo);
+      const dbInstance = db;
+      if (!dbInstance) {
+        throw new Error('Firestore is not initialized');
+      }
+
+      const medicineRef = doc(dbInstance, 'clinics', profile.clinicId, 'medicines', data.batchNo);
       const payload: any = {
         ...data,
         expiryDate: format(data.expiryDate, 'yyyy-MM-dd'),

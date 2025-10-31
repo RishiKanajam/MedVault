@@ -1,45 +1,30 @@
 import { NextResponse } from 'next/server';
+import { ensureFirebaseAdmin } from '@/lib/auth';
 import { getAuth } from 'firebase-admin/auth';
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import { z } from 'zod';
 
-function ensureFirebaseAdmin() {
-  if (!getApps().length) {
-    if (!process.env.FIREBASE_PROJECT_ID || !process.env.FIREBASE_CLIENT_EMAIL || !process.env.FIREBASE_PRIVATE_KEY) {
-      throw new Error('Missing Firebase Admin configuration');
-    }
-    const privateKey = process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n');
-    initializeApp({
-      credential: cert({
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey,
-      }),
-    });
-  }
-}
+const verifySchema = z.object({
+  idToken: z.string().min(1, 'ID token is required'),
+});
 
 export async function POST(req: Request) {
   try {
     ensureFirebaseAdmin();
-    const { idToken } = await req.json();
+    const adminAuth = getAuth();
 
-    if (!idToken) {
-      return NextResponse.json(
-        { error: 'No ID token provided' },
-        { status: 400 }
-      );
-    }
+    const body = await req.json();
+    const { idToken } = verifySchema.parse(body);
 
     // Verify the ID token
-    const decodedToken = await getAuth().verifyIdToken(idToken);
+    const decodedToken = await adminAuth.verifyIdToken(idToken);
     
     // Get the user's custom claims
-    const user = await getAuth().getUser(decodedToken.uid);
+    const user = await adminAuth.getUser(decodedToken.uid);
     const customClaims = user.customClaims || {};
 
     // Create a new session cookie with the custom claims
     const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 days
-    const sessionCookie = await getAuth().createSessionCookie(idToken, { expiresIn });
+    const sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn });
 
     // Set the session cookie in the response
     const response = NextResponse.json({ 
@@ -49,7 +34,7 @@ export async function POST(req: Request) {
     });
 
     response.cookies.set('__session', sessionCookie, {
-      maxAge: expiresIn,
+      maxAge: Math.floor(expiresIn / 1000),
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
@@ -57,11 +42,19 @@ export async function POST(req: Request) {
     });
 
     return response;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error verifying session:', error);
+    
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Invalid request data', details: error.errors },
+        { status: 400 }
+      );
+    }
+    
     return NextResponse.json(
-      { error: 'Failed to verify session' },
+      { error: 'Failed to verify session', details: error.message },
       { status: 401 }
     );
   }
-} 
+}

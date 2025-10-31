@@ -128,7 +128,6 @@ const ChartTooltipContent = React.forwardRef<
       labelFormatter,
       labelClassName,
       formatter,
-      color,
       nameKey,
       labelKey,
     },
@@ -141,7 +140,7 @@ const ChartTooltipContent = React.forwardRef<
         return null
       }
 
-      const [item] = payload
+      const item = payload[0]!
       const key = `${labelKey || item.dataKey || item.name || "value"}`
       const itemConfig = getPayloadConfigFromPayload(config, item, key)
       let value = !labelKey && typeof label === "string"
@@ -198,8 +197,7 @@ const ChartTooltipContent = React.forwardRef<
             const key = `${nameKey || item.name || item.dataKey || "value"}`
             const itemConfig = getPayloadConfigFromPayload(config, item, key)
             // Use CSS variable from config or fallback to payload color
-            const indicatorColor = itemConfig?.color ? `var(--color-${key})` : (item.payload.fill || item.color);
-             const indicatorColorValue = itemConfig?.color || item.payload.fill || item.color; // Get the actual color value for style
+            const indicatorColorValue = itemConfig?.color || item.payload.fill || item.color; // Get the actual color value for style
 
             return (
               <div
@@ -301,8 +299,7 @@ const ChartLegendContent = React.forwardRef<
           const key = `${nameKey || item.dataKey || "value"}`
           const itemConfig = getPayloadConfigFromPayload(config, item, key)
            // Resolve color using CSS variable if available
-           const legendColor = itemConfig?.color ? `var(--color-${key})` : item.color;
-           const legendColorValue = itemConfig?.color || item.color; // Get actual value
+            const legendColorValue = itemConfig?.color || item.color; // Get actual value
 
 
           return (

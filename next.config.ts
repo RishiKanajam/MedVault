@@ -1,12 +1,12 @@
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Remove error ignoring - let TypeScript errors show
   typescript: {
-    ignoreBuildErrors: true,
+    // Remove ignoreBuildErrors: true
   },
   eslint: {
-    ignoreDuringBuilds: true,
+    // Remove ignoreDuringBuilds: true
   },
   images: {
     remotePatterns: [
@@ -17,6 +17,32 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       },
     ],
+  },
+  // Add experimental features for better performance
+  experimental: {
+    optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
+  },
+  // Add security headers
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'origin-when-cross-origin',
+          },
+        ],
+      },
+    ];
   },
 };
 

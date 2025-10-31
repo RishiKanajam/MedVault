@@ -5,14 +5,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription, SheetFooter, SheetClose } from '@/components/ui/sheet';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -22,9 +15,13 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/providers/AuthProvider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { usePatients } from '@/hooks/use-patients';
+import { useRecords } from '@/hooks/use-records';
+import { Patient } from '@/lib/firestore';
+import { PageShell, PageHeader } from '@/components/layout/page';
 
 // Types for Patient History module
-interface Patient {
+interface PatientListItem {
   id: string;
   name: string;
   dob: string;
@@ -39,62 +36,56 @@ interface RecordEntry {
   files: { name: string; url: string }[];
 }
 
-// TODO: Replace with Firestore data fetching using React Query based on clinicId from profile
-// clinics/{profile.clinicId}/patients
-const mockPatients = [
-  { id: 'pat1', name: 'Alice Johnson', dob: '1985-03-12', lastVisit: '2024-07-20' },
-  { id: 'pat2', name: 'Bob Williams', dob: '1972-11-05', lastVisit: '2024-06-15' },
-  { id: 'pat3', name: 'Charlie Brown', dob: '1998-01-30', lastVisit: '2024-08-01' },
-];
-
-// TODO: Replace with Firestore data fetching using React Query
-// clinics/{profile.clinicId}/patients/{patientId}/records
-const mockRecords = {
-  pat1: [
-    { id: 'rec1a', date: '2024-07-20', type: 'Consultation', summary: 'Routine checkup, prescribed Vitamin D.', files: [{ name: 'ConsultNote_200724.pdf', url: '#' }] },
-    { id: 'rec1b', date: '2024-05-10', type: 'Lab Results', summary: 'Blood test results normal.', files: [{ name: 'LabReport_100524.pdf', url: '#' }] },
-  ],
-  pat2: [
-    { id: 'rec2a', date: '2024-06-15', type: 'Follow-up', summary: 'Discussed blood pressure management.', files: [] },
-  ],
-  pat3: [
-    { id: 'rec3a', date: '2024-08-01', type: 'X-Ray Report', summary: 'Chest X-Ray clear.', files: [{ name: 'XRay_010824.jpg', url: '#' }] },
-    { id: 'rec3b', date: '2024-07-25', type: 'Initial Visit', summary: 'Presented with cough.', files: [] },
-  ],
-};
-
 export default function PatientHistoryPage() {
   const { profile, authLoading } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
-  const [patientRecords, setPatientRecords] = useState<RecordEntry[]>([]);
-  const [isLoadingPatients, setIsLoadingPatients] = useState(false);
-  const [isLoadingRecords, setIsLoadingRecords] = useState(false);
+  const [selectedPatient, setSelectedPatient] = useState<PatientListItem | null>(null);
+  
+  const { toast } = useToast();
+  
+  // Fetch patients from Firestore
+  const { data: patients = [], isLoading: isLoadingPatients } = usePatients();
+  
+  // Fetch records for selected patient
+  const { data: patientRecords = [], isLoading: isLoadingRecords } = useRecords(selectedPatient?.id || '');
+
   const [isAddRecordSheetOpen, setIsAddRecordSheetOpen] = useState(false);
   const [newRecordData, setNewRecordData] = useState({ date: '', type: '', summary: '' });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { toast } = useToast();
+  // Transform patients to match PatientListItem interface
+  // Note: lastVisit will be calculated when records are loaded for each patient
+  const patientListItems: PatientListItem[] = patients.map((patient: Patient) => {
+    return {
+      id: patient.id,
+      name: patient.name,
+      dob: patient.dateOfBirth,
+      lastVisit: patient.dateOfBirth || new Date().toISOString().split('T')[0], // Placeholder until records are loaded
+    };
+  });
 
-  // TODO: Implement actual search filtering logic based on Firestore query or client-side filter
-  const filteredPatients = mockPatients.filter(p =>
+  // Update lastVisit for selected patient if records are available
+  const updatedPatientListItems = patientListItems.map(patient => {
+    if (patient.id === selectedPatient?.id && patientRecords.length > 0) {
+      return {
+        ...patient,
+        lastVisit: patientRecords[0].date, // Most recent record date
+      };
+    }
+    return patient;
+  });
+
+  // Filter patients based on search term
+  const filteredPatients = updatedPatientListItems.filter(p =>
     p.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleSelectPatient = (patient: Patient) => {
+  const handleSelectPatient = (patient: PatientListItem) => {
     if (authLoading) return;
     setSelectedPatient(patient);
-    setIsLoadingRecords(true);
     setError(null);
-    // TODO: Fetch records for patient.id from Firestore based on profile.clinicId
-    // `clinics/${profile?.clinicId}/patients/${patient.id}/records`
-    console.log(`Fetching records for ${patient.name} in clinic ${profile?.clinicId}`);
-    setTimeout(() => {
-      setPatientRecords(mockRecords[patient.id as keyof typeof mockRecords] || []);
-      setIsLoadingRecords(false);
-    }, 500);
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -157,15 +148,22 @@ export default function PatientHistoryPage() {
 
   if (authLoading) {
     return (
-      <div className="p-6">
-        <Skeleton className="h-[70vh] w-full bg-muted" />
-      </div>
+      <PageShell>
+        <Skeleton className="h-[70vh] w-full rounded-2xl bg-muted" />
+      </PageShell>
     );
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-3 p-6">
-      {/* Patient List Column */}
+    <PageShell>
+      <PageHeader
+        eyebrow="Patient History"
+        title="Records Workspace"
+        description="Browse every patient file, update visit notes, and keep supporting documents in one place."
+      />
+
+      <div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
+        {/* Patient List Column */}
       <div className="lg:col-span-1 flex flex-col gap-6">
         <Card className="panel-primary">
           <CardHeader>
@@ -349,38 +347,41 @@ export default function PatientHistoryPage() {
                 <div className="space-y-4 p-1">
                   {patientRecords
                     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                    .map((record) => (
-                      <Card key={record.id} className="overflow-hidden panel-secondary">
-                        <CardHeader className="p-4 bg-muted/30 border-b flex flex-row justify-between items-center">
-                          <div>
-                            <CardTitle className="text-base flex items-center gap-2">
-                              <Calendar className="w-4 h-4" /> {record.date}
-                            </CardTitle>
-                            <CardDescription>{record.type}</CardDescription>
-                          </div>
-                          {record.files && record.files.length > 0 && (
-                            <Button variant="outline" size="sm" asChild>
-                              <a
-                                href={record.files[0].url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                download={record.files[0].name}
-                                aria-label={`Download file: ${record.files[0].name}`}
-                              >
-                                <Download className="mr-2 h-3 w-3" />
-                                View File
-                              </a>
-                            </Button>
-                          )}
-                        </CardHeader>
-                        <CardContent className="p-4 text-sm">
-                          <p>{record.summary}</p>
-                          {record.files && record.files.length > 0 && (
-                            <p className="text-xs text-muted-foreground mt-2">File: {record.files[0].name}</p>
-                          )}
-                        </CardContent>
-                      </Card>
-                    ))}
+                    .map((record) => {
+                      const primaryFile = record.files?.[0];
+                      return (
+                        <Card key={record.id} className="overflow-hidden panel-secondary">
+                          <CardHeader className="p-4 bg-muted/30 border-b flex flex-row justify-between items-center">
+                            <div>
+                              <CardTitle className="text-base flex items-center gap-2">
+                                <Calendar className="w-4 h-4" /> {record.date}
+                              </CardTitle>
+                              <CardDescription>{record.type}</CardDescription>
+                            </div>
+                            {primaryFile && (
+                              <Button variant="outline" size="sm" asChild>
+                                <a
+                                  href={primaryFile.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  download={primaryFile.name}
+                                  aria-label={`Download file: ${primaryFile.name}`}
+                                >
+                                  <Download className="mr-2 h-3 w-3" />
+                                  View File
+                                </a>
+                              </Button>
+                            )}
+                          </CardHeader>
+                          <CardContent className="p-4 text-sm">
+                            <p>{record.summary}</p>
+                            {primaryFile && (
+                              <p className="text-xs text-muted-foreground mt-2">File: {primaryFile.name}</p>
+                            )}
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
                 </div>
               </ScrollArea>
             )}
@@ -397,6 +398,7 @@ export default function PatientHistoryPage() {
           </CardContent>
         </Card>
       </div>
-    </div>
+      </div>
+    </PageShell>
   );
 }

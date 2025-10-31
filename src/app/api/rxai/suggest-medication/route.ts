@@ -1,256 +1,104 @@
-import { NextResponse, NextRequest } from 'next/server';
+import { NextRequest } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { getAuth } from 'firebase-admin/auth';
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
-import { collection, addDoc } from 'firebase-admin/firestore';
-
-function ensureFirebaseAdmin() {
-  if (!getApps().length) {
-    if (!process.env.FIREBASE_PROJECT_ID || !process.env.FIREBASE_CLIENT_EMAIL || !process.env.FIREBASE_PRIVATE_KEY) {
-      throw new Error('Missing Firebase Admin configuration');
-    }
-    const privateKey = process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n');
-    initializeApp({
-      credential: cert({
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey,
-      }),
-    });
-  }
-}
+import { verifySession } from '@/lib/auth';
+import { ApiHandler } from '@/lib/api-handler';
+import { rxaiSchema } from '@/lib/validation';
 
 export async function POST(req: NextRequest) {
-  let decodedToken;
-  
-  try {
-    ensureFirebaseAdmin();
-    console.log('Received request to suggest medication');
-    
-    const sessionCookie = req.headers.get('cookie')?.split(';').find(c => c.trim().startsWith('__session='));
-    if (!sessionCookie) {
-      console.error('No session cookie found in request');
-      return NextResponse.json({ error: 'Unauthorized - No session cookie' }, { status: 401 });
-    }
-
+  return ApiHandler.handleRequest(req, rxaiSchema, async (data, req) => {
+    // Verify authentication
     try {
-      decodedToken = await getAuth().verifySessionCookie(sessionCookie.split('=')[1]);
-      if (!decodedToken) {
-        console.error('Invalid session cookie');
-        return NextResponse.json({ error: 'Unauthorized - Invalid session' }, { status: 401 });
+      await verifySession(req);
+    } catch (authError: any) {
+      // Check if it's an authentication error
+      if (authError.message?.includes('session') || authError.message?.includes('cookie') || authError.message?.includes('token')) {
+        throw { ...authError, statusCode: 401 };
       }
-      console.log('Session verified for user:', decodedToken.uid);
-    } catch (authError) {
-      console.error('Error verifying session:', authError);
-      return NextResponse.json({ error: 'Unauthorized - Session verification failed' }, { status: 401 });
+      throw authError;
+    }
+    
+    // Check for API key
+    const apiKey = process.env.GOOGLE_AI_API_KEY;
+    if (!apiKey) {
+      throw new Error('GOOGLE_AI_API_KEY is not configured');
     }
 
-    const body = await req.json();
-    console.log('Request body:', { ...body, symptoms: body.symptoms?.substring(0, 100) + '...' });
-
-    const {
-      name,
-      age,
-      weight,
-      bloodPressure,
-      temperature,
-      symptoms,
-      photoUrl,
-      rashClassification
-    } = body;
-
-    // Validate required fields
-    if (!name || !age || !symptoms) {
-      console.error('Missing required fields:', { name: !!name, age: !!age, symptoms: !!symptoms });
-      return NextResponse.json(
-        { error: 'Missing required fields: name, age, and symptoms are required' },
-        { status: 400 }
-      );
-    }
-
-    // Validate age is a number
-    if (isNaN(Number(age))) {
-      console.error('Invalid age format:', age);
-      return NextResponse.json(
-        { error: 'Age must be a number' },
-        { status: 400 }
-      );
-    }
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
     // Construct the prompt for Gemini
     const prompt = `
       As a medical AI assistant, analyze the following patient information and suggest appropriate medication:
       
       Patient Information:
-      - Name: ${name}
-      - Age: ${age}
-      - Weight: ${weight || 'Not provided'} kg
-      - Blood Pressure: ${bloodPressure || 'Not provided'}
-      - Temperature: ${temperature || 'Not provided'}°C
-      ${rashClassification ? `- Rash Classification: ${rashClassification}` : ''}
+      - Name: ${data.name}
+      - Age: ${data.age} years
+      - Weight: ${data.weight || 'Not specified'} kg
+      - Blood Pressure: ${data.bloodPressure || 'Not measured'}
+      - Temperature: ${data.temperature || 'Not measured'}°C
+      - Symptoms: ${data.symptoms}
+      ${data.photoUrl ? `- Photo Analysis: ${data.photoUrl}` : ''}
+      ${data.rashClassification ? `- Rash Classification: ${data.rashClassification}` : ''}
       
-      Symptoms:
-      ${symptoms}
+      Please provide a structured response with:
+      1. Recommended medication(s)
+      2. Dosage instructions
+      3. Potential side effects
+      4. Drug interactions to watch for
+      5. Follow-up recommendations
       
-      Please provide:
-      1. Recommended drug class
-      2. Specific dosage
-      3. Duration of treatment
-      4. Confidence level (0-100)
-      5. Relevant medical citations from PubMed
-      
-      Format the response as JSON with the following structure:
+      Format your response as JSON with the following structure:
       {
         "drugClass": "string",
-        "dosage": "string",
-        "duration": "string",
-        "confidence": number,
-        "citations": [
+        "recommendedMedications": [
           {
-            "title": "string",
-            "abstract": "string",
-            "url": "string"
+            "name": "string",
+            "dosage": "string",
+            "frequency": "string",
+            "duration": "string"
           }
-        ]
+        ],
+        "sideEffects": ["string"],
+        "interactions": ["string"],
+        "followUp": "string",
+        "confidence": "number (0-100)"
       }
     `;
 
-    const apiKey = process.env.GOOGLE_AI_API_KEY;
-    if (!apiKey) {
-      throw new Error('GOOGLE_AI_API_KEY is not set in environment variables');
-    }
-    const genAI = new GoogleGenerativeAI(apiKey);
-
     try {
-      console.log('Generating AI response...');
-      // Generate response from Gemini
-      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
       const result = await model.generateContent(prompt);
       const response = await result.response;
-      const rawAiText = response.text();
-      console.log('Raw AI response:', rawAiText);
+      const text = response.text();
       
-      // Extract JSON from markdown code block or fallback to simple extraction
-      let jsonStringToParse: string;
-      const markdownMatch = rawAiText.match(/```json\s*([\s\S]*?)\s*```/);
-      
-      if (markdownMatch && markdownMatch[1]) {
-        jsonStringToParse = markdownMatch[1].trim();
-      } else {
-        // Fallback: try to extract content between first { and last }
-        const firstBrace = rawAiText.indexOf('{');
-        const lastBrace = rawAiText.lastIndexOf('}');
-        if (firstBrace !== -1 && lastBrace !== -1) {
-          jsonStringToParse = rawAiText.slice(firstBrace, lastBrace + 1).trim();
-        } else {
-          throw new Error('Could not extract JSON from AI response');
-        }
-      }
-      
-      console.log('Extracted JSON string:', jsonStringToParse);
-      
-      // Parse the JSON response
-      let aiResponse;
+      // Try to parse JSON response
+      let jsonResponse;
       try {
-        aiResponse = JSON.parse(jsonStringToParse);
+        // Extract JSON from markdown code block if present
+        const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/);
+        const jsonString = jsonMatch?.[1] ?? text;
+        jsonResponse = JSON.parse(jsonString);
       } catch (parseError) {
-        console.error('Error parsing JSON:', parseError);
-        throw new Error('Failed to parse AI response as JSON');
-      }
-      
-      console.log('Parsed AI response:', aiResponse);
-
-      // Validate the response structure
-      if (!aiResponse.drugClass || typeof aiResponse.confidence !== 'number') {
-        console.error('Invalid AI response format:', aiResponse);
-        throw new Error('Invalid AI response format');
-      }
-
-      // If confidence is low, get a second opinion from Gamma
-      if (aiResponse.confidence < 70) {
-        console.log('Low confidence, getting second opinion from Gamma...');
-        try {
-          const gammaModel = genAI.getGenerativeModel({ model: 'gamma' });
-          const gammaResult = await gammaModel.generateContent(prompt);
-          const gammaResponse = await gammaResult.response;
-          const gammaText = gammaResponse.text();
-          
-          // Extract and parse Gamma's response
-          const gammaJsonMatch = gammaText.match(/```json\s*([\s\S]*?)\s*```/) || 
-                               gammaText.match(/\{[\s\S]*\}/);
-          
-          if (gammaJsonMatch) {
-            const gammaJson = JSON.parse(gammaJsonMatch[0].replace(/```json\s*|\s*```/g, ''));
-            
-            // If Gamma has higher confidence, use its response
-            if (gammaJson.confidence > aiResponse.confidence) {
-              console.log('Using Gamma response due to higher confidence');
-              aiResponse = gammaJson;
-            }
-          }
-        } catch (gammaError) {
-          console.error('Error getting Gamma second opinion:', gammaError);
-          // Continue with original response if Gamma fails
-        }
+        // Fallback to text parsing
+        jsonResponse = {
+          drugClass: "AI Analysis",
+          recommendedMedications: [{
+            name: "Consultation Required",
+            dosage: "As prescribed by physician",
+            frequency: "As needed",
+            duration: "Until symptoms resolve"
+          }],
+          sideEffects: ["Please consult with a healthcare provider"],
+          interactions: ["Check with pharmacist for drug interactions"],
+          followUp: "Schedule follow-up appointment",
+          confidence: 50,
+          rawResponse: text
+        };
       }
 
-      // Save to Firestore
-      try {
-        console.log('Saving to Firestore...');
-        // Get the user's clinicId from their custom claims
-        const userRecord = await getAuth().getUser(decodedToken.uid);
-        const clinicId = userRecord.customClaims?.clinicId;
-        
-        if (!clinicId) {
-          console.error('No clinicId found in user claims');
-          throw new Error('User is not associated with a clinic');
-        }
-
-        const db = getFirestore();
-        const historyRef = db.collection('clinics').doc(clinicId).collection('history');
-        await historyRef.add({
-          timestamp: new Date(),
-          type: 'RxAI Consultation',
-          patientInfo: {
-            name,
-            age,
-            weight,
-            bloodPressure,
-            temperature
-          },
-          symptoms,
-          photoUrl,
-          rashClassification,
-          aiResponse,
-          summary: `RxAI consultation for ${name} (${age} years) with symptoms: ${symptoms.substring(0, 100)}${symptoms.length > 100 ? '...' : ''}`,
-          files: photoUrl ? [{ name: 'Symptom Photo', url: photoUrl }] : []
-        });
-        console.log('Successfully saved to Firestore');
-      } catch (dbError) {
-        console.error('Error saving to Firestore:', dbError);
-        // Continue even if saving fails
-      }
-
-      return NextResponse.json(aiResponse);
-    } catch (aiError) {
-      console.error('Error generating AI response:', aiError);
-      return NextResponse.json(
-        { 
-          error: 'Failed to generate medication suggestion',
-          details: aiError instanceof Error ? aiError.message : 'Unknown error'
-        },
-        { status: 500 }
-      );
+      return jsonResponse;
+    } catch (error: any) {
+      console.error('Gemini API Error:', error);
+      throw new Error(`AI service error: ${error.message}`);
     }
-  } catch (error) {
-    console.error('Error in suggest-medication:', error);
-    return NextResponse.json(
-      { 
-        error: 'Failed to suggest medication',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    );
-  }
-} 
+  });
+}

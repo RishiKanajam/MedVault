@@ -22,7 +22,7 @@ description: string;
  * @param drugName The name of the drug to retrieve.
  * @returns A promise that resolves to a DrugBankDrug object.
  */
-export async function getDrugByName(drugName: string): Promise<DrugBankDrug> {
+export async function getDrugByName(_drugName: string): Promise<DrugBankDrug> {
   // TODO: Implement this by calling the DrugBank API.
 
   return {

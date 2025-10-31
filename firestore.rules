@@ -1,32 +1,116 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // User Profiles: Allow users to read/write their own profile document.
-    match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    function hasClinicAccess(clinicId) {
+      return isAuthenticated() && 
+             request.auth.token.clinicId == clinicId;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+             request.auth.token.role == 'admin';
+    }
+    
+    function isValidClinicId(clinicId) {
+      return clinicId is string && 
+             clinicId.size() > 0 && 
+             clinicId.size() < 100;
+    }
+    
+    function isValidMedicineData() {
+      return request.resource.data.keys().hasAll(['name', 'manufacturer', 'batchNo', 'quantity', 'expiryDate', 'coldChain']) &&
+             request.resource.data.name is string &&
+             request.resource.data.manufacturer is string &&
+             request.resource.data.batchNo is string &&
+             request.resource.data.quantity is number &&
+             request.resource.data.expiryDate is string &&
+             request.resource.data.coldChain is bool;
+    }
+    
+    function isValidPatientData() {
+      return request.resource.data.keys().hasAll(['name', 'dateOfBirth']) &&
+             request.resource.data.name is string &&
+             request.resource.data.dateOfBirth is string;
     }
 
-    // Clinic Data: Allow access based on clinicId custom claim
+    // User Profiles: Users can only access their own profile
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+      
+      // Prevent users from modifying critical fields
+      allow update: if isOwner(userId) && 
+                      !request.resource.data.diff(resource.data).affectedKeys().hasAny(['uid', 'createdAt']);
+    }
+
+    // Clinic Data: Access based on clinicId custom claim
     match /clinics/{clinicId} {
       // Allow read/write if user has matching clinicId claim
-      allow read, write: if request.auth != null && request.auth.token.clinicId == clinicId;
+      allow read, write: if hasClinicAccess(clinicId);
       
-      // Allow access to subcollections
-      match /{collection}/{docId} {
-        allow read, write: if request.auth != null && request.auth.token.clinicId == clinicId;
+      // Medicine inventory
+      match /medicines/{medicineId} {
+        allow read, write: if hasClinicAccess(clinicId) && isValidMedicineData();
+        allow create: if hasClinicAccess(clinicId) && isValidMedicineData();
+        allow update: if hasClinicAccess(clinicId) && isValidMedicineData();
+        allow delete: if hasClinicAccess(clinicId);
+      }
+      
+      // Shipments
+      match /shipments/{shipmentId} {
+        allow read, write: if hasClinicAccess(clinicId);
+        allow create: if hasClinicAccess(clinicId);
+        allow update: if hasClinicAccess(clinicId);
+        allow delete: if hasClinicAccess(clinicId);
+      }
+      
+      // Patients
+      match /patients/{patientId} {
+        allow read, write: if hasClinicAccess(clinicId) && isValidPatientData();
+        allow create: if hasClinicAccess(clinicId) && isValidPatientData();
+        allow update: if hasClinicAccess(clinicId) && isValidPatientData();
+        allow delete: if hasClinicAccess(clinicId);
+        
+        // Patient records
+        match /records/{recordId} {
+          allow read, write: if hasClinicAccess(clinicId);
+          allow create: if hasClinicAccess(clinicId);
+          allow update: if hasClinicAccess(clinicId);
+          allow delete: if hasClinicAccess(clinicId);
+        }
+      }
+      
+      // Settings
+      match /settings/{settingId} {
+        allow read, write: if hasClinicAccess(clinicId);
+        allow create: if hasClinicAccess(clinicId);
+        allow update: if hasClinicAccess(clinicId);
+        allow delete: if hasClinicAccess(clinicId);
       }
     }
 
-    // Allow users to read their own data
-    match /users/{userId} {
-      allow read: if request.auth != null && request.auth.uid == userId;
-      allow write: if request.auth != null && request.auth.uid == userId;
+    // Audit logs (admin only)
+    match /audit_logs/{logId} {
+      allow read, write: if isAdmin();
     }
 
-    // Optional: Public 'clinics' list (if needed for dropdowns, etc.)
-    // match /clinics/{clinicId} {
-    //   allow read: if request.auth != null; // Allow any authenticated user to read clinic info? Adjust as needed.
-    // }
+    // System configuration (admin only)
+    match /system/{configId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Deny all other access
+    match /{document=**} {
+      allow read, write: if false;
+    }
   }
 }

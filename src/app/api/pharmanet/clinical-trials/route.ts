@@ -27,7 +27,12 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const decodedToken = await auth().verifySessionCookie(sessionCookie.split('=')[1]);
+    const sessionToken = sessionCookie.split('=')[1];
+    if (!sessionToken) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const decodedToken = await auth().verifySessionCookie(sessionToken);
     if (!decodedToken) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

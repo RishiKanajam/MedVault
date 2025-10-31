@@ -11,6 +11,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
+import { PageShell, PageHeader, PageSection } from '@/components/layout/page';
 
 interface Drug {
   name: string;
@@ -20,27 +21,21 @@ interface Drug {
 
 export default function PharmaNetPage() {
   const [selectedDrug, setSelectedDrug] = useState<Drug | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isLoading = false;
 
   const handleDrugSelect = (drug: Drug) => {
     setError(null);
     setSelectedDrug(drug);
   };
 
-  const handleError = (message: string) => {
-    setError(message);
-    setSelectedDrug(null);
-  };
-
   return (
-    <div className="container mx-auto py-8 space-y-8">
-      <div className="text-center space-y-2">
-        <h1 className="text-3xl font-bold">PharmaNet</h1>
-        <p className="text-muted-foreground">
-          Comprehensive drug reference and clinical trial alerts
-        </p>
-      </div>
+    <PageShell>
+      <PageHeader
+        eyebrow="PharmaNet"
+        title="Clinical Reference Hub"
+        description="Surface evidence-backed drug information and monitor late-breaking research without leaving your workspace."
+      />
 
       {error && (
         <Alert variant="destructive">
@@ -49,53 +44,63 @@ export default function PharmaNetPage() {
         </Alert>
       )}
 
-      <Tabs defaultValue="search" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="search">Drug Search</TabsTrigger>
-          <TabsTrigger value="alerts">R&D Alerts</TabsTrigger>
-        </TabsList>
+      <PageSection
+        title="Explore by task"
+        description="Switch between drug lookup and pipelines for new therapies."
+        contentClassName="p-0"
+      >
+        <Tabs defaultValue="search" className="space-y-6 px-6 pb-6">
+          <TabsList className="grid w-full grid-cols-2 rounded-xl bg-muted/60 p-1">
+            <TabsTrigger value="search" className="rounded-lg data-[state=active]:bg-background">
+              Drug search
+            </TabsTrigger>
+            <TabsTrigger value="alerts" className="rounded-lg data-[state=active]:bg-background">
+              R&amp;D alerts
+            </TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="search" className="space-y-6">
-          <ErrorBoundary>
-            {isLoading ? (
-              <div className="space-y-4">
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-32 w-full" />
-                <Skeleton className="h-32 w-full" />
-              </div>
-            ) : selectedDrug ? (
-              <DrugDetail
-                drug={{
-                  ...selectedDrug,
-                  dosageForms: ['Tablet', 'Capsule', 'Injection'],
-                  strengths: ['10mg', '20mg', '50mg'],
-                  interactions: [
-                    {
-                      drug: 'Warfarin',
-                      severity: 'severe',
-                      description: 'Increased risk of bleeding',
-                    },
-                    {
-                      drug: 'Aspirin',
-                      severity: 'moderate',
-                      description: 'May increase bleeding risk',
-                    },
-                  ],
-                }}
-                onClose={() => setSelectedDrug(null)}
-              />
-            ) : (
-              <DrugSearch onSelect={handleDrugSelect} />
-            )}
-          </ErrorBoundary>
-        </TabsContent>
+          <TabsContent value="search" className="space-y-6">
+            <ErrorBoundary>
+              {isLoading ? (
+                <div className="space-y-4">
+                  <Skeleton className="h-12 w-full rounded-xl" />
+                  <Skeleton className="h-32 w-full rounded-2xl" />
+                  <Skeleton className="h-32 w-full rounded-2xl" />
+                </div>
+              ) : selectedDrug ? (
+                <DrugDetail
+                  drug={{
+                    ...selectedDrug,
+                    dosageForms: ['Tablet', 'Capsule', 'Injection'],
+                    strengths: ['10mg', '20mg', '50mg'],
+                    interactions: [
+                      {
+                        drug: 'Warfarin',
+                        severity: 'severe',
+                        description: 'Increased risk of bleeding',
+                      },
+                      {
+                        drug: 'Aspirin',
+                        severity: 'moderate',
+                        description: 'May increase bleeding risk',
+                      },
+                    ],
+                  }}
+                  onClose={() => setSelectedDrug(null)}
+                />
+              ) : (
+                <DrugSearch onSelect={handleDrugSelect} />
+              )}
+            </ErrorBoundary>
+          </TabsContent>
 
-        <TabsContent value="alerts">
-          <ErrorBoundary>
-            <RDAlerts />
-          </ErrorBoundary>
-        </TabsContent>
-      </Tabs>
-    </div>
+          <TabsContent value="alerts">
+            <ErrorBoundary>
+              <RDAlerts />
+            </ErrorBoundary>
+          </TabsContent>
+        </Tabs>
+      </PageSection>
+    </PageShell>
   );
 }

@@ -2,94 +2,35 @@
 'use client';
 export const dynamic = 'force-dynamic';
 
-import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Upload, Mic, BrainCircuit, AlertCircle, Loader2, ClipboardCopy, BadgeHelp, ThumbsUp, ThumbsDown, X } from 'lucide-react';
-import { generatePrescription, type GeneratePrescriptionOutput, type GeneratePrescriptionInput } from '@/ai/flows/generate-prescription';
+import React, { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Progress } from "@/components/ui/progress";
-import { useAuth } from '@/providers/AuthProvider'; // Import useAuth
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { AlertTriangle } from 'lucide-react';
 import { SymptomInputForm } from '@/components/rxai/SymptomInputForm';
-import { RxAIResult } from '@/components/rxai/RxAIResult';
 import { SuggestionCard } from '@/components/rxai/SuggestionCard';
-import { auth, db } from '@/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { Calendar, FileText } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { PageShell, PageHeader, PageSection } from '@/components/layout/page';
 
-// TODO: Implement Hugging Face API call
-async function classifyRashImage(imageDataUri: string): Promise<string> {
-    console.log("Simulating rash classification for image...");
-    await new Promise(resolve => setTimeout(resolve, 800));
-    return "Simulated Classification: Eczema";
+interface RecentActivity {
+  id: string;
+  patientId: string;
+  patientName: string;
+  date: string;
+  type: string;
+  summary: string;
+  createdAt: string;
 }
 
-// TODO: Function to save prescription to Firestore
-const savePrescriptionToFirestore = async (clinicId: string | undefined, prescription: GeneratePrescriptionOutput, patientInfo: Omit<GeneratePrescriptionInput, 'photoDataUri'>) => {
-    if (!clinicId) {
-        console.error("Cannot save prescription, clinic ID is missing.");
-        return;
-    }
-
-    try {
-        // Get the current user's ID token
-        const user = auth.currentUser;
-        if (!user) {
-            throw new Error("No authenticated user found");
-        }
-
-        // Get a fresh ID token
-        const idToken = await user.getIdToken(true);
-
-        // Refresh the session with the new token
-        const response = await fetch('/api/auth/verify-session', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ idToken }),
-        });
-
-        if (!response.ok) {
-            throw new Error('Failed to refresh session');
-        }
-
-        // Now save to Firestore
-        const prescriptionData = {
-            ...prescription,
-            patientName: patientInfo.name,
-            patientAge: patientInfo.age,
-            patientWeight: patientInfo.weight,
-            patientVitals: patientInfo.vitals,
-            patientSymptoms: patientInfo.symptoms,
-            createdAt: serverTimestamp()
-        };
-
-        await addDoc(collection(db, `clinics/${clinicId}/history`), prescriptionData);
-        console.log('Successfully saved prescription to Firestore');
-    } catch (error) {
-        console.error('Error saving prescription:', error);
-        throw error;
-    }
-};
-
 export default function RxAIPage() {
-  const { profile } = useAuth(); // Get profile for clinicId
-  const clinicId = profile?.clinicId;
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [rashClassification, setRashClassification] = useState<string | null>(null);
+  const [formData, setFormData] = useState<any>(null);
+  const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
+  const [isLoadingActivity, setIsLoadingActivity] = useState(false);
 
   const handlePhotoUpload = async (file: File) => {
     try {
@@ -113,11 +54,17 @@ export default function RxAIPage() {
         throw new Error('Invalid response format from classification API');
       }
 
-      setRashClassification(data.classification);
+      const classificationText: string = typeof data.classification === 'string'
+        ? data.classification
+        : JSON.stringify(data.classification);
+
+      setRashClassification(classificationText);
       
       // TODO: Implement actual photo upload to storage
       // For now, we'll just use a placeholder URL
-      setPhotoUrl(URL.createObjectURL(file));
+      const objectUrl = URL.createObjectURL(file);
+      setPhotoUrl(objectUrl);
+      return { photoUrl: objectUrl, classification: classificationText };
     } catch (error) {
       console.error('Error uploading photo:', error);
       throw error; // Re-throw to be handled by the caller
@@ -126,12 +73,20 @@ export default function RxAIPage() {
 
   const handleSubmit = async (formData: any) => {
     setIsLoading(true);
-    setError(null);
 
     try {
-      if (formData.photo) {
+      let uploadedPhotoUrl = photoUrl;
+      let classificationResult = rashClassification;
+
+      const { photo, ...symptomData } = formData;
+
+      if (photo) {
         try {
-          await handlePhotoUpload(formData.photo);
+          const result = await handlePhotoUpload(photo);
+          if (result) {
+            uploadedPhotoUrl = result.photoUrl;
+            classificationResult = result.classification;
+          }
         } catch (error) {
           console.error('Error uploading photo:', error);
           toast({
@@ -142,34 +97,76 @@ export default function RxAIPage() {
         }
       }
 
+      const numericAge = Number(symptomData.age);
+      const numericWeight = symptomData.weight ? Number(symptomData.weight) : undefined;
+      let numericTemperature = symptomData.temperature ? Number(symptomData.temperature) : undefined;
+
+      // Convert temperature from Fahrenheit to Celsius if needed
+      // Normal body temperature: 97-99°F (36.1-37.2°C) or 98.6°F (37°C)
+      // If temperature is > 45, assume it's Fahrenheit and convert
+      // If temperature is < 30, assume it's invalid and set to undefined
+      if (numericTemperature !== undefined) {
+        if (numericTemperature > 45) {
+          // Likely Fahrenheit - convert to Celsius
+          numericTemperature = ((numericTemperature - 32) * 5) / 9;
+        } else if (numericTemperature < 30) {
+          // Too low to be valid Celsius - likely invalid input or missing data
+          // Set to undefined to make it optional
+          numericTemperature = undefined;
+        }
+        // If between 30-45, assume it's already Celsius
+      }
+
+      const requestPayload = {
+        ...symptomData,
+        age: numericAge,
+        weight: numericWeight,
+        temperature: numericTemperature,
+        photoUrl: uploadedPhotoUrl ?? undefined,
+        rashClassification: classificationResult ?? undefined,
+      };
+
       const response = await fetch('/api/rxai/suggest-medication', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-        body: JSON.stringify({
-          ...formData,
-          photoUrl,
-          rashClassification,
-        }),
+        body: JSON.stringify(requestPayload),
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Server error: ${response.status}`);
+        // Include validation details if available
+        const errorMessage = errorData.error || `Server error: ${response.status}`;
+        const details = errorData.details 
+          ? (Array.isArray(errorData.details) 
+              ? errorData.details.map((d: any) => `${d.field}: ${d.message}`).join(', ')
+              : errorData.details)
+          : '';
+        throw new Error(details ? `${errorMessage} - ${details}` : errorMessage);
       }
 
-      const data = await response.json();
+      const resultPayload = await response.json();
       
-      if (!data || !data.drugClass) {
-        throw new Error('Invalid response format from server');
+      if (!resultPayload || resultPayload.success === false || !resultPayload.data) {
+        throw new Error(resultPayload?.error || 'Invalid response format from server');
       }
 
-      setResult(data);
+      setResult(resultPayload.data);
+      // Store form data for saving later
+      setFormData({
+        name: symptomData.name,
+        age: numericAge,
+        weight: numericWeight,
+        bloodPressure: symptomData.bloodPressure,
+        temperature: numericTemperature,
+        symptoms: symptomData.symptoms,
+        photoUrl: uploadedPhotoUrl,
+        rashClassification: classificationResult,
+      });
     } catch (error) {
       console.error('Error in handleSubmit:', error);
-      setError(error instanceof Error ? error.message : 'Failed to get AI suggestion. Please try again.');
       toast({
         title: 'Error',
         description: error instanceof Error ? error.message : 'Failed to get AI suggestion. Please try again.',
@@ -181,72 +178,185 @@ export default function RxAIPage() {
   };
 
   const handleSave = async () => {
+    if (!result || !formData) {
+      toast({
+        title: 'Error',
+        description: 'No data to save. Please submit the form first.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsSaving(true);
     try {
-      // The save operation is already handled in the API route
+      const response = await fetch('/api/records/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          patientName: formData.name,
+          patientAge: formData.age,
+          patientEmail: undefined,
+          patientPhone: undefined,
+          dateOfBirth: undefined,
+          drugClass: result.drugClass || 'Not specified',
+          dosage: result.dosage || result.recommendedMedications?.[0]?.dosage || undefined,
+          duration: result.duration || result.recommendedMedications?.[0]?.duration || undefined,
+          confidence: result.confidence || 0,
+          symptoms: formData.symptoms,
+          citations: result.citations || [],
+          photoUrl: formData.photoUrl || undefined,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to save record: ${response.status}`);
+      }
+
+      const responseData = await response.json();
+      
+      if (!responseData.success) {
+        throw new Error(responseData.error || 'Failed to save record');
+      }
+
       toast({
         title: 'Success',
-        description: 'Case saved to history successfully.',
+        description: 'Record saved to Patient History successfully.',
       });
+      
+      // Refresh recent activity
+      fetchRecentActivity();
     } catch (error) {
       console.error('Error saving to history:', error);
       toast({
         title: 'Error',
-        description: 'Failed to save to history. Please try again.',
+        description: error instanceof Error ? error.message : 'Failed to save to history. Please try again.',
         variant: 'destructive',
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
+  const fetchRecentActivity = async () => {
+    setIsLoadingActivity(true);
+    try {
+      const response = await fetch('/api/records/recent', {
+        method: 'GET',
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data?.records) {
+          setRecentActivity(data.data.records);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching recent activity:', error);
+    } finally {
+      setIsLoadingActivity(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRecentActivity();
+  }, []);
+
   const handleRerun = () => {
     setResult(null);
-    setError(null);
   };
 
   const handleNew = () => {
     setResult(null);
-    setError(null);
     setPhotoUrl(null);
     setRashClassification(null);
   };
 
-  return (
-    <div className="container mx-auto py-8 space-y-8">
-      <div className="text-center space-y-2">
-        <h1 className="text-3xl font-bold">RxAI Clinical Support</h1>
-        <p className="text-muted-foreground">
-          Enter patient information and symptoms to get AI-powered medication suggestions
-        </p>
-      </div>
+  const header = (
+    <PageHeader
+      eyebrow="RxAI"
+      title="Clinical Support Assistant"
+      description="Feed patient context and symptoms to generate AI-backed treatment options that stay clinically grounded."
+    />
+  );
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {!result ? (
-          <SymptomInputForm
-            onSubmit={handleSubmit}
-            isLoading={isLoading}
-          />
-        ) : (
-          <SuggestionCard
-            suggestion={result}
-            onSave={handleSave}
-            onRerun={handleRerun}
-            onNew={handleNew}
-            isLoading={isLoading}
-          />
-        )}
-        
-        {/* Recent Activity Card */}
-        <Card className="h-fit">
-          <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ScrollArea className="h-[400px]">
-              {/* TODO: Add recent activity list */}
-              <p className="text-muted-foreground">No recent activity</p>
-            </ScrollArea>
-          </CardContent>
-        </Card>
+  return (
+    <PageShell>
+      {header}
+
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="space-y-6">
+          {!result ? (
+            <SymptomInputForm onSubmit={handleSubmit} isLoading={isLoading} />
+          ) : (
+            <SuggestionCard
+              suggestion={result}
+              onSave={handleSave}
+              onRerun={handleRerun}
+              onNew={handleNew}
+              isLoading={isLoading || isSaving}
+            />
+          )}
+        </div>
+
+        <PageSection
+          title="Recent activity"
+          description="Latest RxAI recommendations synced to patient history."
+          contentClassName="p-0"
+        >
+          <ScrollArea className="h-[480px]">
+            <div className="space-y-4 px-6 py-4">
+              {isLoadingActivity ? (
+                Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="space-y-2 rounded-xl border border-border/40 bg-muted/30 p-3">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-3 w-1/2" />
+                  </div>
+                ))
+              ) : recentActivity.length > 0 ? (
+                recentActivity.map((activity) => (
+                  <div
+                    key={activity.id}
+                    className="flex items-start gap-3 rounded-xl border border-border/40 bg-background/95 p-3"
+                  >
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full border border-primary/30 bg-primary/10 text-primary">
+                      {activity.type === 'prescription' ? (
+                        <FileText className="h-4 w-4" />
+                      ) : (
+                        <Calendar className="h-4 w-4" />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="truncate text-sm font-semibold text-foreground">
+                          {activity.patientName}
+                        </p>
+                        <span className="shrink-0 text-xs text-muted-foreground">
+                          {new Date(activity.date).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground line-clamp-2">{activity.summary}</p>
+                      <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-xs font-medium uppercase tracking-wide text-primary">
+                        {activity.type}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="rounded-xl border border-dashed border-border/60 bg-background/80 p-8 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    No recent RxAI sessions yet. Run an assessment to see it appear here.
+                  </p>
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+        </PageSection>
       </div>
-    </div>
+    </PageShell>
   );
 }

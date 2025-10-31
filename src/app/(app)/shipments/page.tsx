@@ -1,7 +1,7 @@
 // src/app/shipments/page.tsx
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Table,
   TableBody,
@@ -13,7 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, Truck, Map, List, Loader2 } from 'lucide-react';
+import { PlusCircle, Map, List, Loader2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -34,9 +34,17 @@ import { useAuth } from '@/providers/AuthProvider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
 import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription, SheetFooter, SheetClose } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet';
 import { db } from '@/firebase';
-import { collection, query, onSnapshot, addDoc, orderBy, where, getDocs, writeBatch, serverTimestamp, doc } from 'firebase/firestore';
+import { collection, query, onSnapshot, addDoc, orderBy, getDocs, writeBatch, serverTimestamp, doc } from 'firebase/firestore';
+import { PageShell, PageHeader } from '@/components/layout/page';
+
+const getDbOrThrow = () => {
+  if (!db) {
+    throw new Error('Firestore is not initialized');
+  }
+  return db;
+};
 
 // --- Types ---
 interface Shipment {
@@ -66,11 +74,13 @@ function useShipmentsRealtime(clinicId: string | undefined) {
   useEffect(() => {
     if (!clinicId) return;
     setLoading(true);
-    const q = query(collection(db, `clinics/${clinicId}/shipments`), orderBy('createdAt', 'desc'));
+    const dbInstance = getDbOrThrow();
+    const q = query(collection(dbInstance, `clinics/${clinicId}/shipments`), orderBy('createdAt', 'desc'));
     const unsub = onSnapshot(q, (snap) => {
       setShipments(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Shipment)));
       setLoading(false);
-    }, (err) => {
+    }, (error) => {
+      console.error('Failed to load shipments snapshot:', error);
       setShipments([]);
       setLoading(false);
     });
@@ -81,14 +91,16 @@ function useShipmentsRealtime(clinicId: string | undefined) {
 
 async function fetchMedicineStubs(clinicId: string | undefined): Promise<MedicineStub[]> {
   if (!clinicId) return [];
-  const q = query(collection(db, `clinics/${clinicId}/medicines`));
+  const dbInstance = getDbOrThrow();
+  const q = query(collection(dbInstance, `clinics/${clinicId}/medicines`));
   const snap = await getDocs(q);
   return snap.docs.map(doc => ({ id: doc.id, name: doc.data().name }));
 }
 
 async function createShipmentApi(clinicId: string | undefined, shipmentData: Omit<Shipment, 'id' | 'status' | 'createdAt'>): Promise<Shipment> {
   if (!clinicId) throw new Error("Clinic ID is required.");
-  const docRef = await addDoc(collection(db, `clinics/${clinicId}/shipments`), {
+  const dbInstance = getDbOrThrow();
+  const docRef = await addDoc(collection(dbInstance, `clinics/${clinicId}/shipments`), {
     ...shipmentData,
     status: 'Pre-Transit',
     createdAt: serverTimestamp(),
@@ -141,9 +153,10 @@ const mockLocationPings = [
 // --- Firestore Bulk Update for Mark as Delivered ---
 async function bulkMarkAsDelivered(clinicId: string | undefined, shipmentIds: string[]) {
   if (!clinicId || shipmentIds.length === 0) return;
-  const batch = writeBatch(db);
+  const dbInstance = getDbOrThrow();
+  const batch = writeBatch(dbInstance);
   shipmentIds.forEach(id => {
-    const ref = doc(db, `clinics/${clinicId}/shipments/${id}`);
+    const ref = doc(dbInstance, `clinics/${clinicId}/shipments/${id}`);
     batch.update(ref, { status: 'Delivered' });
   });
   await batch.commit();
@@ -154,7 +167,8 @@ function useTemperatureLogRealtime(clinicId: string | undefined, shipmentId: str
   const [tempData, setTempData] = useState<{ time: string, temp: number }[]>([]);
   useEffect(() => {
     if (!clinicId || !shipmentId) return;
-    const q = query(collection(db, `clinics/${clinicId}/shipments/${shipmentId}/temperatureLog`), orderBy('timestamp', 'asc'));
+    const dbInstance = getDbOrThrow();
+    const q = query(collection(dbInstance, `clinics/${clinicId}/shipments/${shipmentId}/temperatureLog`), orderBy('timestamp', 'asc'));
     const unsub = onSnapshot(q, (snap) => {
       setTempData(snap.docs.map(doc => ({
         time: doc.data().timestamp?.toDate().toLocaleTimeString() || '',
@@ -228,13 +242,8 @@ export default function ShipmentsPage() {
       toast({ title: "Missing Temperature Thresholds", description: "Please enter min and max temperature for cold-chain.", variant: "destructive" });
       return;
     }
-    const selectedMedicineName = medicineStubs.find(m => m.id === createFormData.medicineId)?.name;
+    const selectedMedicineName = medicineStubs.find(m => m.id === createFormData.medicineId)?.name ?? createFormData.medicineId;
     createMutation.mutate({ ...createFormData, medicineName: selectedMedicineName });
-  };
-
-  const handleMarkerClick = (shipment: Shipment) => {
-    setSelectedShipment(shipment);
-    // TODO: When integrating with IOT, open a popover or modal here to show live sensor data (e.g., temperature, humidity, GPS)
   };
 
   // Bulk selection handlers
@@ -264,26 +273,73 @@ export default function ShipmentsPage() {
   };
   const closeDrawer = () => setDrawerOpen(false);
 
-  const pageLoading = authLoading || (isLoadingShipments && shipments.length === 0);
-
   // In the detail drawer, use real-time temperature log if selectedShipment exists
   const tempLogData = useTemperatureLogRealtime(clinicId ?? undefined, selectedShipment?.id ?? undefined);
 
   // --- UI always renders ---
   if (authLoading || profileLoading) {
-    return <div className="flex min-h-screen items-center justify-center bg-background"><Loader2 className="h-12 w-12 animate-spin text-primary" /><span className="ml-2 text-muted-foreground">Loading profile...</span></div>;
+    return (
+      <PageShell>
+        <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 text-muted-foreground">
+          <Loader2 className="h-10 w-10 animate-spin text-primary" />
+          <span>Loading profile...</span>
+        </div>
+      </PageShell>
+    );
   }
+
   if (!clinicId) {
-    return <div className="p-6 text-center text-muted-foreground">No clinic selected or user profile not loaded. Please log in and select a clinic.</div>;
+    return (
+      <PageShell>
+        <div className="rounded-2xl border border-dashed border-border/60 bg-muted/20 p-10 text-center text-sm text-muted-foreground">
+          No clinic selected yet. Log in with a clinic profile to view shipments.
+        </div>
+      </PageShell>
+    );
   }
 
   if (isLoadingShipments) {
-    return <div className="p-6 text-muted-foreground">Loading shipments...</div>;
+    return (
+      <PageShell>
+        <div className="space-y-4">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Loading shipments...</p>
+        </div>
+      </PageShell>
+    );
   }
+
+  const activeShipments = shipments.filter((shipment) => shipment.status !== 'Delivered').length;
+  const deliveredShipments = shipments.filter((shipment) => shipment.status === 'Delivered').length;
+  const delayedShipments = shipments.filter(
+    (shipment) => shipment.status === 'Delayed' || shipment.status === 'Exception'
+  ).length;
 
   // --- Main UI ---
   return (
-    <div className="space-y-6 animate-fadeIn p-6">
+    <PageShell>
+      <PageHeader
+        eyebrow="Shipments"
+        title="Logistics Control"
+        description="Track outbound orders, monitor cold-chain status, and resolve delays before they impact care."
+      >
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-2xl border border-border/40 bg-muted/30 p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Active</p>
+            <p className="text-xl font-semibold text-foreground">{activeShipments}</p>
+          </div>
+          <div className="rounded-2xl border border-border/40 bg-muted/30 p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Delivered</p>
+            <p className="text-xl font-semibold text-foreground">{deliveredShipments}</p>
+          </div>
+          <div className="rounded-2xl border border-border/40 bg-muted/30 p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Alerts</p>
+            <p className="text-xl font-semibold text-foreground">{delayedShipments}</p>
+          </div>
+        </div>
+      </PageHeader>
+
+      <div className="space-y-6 animate-fadeIn">
       {/* Bulk action bar */}
       {selectedIds.length > 0 && (
         <div className="mb-2 flex items-center gap-4 bg-muted/60 p-3 rounded-lg border border-border">
@@ -554,6 +610,7 @@ export default function ShipmentsPage() {
           </div>
         </SheetContent>
       </Sheet>
-    </div>
+      </div>
+    </PageShell>
   );
 }

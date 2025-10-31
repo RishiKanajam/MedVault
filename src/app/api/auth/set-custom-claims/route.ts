@@ -1,44 +1,34 @@
 import { NextResponse } from 'next/server';
-import { getAuth } from 'firebase-admin/auth';
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import { setCustomClaims } from '@/lib/auth';
+import { z } from 'zod';
 
-function ensureFirebaseAdmin() {
-  if (!getApps().length) {
-    if (!process.env.FIREBASE_PROJECT_ID || !process.env.FIREBASE_CLIENT_EMAIL || !process.env.FIREBASE_PRIVATE_KEY) {
-      throw new Error('Missing Firebase Admin configuration');
-    }
-    const privateKey = process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n');
-    initializeApp({
-      credential: cert({
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey,
-      }),
-    });
-  }
-}
+const claimsSchema = z.object({
+  uid: z.string().min(1, 'User ID is required'),
+  clinicId: z.string().min(1, 'Clinic ID is required'),
+});
 
 export async function POST(req: Request) {
   try {
-    ensureFirebaseAdmin();
-    const { uid, clinicId } = await req.json();
+    const body = await req.json();
+    const { uid, clinicId } = claimsSchema.parse(body);
 
-    if (!uid || !clinicId) {
+    // Set custom claims for the user
+    await setCustomClaims(uid, { clinicId });
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error('Error setting custom claims:', error);
+    
+    if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Missing required fields: uid and clinicId are required' },
+        { error: 'Invalid request data', details: error.errors },
         { status: 400 }
       );
     }
-
-    // Set custom claims for the user
-    await getAuth().setCustomUserClaims(uid, { clinicId });
-
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('Error setting custom claims:', error);
+    
     return NextResponse.json(
-      { error: 'Failed to set custom claims' },
+      { error: 'Failed to set custom claims', details: error.message },
       { status: 500 }
     );
   }
-} 
+}

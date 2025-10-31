@@ -18,7 +18,7 @@ rxNormId: string;
  * @param query The search query.
  * @returns A promise that resolves to an array of Drug objects.
  */
-export async function searchDrugs(query: string): Promise<Drug[]> {
+export async function searchDrugs(_query: string): Promise<Drug[]> {
   // TODO: Implement this by calling the RxNorm API.
 
   return [

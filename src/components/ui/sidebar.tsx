@@ -8,10 +8,8 @@ import { PanelLeft } from "lucide-react"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
-import { Skeleton } from "@/components/ui/skeleton"
 import {
   Tooltip,
   TooltipContent,
@@ -409,7 +407,6 @@ const SidebarMenuButton = React.forwardRef<
       asChild = false,
       isActive = false, // Receive isActive prop
       variant = "ghost",
-      size, // Size is handled by collapsed/expanded state now
       tooltip,
       className,
       ...props

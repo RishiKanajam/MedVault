@@ -1,14 +1,10 @@
 import { NextResponse } from 'next/server';
-import { auth } from 'firebase-admin';
+import { revokeSession, verifySession } from '@/lib/auth';
 
 export async function POST(req: Request) {
   try {
-    const sessionCookie = req.headers.get('cookie')?.split(';').find(c => c.trim().startsWith('__session='));
-    
-    if (sessionCookie) {
-      const decodedToken = await auth().verifySessionCookie(sessionCookie.split('=')[1]);
-      await auth().revokeRefreshTokens(decodedToken.sub);
-    }
+    const decodedToken = await verifySession(req as any);
+    await revokeSession(decodedToken.uid);
 
     // Create response with cleared cookie
     const response = NextResponse.json({ success: true });
@@ -21,11 +17,11 @@ export async function POST(req: Request) {
     });
 
     return response;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error during logout:', error);
     return NextResponse.json(
-      { error: 'Failed to logout' },
+      { error: 'Failed to logout', details: error.message },
       { status: 500 }
     );
   }
-} 
+}

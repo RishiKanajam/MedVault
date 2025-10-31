@@ -1,0 +1,293 @@
+import { logger } from './simple-logger';
+
+export interface Metrics {
+  timestamp: string;
+  name: string;
+  value: number;
+  tags?: Record<string, string>;
+}
+
+export interface HealthCheck {
+  name: string;
+  status: 'healthy' | 'unhealthy' | 'degraded';
+  message?: string;
+  details?: Record<string, any>;
+}
+
+export class MonitoringService {
+  private static instance: MonitoringService;
+  private metrics: Metrics[] = [];
+  private healthChecks: Map<string, HealthCheck> = new Map();
+
+  private constructor() {
+    // Initialize health checks
+    this.initializeHealthChecks();
+  }
+
+  static getInstance(): MonitoringService {
+    if (!MonitoringService.instance) {
+      MonitoringService.instance = new MonitoringService();
+    }
+    return MonitoringService.instance;
+  }
+
+  private initializeHealthChecks(): void {
+    this.healthChecks.set('database', {
+      name: 'Database',
+      status: 'healthy',
+      message: 'Database connection is working',
+    });
+
+    this.healthChecks.set('firebase', {
+      name: 'Firebase',
+      status: 'healthy',
+      message: 'Firebase services are operational',
+    });
+
+    this.healthChecks.set('external-apis', {
+      name: 'External APIs',
+      status: 'healthy',
+      message: 'External API services are accessible',
+    });
+  }
+
+  // Metrics collection
+  recordMetric(name: string, value: number, tags?: Record<string, string>): void {
+    const metric: Metrics = {
+      timestamp: new Date().toISOString(),
+      name,
+      value,
+      tags,
+    };
+
+    this.metrics.push(metric);
+    
+    // Keep only last 1000 metrics to prevent memory issues
+    if (this.metrics.length > 1000) {
+      this.metrics = this.metrics.slice(-1000);
+    }
+
+    logger.debug(`Metric recorded: ${name} = ${value}`, { tags });
+  }
+
+  // Performance monitoring
+  async measurePerformance<T>(
+    operation: string,
+    fn: () => Promise<T>,
+    tags?: Record<string, string>
+  ): Promise<T> {
+    const startTime = performance.now();
+    
+    try {
+      const result = await fn();
+      const duration = performance.now() - startTime;
+      
+      this.recordMetric(`${operation}.duration`, duration, tags);
+      this.recordMetric(`${operation}.success`, 1, tags);
+      
+      logger.info(`Performance: ${operation} took ${duration}ms`, { tags });
+      return result;
+    } catch (error) {
+      const duration = performance.now() - startTime;
+      
+      this.recordMetric(`${operation}.duration`, duration, tags);
+      this.recordMetric(`${operation}.error`, 1, tags);
+      
+      logger.error(`Performance monitoring error for ${operation}`, { tags }, error as Error);
+      throw error;
+    }
+  }
+
+  // Health check management
+  updateHealthCheck(name: string, status: HealthCheck): void {
+    this.healthChecks.set(name, {
+      ...status,
+      name,
+    });
+
+    logger.info(`Health check updated: ${name} - ${status.status}`, {
+      healthCheck: name,
+      status: status.status,
+      message: status.message,
+    });
+  }
+
+  getHealthStatus(): Record<string, HealthCheck> {
+    return Object.fromEntries(this.healthChecks);
+  }
+
+  // System health check
+  async checkSystemHealth(): Promise<Record<string, HealthCheck>> {
+    const checks = await Promise.allSettled([
+      this.checkDatabaseHealth(),
+      this.checkFirebaseHealth(),
+      this.checkExternalAPIsHealth(),
+    ]);
+
+    const results: Record<string, HealthCheck> = {};
+
+    // Database health
+    if (checks[0].status === 'fulfilled') {
+      results.database = checks[0].value;
+    } else {
+      results.database = {
+        name: 'Database',
+        status: 'unhealthy',
+        message: 'Database health check failed',
+        details: { error: checks[0].reason },
+      };
+    }
+
+    // Firebase health
+    if (checks[1].status === 'fulfilled') {
+      results.firebase = checks[1].value;
+    } else {
+      results.firebase = {
+        name: 'Firebase',
+        status: 'unhealthy',
+        message: 'Firebase health check failed',
+        details: { error: checks[1].reason },
+      };
+    }
+
+    // External APIs health
+    if (checks[2].status === 'fulfilled') {
+      results.externalAPIs = checks[2].value;
+    } else {
+      results.externalAPIs = {
+        name: 'External APIs',
+        status: 'unhealthy',
+        message: 'External APIs health check failed',
+        details: { error: checks[2].reason },
+      };
+    }
+
+    return results;
+  }
+
+  private async checkDatabaseHealth(): Promise<HealthCheck> {
+    try {
+      // TODO: Implement actual database health check
+      // For now, return healthy
+      return {
+        name: 'Database',
+        status: 'healthy',
+        message: 'Database connection is working',
+      };
+    } catch (error) {
+      return {
+        name: 'Database',
+        status: 'unhealthy',
+        message: 'Database connection failed',
+        details: { error: error instanceof Error ? error.message : 'Unknown error' },
+      };
+    }
+  }
+
+  private async checkFirebaseHealth(): Promise<HealthCheck> {
+    try {
+      // TODO: Implement actual Firebase health check
+      // For now, return healthy
+      return {
+        name: 'Firebase',
+        status: 'healthy',
+        message: 'Firebase services are operational',
+      };
+    } catch (error) {
+      return {
+        name: 'Firebase',
+        status: 'unhealthy',
+        message: 'Firebase services are down',
+        details: { error: error instanceof Error ? error.message : 'Unknown error' },
+      };
+    }
+  }
+
+  private async checkExternalAPIsHealth(): Promise<HealthCheck> {
+    try {
+      // TODO: Implement actual external API health checks
+      // For now, return healthy
+      return {
+        name: 'External APIs',
+        status: 'healthy',
+        message: 'External API services are accessible',
+      };
+    } catch (error) {
+      return {
+        name: 'External APIs',
+        status: 'unhealthy',
+        message: 'External API services are down',
+        details: { error: error instanceof Error ? error.message : 'Unknown error' },
+      };
+    }
+  }
+
+  // Get metrics summary
+  getMetricsSummary(): Record<string, any> {
+    const summary: Record<string, any> = {};
+
+    // Group metrics by name
+    const groupedMetrics = this.metrics.reduce((acc, metric) => {
+      if (!acc[metric.name]) {
+        acc[metric.name] = [];
+      }
+      acc[metric.name].push(metric.value);
+      return acc;
+    }, {} as Record<string, number[]>);
+
+    // Calculate statistics for each metric
+    Object.entries(groupedMetrics).forEach(([name, values]) => {
+      summary[name] = {
+        count: values.length,
+        min: Math.min(...values),
+        max: Math.max(...values),
+        avg: values.reduce((sum, val) => sum + val, 0) / values.length,
+        latest: values[values.length - 1],
+      };
+    });
+
+    return summary;
+  }
+
+  // Clear old metrics
+  clearOldMetrics(olderThanHours: number = 24): void {
+    const cutoffTime = new Date(Date.now() - olderThanHours * 60 * 60 * 1000);
+    
+    this.metrics = this.metrics.filter(metric => 
+      new Date(metric.timestamp) > cutoffTime
+    );
+
+    logger.info(`Cleared metrics older than ${olderThanHours} hours`, {
+      remainingMetrics: this.metrics.length,
+    });
+  }
+}
+
+// Export singleton instance
+export const monitoring = MonitoringService.getInstance();
+
+// Health check endpoint data
+export function getHealthCheckData() {
+  // Only use process on server-side
+  if (typeof window !== 'undefined') {
+    return {
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      version: '1.0.0',
+      environment: 'development',
+      healthChecks: monitoring.getHealthStatus(),
+      metrics: monitoring.getMetricsSummary(),
+    };
+  }
+
+  return {
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    version: process.env.npm_package_version || '1.0.0',
+    environment: process.env.NODE_ENV || 'development',
+    uptime: process.uptime(),
+    memory: process.memoryUsage(),
+    healthChecks: monitoring.getHealthStatus(),
+    metrics: monitoring.getMetricsSummary(),
+  };
+}

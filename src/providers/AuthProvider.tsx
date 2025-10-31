@@ -14,18 +14,23 @@ interface UserProfile {
   clinicId: string;
   role: 'admin' | 'staff';
   photoURL?: string;
+  clinicName?: string;
 }
 
 interface AuthContextType {
   user: User | null;
   profile: UserProfile | null;
-  loading: boolean;
+  authLoading: boolean;
+  profileLoading: boolean;
+  updateProfileData: (updates: Partial<UserProfile>) => void;
 }
 
 export const AuthContext = createContext<AuthContextType>({
   user: null,
   profile: null,
-  loading: true,
+  authLoading: true,
+  profileLoading: false,
+  updateProfileData: () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -33,7 +38,8 @@ export const useAuth = () => useContext(AuthContext);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [profileLoading, setProfileLoading] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -43,7 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const initializeAuth = async () => {
       // If we're on the server or auth isn't available, set loading to false and return
       if (!isClient || !auth) {
-        setLoading(false);
+        setAuthLoading(false);
         return;
       }
 
@@ -52,6 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         unsubscribe = onAuthStateChanged(auth, async (user) => {
           console.log('[AuthProvider] onAuthStateChanged fired. user:', user);
           if (user) {
+            setProfileLoading(true);
             try {
               // Get user profile from Firestore
               const profileDoc = await getDoc(doc(db!, 'users', user.uid));
@@ -62,23 +69,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                   uid: user.uid,
                   ...data,
                 } as UserProfile);
+              } else {
+                setProfile({
+                  uid: user.uid,
+                  name: user.displayName || '',
+                  email: user.email || '',
+                  clinicId: '',
+                  role: 'staff',
+                  photoURL: user.photoURL || '',
+                });
               }
             } catch (error) {
               console.error('Error fetching user profile:', error);
             }
+            setProfileLoading(false);
           } else {
             setProfile(null);
+            setProfileLoading(false);
             // Only redirect if we're not already on an auth page
             if (!window.location.pathname.startsWith('/auth')) {
               router.push('/auth/login');
             }
           }
           setUser(user);
-          setLoading(false);
+          setAuthLoading(false);
         });
       } catch (error) {
         console.error('Error initializing auth:', error);
-        setLoading(false);
+        setAuthLoading(false);
       }
     };
 
@@ -92,8 +110,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [router]);
 
+  const updateProfileData = (updates: Partial<UserProfile>) => {
+    setProfile(prev => prev ? { ...prev, ...updates } : prev);
+  };
+
   // Show loading state only during initial auth check
-  if (loading) {
+  if (authLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -103,7 +125,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading }}>
+    <AuthContext.Provider value={{ user, profile, authLoading, profileLoading, updateProfileData }}>
       {children}
     </AuthContext.Provider>
   );

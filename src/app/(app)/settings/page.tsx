@@ -8,12 +8,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Settings, User, Building2, Bell, Shield, Loader2, AlertTriangle } from 'lucide-react';
+import { Settings, User, Building2, Loader2, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/providers/AuthProvider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
+import { PageShell, PageHeader, PageSection } from '@/components/layout/page';
 
 // Types for Settings module
 interface ClinicProfile {
@@ -123,23 +124,24 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
-          <p className="text-muted-foreground">Manage your clinic profile and preferences.</p>
-        </div>
-        <Button onClick={handleSaveSettings} disabled={isSaving}>
-          {isSaving ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Saving...
-            </>
-          ) : (
-            'Save Changes'
-          )}
-        </Button>
-      </div>
+    <PageShell>
+      <PageHeader
+        eyebrow="Settings"
+        title="Clinic Configuration"
+        description="Keep your clinic profile, user preferences, and module access aligned without leaving the workspace."
+        actions={
+          <Button onClick={handleSaveSettings} disabled={isSaving}>
+            {isSaving ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              'Save Changes'
+            )}
+          </Button>
+        }
+      />
 
       {error && (
         <Alert variant="destructive">
@@ -360,6 +362,6 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
+    </PageShell>
   );
 }

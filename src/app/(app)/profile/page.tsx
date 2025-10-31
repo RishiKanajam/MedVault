@@ -9,6 +9,7 @@ import { useAuth } from '@/providers/AuthProvider';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { User as UserIcon, UploadCloud } from 'lucide-react';
+import { PageShell, PageHeader } from '@/components/layout/page';
 
 export default function ProfilePage() {
   const auth = useAuth();
@@ -21,15 +22,17 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      // TODO: Upload to storage and get URL
-      setUploading(true);
-      setTimeout(() => {
-        setPhotoURL(URL.createObjectURL(e.target.files![0]));
-        setUploading(false);
-        toast({ title: 'Profile picture updated (mock)', description: 'This is a mock. Implement real upload.' });
-      }, 1200);
-    }
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // TODO: Upload to storage and get URL
+    const objectUrl = URL.createObjectURL(file);
+    setUploading(true);
+    setTimeout(() => {
+      setPhotoURL(objectUrl);
+      setUploading(false);
+      toast({ title: 'Profile picture updated (mock)', description: 'This is a mock. Implement real upload.' });
+    }, 1200);
   };
 
   const handleSave = (e: React.FormEvent) => {
@@ -44,12 +47,22 @@ export default function ProfilePage() {
   };
 
   if (authLoading) {
-    return <div className="flex justify-center items-center min-h-[60vh]"><Skeleton className="w-96 h-64" /></div>;
+    return (
+      <PageShell>
+        <Skeleton className="mx-auto h-64 w-full max-w-md rounded-2xl bg-muted" />
+      </PageShell>
+    );
   }
 
   return (
-    <div className="flex justify-center items-center min-h-[60vh] p-4">
-      <Card className="w-full max-w-md panel-primary">
+    <PageShell>
+      <PageHeader
+        eyebrow="Profile"
+        title="Your Operator Card"
+        description="Refresh your display details so teammates know who’s behind every action."
+      />
+      <div className="mx-auto flex min-h-[40vh] w-full max-w-md items-center justify-center">
+        <Card className="w-full panel-primary">
         <CardHeader>
           <CardTitle>Profile</CardTitle>
           <CardDescription>Manage your personal information</CardDescription>
@@ -81,7 +94,8 @@ export default function ProfilePage() {
             </Button>
           </CardFooter>
         </form>
-      </Card>
-    </div>
+        </Card>
+      </div>
+    </PageShell>
   );
-} 
+}

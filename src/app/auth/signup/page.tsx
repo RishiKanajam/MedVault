@@ -55,12 +55,19 @@ export default function SignupPage() {
     setIsLoading(true);
     try {
       // 1. Create Firebase Auth user
+      if (!auth) {
+        throw new Error('Firebase auth is not initialized');
+      }
       const userCred = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCred.user;
       // 2. Update Firebase Auth Profile (Display Name)
       await updateProfile(user, { displayName: fullName });
       // 3. Create Firestore user document for profile info
-      await setDoc(doc(db, 'users', user.uid), {
+      const dbInstance = db;
+      if (!dbInstance) {
+        throw new Error('Firestore is not initialized');
+      }
+      await setDoc(doc(dbInstance, 'users', user.uid), {
         name: fullName,
         email,
         clinicId,
@@ -112,21 +119,26 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <Card className="panel-primary w-full max-w-md text-center animate-fadeIn">
-        <CardHeader>
-          <div className="flex justify-center mb-4">
-            <Pill className="w-10 h-10 text-primary" />
-          </div>
-          <CardTitle className="text-2xl font-bold">Create an Account</CardTitle>
-          <CardDescription>Enter your details to get started with MediSync Pro</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSignup} className="space-y-4" autoComplete="off">
-            <div className="space-y-2 text-left">
-              <Label htmlFor="fullName">Full Name</Label>
-              <Input id="fullName" value={fullName} onChange={e => setFullName(e.target.value)} required disabled={isLoading} autoComplete="name" />
-            </div>
+    <div className="flex min-h-screen items-center justify-center bg-muted/40 px-4 py-10">
+      <div className="w-full max-w-md space-y-6">
+        <div className="text-center space-y-2">
+          <Pill className="mx-auto h-10 w-10 text-primary" />
+          <h1 className="text-2xl font-semibold text-foreground">Create your MedVault account</h1>
+          <p className="text-sm text-muted-foreground">
+            Set up access for your clinic in just a minute.
+          </p>
+        </div>
+        <Card className="w-full rounded-3xl border border-border/60 bg-background/95 shadow-xl">
+          <CardHeader>
+            <CardTitle className="text-xl font-semibold text-foreground">Tell us about you</CardTitle>
+            <CardDescription>We’ll use these details to configure your workspace.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <form onSubmit={handleSignup} className="space-y-4" autoComplete="off">
+              <div className="space-y-2 text-left">
+                <Label htmlFor="fullName">Full Name</Label>
+                <Input id="fullName" value={fullName} onChange={e => setFullName(e.target.value)} required disabled={isLoading} autoComplete="name" />
+              </div>
             <div className="space-y-2 text-left">
               <Label htmlFor="clinicId">Clinic ID</Label>
               <Input id="clinicId" value={clinicId} onChange={e => setClinicId(e.target.value)} required disabled={isLoading} autoComplete="organization" />
@@ -149,14 +161,15 @@ export default function SignupPage() {
               {isLoading ? 'Creating Account...' : 'Sign Up'}
             </Button>
           </form>
-        </CardContent>
-        <CardFooter className="text-center text-sm flex flex-col gap-2">
-          Already have an account?{' '}
-          <Button variant="link" asChild className="p-0 h-auto ml-1 text-primary">
-            <Link href="/auth/login">Login</Link>
-          </Button>
-        </CardFooter>
-      </Card>
+          </CardContent>
+          <CardFooter className="flex flex-col items-center gap-2 text-center text-sm text-muted-foreground">
+            Already have an account?{' '}
+            <Button variant="link" asChild className="h-auto p-0 text-primary">
+              <Link href="/auth/login">Log in</Link>
+            </Button>
+          </CardFooter>
+        </Card>
+      </div>
     </div>
   );
 }

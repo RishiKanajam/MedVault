@@ -18,16 +18,22 @@ export default function ProfileSection({ user, profile }: ProfileSectionProps) {
   const { toast } = useToast();
   const [editing, setEditing] = useState(false);
   const [displayName, setDisplayName] = useState(profile?.name || '');
-  const [avatar, setAvatar] = useState(profile?.photoURL || '');
+  const [avatar] = useState(profile?.photoURL || '');
   const [isSaving, setIsSaving] = useState(false);
 
   const handleSave = async () => {
     setIsSaving(true);
     try {
+      if (!auth) {
+        throw new Error('Firebase auth is not initialized');
+      }
       if (auth.currentUser) {
         await updateProfile(auth.currentUser, { displayName, photoURL: avatar });
       }
       if (user?.uid) {
+        if (!db) {
+          throw new Error('Firestore is not initialized');
+        }
         await updateDoc(doc(db, 'users', user.uid), { name: displayName, photoURL: avatar });
       }
       toast({ title: 'Profile updated' });

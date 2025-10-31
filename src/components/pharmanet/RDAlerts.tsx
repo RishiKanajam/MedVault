@@ -117,6 +117,7 @@ export function RDAlerts() {
                             <Button
                               variant="ghost"
                               size="sm"
+                              onClick={() => handleGenerateSummary(trial.id)}
                               disabled={isGeneratingSummary === trial.id}
                             >
                               {isGeneratingSummary === trial.id ? (

@@ -1,40 +1,31 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
-// Define paths that don't require authentication
-const PUBLIC_PATHS = ['/auth/login', '/auth/signup', '/', '/api/test-gemini']
 // Define paths that require authentication
-const PROTECTED_PATHS = ['/dashboard', '/pharmanet', '/test', '/history']
+const PROTECTED_PATHS = ['/dashboard', '/pharmanet', '/test', '/history', '/inventory', '/shipments', '/rxai', '/settings', '/profile']
 
-export function middleware(req: NextRequest) {
+export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
-  const sessionCookie = req.cookies.get('__session')
-  const isAuthenticated = !!sessionCookie
+  const hasSession = Boolean(req.cookies.get('__session')?.value)
 
-  // Handle root path
+  // Handle root path - redirect to login for now
   if (pathname === '/') {
-    if (isAuthenticated) {
-      return NextResponse.redirect(new URL('/dashboard', req.url))
-    }
     return NextResponse.redirect(new URL('/auth/login', req.url))
   }
 
-  // Handle auth paths
+  // Handle auth paths - allow access
   if (pathname.startsWith('/auth/')) {
-    if (isAuthenticated) {
-      return NextResponse.redirect(new URL('/dashboard', req.url))
-    }
     return NextResponse.next()
   }
 
-  // Handle protected paths
+  // Handle protected paths - redirect to login for now
   if (PROTECTED_PATHS.some(path => pathname.startsWith(path))) {
-    if (!isAuthenticated) {
-      const loginUrl = new URL('/auth/login', req.url)
-      loginUrl.searchParams.set('redirectedFrom', pathname)
-      return NextResponse.redirect(loginUrl)
+    if (hasSession) {
+      return NextResponse.next()
     }
-    return NextResponse.next()
+    const loginUrl = new URL('/auth/login', req.url)
+    loginUrl.searchParams.set('redirectedFrom', pathname)
+    return NextResponse.redirect(loginUrl)
   }
 
   // Allow all other paths
@@ -53,4 +44,4 @@ export const config = {
      */
     '/((?!_next/static|_next/image|favicon.ico|public/|api/(?!auth)).*)',
   ],
-} 
+}

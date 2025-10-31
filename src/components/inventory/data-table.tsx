@@ -22,26 +22,17 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, Download, Trash2, QrCode } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { format } from 'date-fns';
-
+import { Search } from 'lucide-react';
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   isLoading?: boolean;
-  selectedRows: string[];
-  onSelectionChange: (rows: string[]) => void;
-  onBulkAction: (action: 'delete' | 'export' | 'qr') => void;
 }
 
 export function DataTable<TData, TValue>({
   columns,
   data,
   isLoading,
-  selectedRows,
-  onSelectionChange,
-  onBulkAction,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -77,37 +68,6 @@ export function DataTable<TData, TValue>({
               className="pl-8 w-[300px]"
             />
           </div>
-          {selectedRows.length > 0 && (
-            <div className="flex items-center gap-2">
-              <Badge variant="secondary" className="px-2 py-1">
-                {selectedRows.length} selected
-              </Badge>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onBulkAction('delete')}
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onBulkAction('export')}
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Export
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onBulkAction('qr')}
-              >
-                <QrCode className="h-4 w-4 mr-2" />
-                QR Codes
-              </Button>
-            </div>
-          )}
         </div>
       </div>
 

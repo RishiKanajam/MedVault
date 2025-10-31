@@ -1,32 +1,38 @@
-// src/firebase.ts
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth, setPersistence, browserLocalPersistence } from 'firebase/auth';
 import { getFirestore, Firestore, enableIndexedDbPersistence } from 'firebase/firestore';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
-import { getAnalytics, Analytics } from "firebase/analytics"; // Import Analytics
+import { getAnalytics, Analytics } from "firebase/analytics";
 
+// Type-safe Firebase configuration
+interface FirebaseConfig {
+  apiKey: string;
+  authDomain: string;
+  projectId: string;
+  storageBucket: string;
+  messagingSenderId: string;
+  appId: string;
+  measurementId?: string;
+}
 
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
+const firebaseConfig: FirebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || '',
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || '',
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || '',
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || '',
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '',
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || '',
+  ...(process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
+    ? { measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID }
+    : {}),
 };
 
-// Debug logging
-if (typeof window !== 'undefined') {
-  console.log('Firebase Config Values:', {
-    apiKey: firebaseConfig.apiKey ? 'Set' : 'Not Set',
-    authDomain: firebaseConfig.authDomain ? 'Set' : 'Not Set',
-    projectId: firebaseConfig.projectId ? 'Set' : 'Not Set',
-    storageBucket: firebaseConfig.storageBucket ? 'Set' : 'Not Set',
-    messagingSenderId: firebaseConfig.messagingSenderId ? 'Set' : 'Not Set',
-    appId: firebaseConfig.appId ? 'Set' : 'Not Set',
-    measurementId: firebaseConfig.measurementId ? 'Set' : 'Not Set'
-  });
+// Validate required configuration
+const requiredConfig = ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId'] as const;
+const missingConfig = requiredConfig.filter(key => !firebaseConfig[key as keyof FirebaseConfig]);
+
+if (missingConfig.length > 0) {
+  throw new Error(`Missing required Firebase configuration: ${missingConfig.join(', ')}`);
 }
 
 // Initialize Firebase
@@ -40,24 +46,13 @@ let analytics: Analytics | null = null;
 const isClient = typeof window !== 'undefined';
 
 if (isClient) {
-  // Debug logging for client-side
-  console.log('Firebase Config Values:', {
-    apiKey: firebaseConfig.apiKey ? 'Set' : 'Not Set',
-    authDomain: firebaseConfig.authDomain ? 'Set' : 'Not Set',
-    projectId: firebaseConfig.projectId ? 'Set' : 'Not Set',
-    storageBucket: firebaseConfig.storageBucket ? 'Set' : 'Not Set',
-    messagingSenderId: firebaseConfig.messagingSenderId ? 'Set' : 'Not Set',
-    appId: firebaseConfig.appId ? 'Set' : 'Not Set',
-    measurementId: firebaseConfig.measurementId ? 'Set' : 'Not Set'
-  });
-
   try {
     // Initialize Firebase only on the client side
     if (!getApps().length) {
       app = initializeApp(firebaseConfig);
       console.log("Firebase initialized successfully");
     } else {
-      app = getApps()[0];
+      app = getApps()[0]!;
       console.log("Using existing Firebase app instance");
     }
 
@@ -105,16 +100,12 @@ if (isClient) {
   // Don't initialize auth, db, or storage on the server
 }
 
-// TODO: Consider enabling Firestore persistence carefully in Next.js
-// import { enableIndexedDbPersistence } from 'firebase/firestore';
-// if (typeof window !== 'undefined') { ... }
-
-// Export null for server-side, actual instances for client-side
+// Export with proper typing
 export { 
   app, 
   auth, 
   db, 
   storage, 
   analytics,
-  isClient // Export this to check if we're on client side
+  isClient
 };

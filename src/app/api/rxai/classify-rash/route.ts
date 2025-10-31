@@ -34,7 +34,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const decodedToken = await auth().verifySessionCookie(sessionCookie.split('=')[1]);
+    const sessionToken = sessionCookie.split('=')[1];
+    if (!sessionToken) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const decodedToken = await auth().verifySessionCookie(sessionToken);
     if (!decodedToken) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -53,29 +58,29 @@ export async function POST(req: Request) {
     const buffer = await image.arrayBuffer();
     const base64Image = Buffer.from(buffer).toString('base64');
 
+    const prompt = `
+      Analyze this medical image of a skin condition and provide a classification.
+      Focus on identifying the type of rash or skin condition.
+      Consider:
+      1. Pattern and distribution
+      2. Color and texture
+      3. Associated symptoms
+      4. Common causes
+      
+      Format the response as JSON:
+      {
+        "classification": "string (primary classification)",
+        "confidence": number (0-100),
+        "differentialDiagnosis": ["string (alternative possibilities)"],
+        "recommendations": ["string (next steps)"]
+      }
+    `;
+
     // Try Gemini Vision first, fallback to Gamma if needed
     let classification;
     try {
       // Use Gemini Vision for classification
       const model = genAI.getGenerativeModel({ model: 'gemini-pro-vision' });
-      
-      const prompt = `
-        Analyze this medical image of a skin condition and provide a classification.
-        Focus on identifying the type of rash or skin condition.
-        Consider:
-        1. Pattern and distribution
-        2. Color and texture
-        3. Associated symptoms
-        4. Common causes
-        
-        Format the response as JSON:
-        {
-          "classification": "string (primary classification)",
-          "confidence": number (0-100),
-          "differentialDiagnosis": ["string (alternative possibilities)"],
-          "recommendations": ["string (next steps)"]
-        }
-      `;
 
       const result = await model.generateContent([
         prompt,

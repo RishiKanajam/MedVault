@@ -4,9 +4,8 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Shield, AlertTriangle, Loader2 } from 'lucide-react';
+import { Shield, Loader2 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 
 interface DrugDetail {
@@ -29,7 +28,6 @@ interface DrugDetailProps {
 
 export function DrugDetail({ drug, onClose }: DrugDetailProps) {
   const [isVerifying, setIsVerifying] = useState(false);
-  const [isVerified, setIsVerified] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
   const { toast } = useToast();
 
@@ -63,7 +61,6 @@ export function DrugDetail({ drug, onClose }: DrugDetailProps) {
         return;
       }
 
-      setIsVerified(true);
       setShowDetails(true);
       toast({
         title: 'Access Granted',

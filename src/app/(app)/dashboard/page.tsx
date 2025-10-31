@@ -1,209 +1,283 @@
-// src/app/dashboard/page.tsx
 'use client';
-export const dynamic = 'force-dynamic';
 
 import React from 'react';
 import Link from 'next/link';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Boxes, AlertTriangle, CalendarOff, Truck, ThermometerSnowflake, Activity, BrainCircuit, BarChart3, LineChart, FileText as ClipboardList } from 'lucide-react'; // Renamed FileText to ClipboardList
+import { Boxes, AlertTriangle, CalendarOff, Truck, BrainCircuit } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Bar, BarChart as RechartsBarChart, Line as RechartsLineElement, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, Legend, LineChart as RechartsLineChartComponent, Cell } from 'recharts';
-import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from "@/components/ui/chart";
+import {
+  Bar,
+  BarChart as RechartsBarChart,
+  Line as RechartsLineElement,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  LineChart as RechartsLineChartComponent,
+} from 'recharts';
+import {
+  ChartConfig,
+  ChartContainer,
+  ChartTooltipContent,
+  ChartLegendContent,
+} from '@/components/ui/chart';
 import { useAuth } from '@/providers/AuthProvider';
-import { useToast } from '@/hooks/use-toast';
-import { AuthProvider } from '@/providers/AuthProvider';
+import { useDashboardMetrics } from '@/hooks/use-dashboard';
+import { useMedicines } from '@/hooks/use-medicines';
+import { PageShell, PageHeader, PageSection, StatCard } from '@/components/layout/page';
 
-// Dashboard Page for MediSync Pro
-// Purpose: Shows workspace overview, metrics, charts, and quick actions for all modules.
-// Data Flow: Uses mock data; replace with real API calls for metrics, charts, and activity feed.
-// TODO: Replace all mock data with real API calls (see inline TODOs).
-// TODO: Add guest mode toggle for dummy data if user is anonymous.
-// TODO: Ensure all cards and charts are accessible and responsive.
-
-// Clean up guest mode references and TODOs
-const useDashboardMetrics = (clinicId?: string) => {
-     const [metrics, setMetrics] = React.useState({
-        totalMeds: 0, expiringSoon: 0, expired: 0, coldChainBreaches: 0, activeShipments: 0,
-     });
-     const [loading, setLoading] = React.useState(true);
-
-     React.useEffect(() => {
-         // Simulate API call
-         const timer = setTimeout(() => {
-             // TODO: Replace with actual API call to fetch dashboard metrics based on clinicId
-             setMetrics({ totalMeds: 138, expiringSoon: 5, expired: 3, coldChainBreaches: 1, activeShipments: 4 });
-             setLoading(false);
-         }, 700);
-         return () => clearTimeout(timer);
-     }, [clinicId]);
-     return { metrics, loading };
-};
-
-// Mock chart data (with comments for future API integration)
+// Mock chart data (replace with real data from Firestore)
 const expiryChartData = [
-  // TODO: Replace with data fetched from API for expiry chart (scoped by clinicId)
-  { status: 'Expired', count: 3, fill: 'hsl(var(--danger-hsl))' },
-  { status: 'Expiring', count: 5, fill: 'hsl(var(--warning-hsl))' },
-  { status: 'Safe', count: 130, fill: 'hsl(var(--primary-hsl))' },
+  { month: 'Jan', expiring: 2, expired: 1 },
+  { month: 'Feb', expiring: 3, expired: 0 },
+  { month: 'Mar', expiring: 1, expired: 2 },
+  { month: 'Apr', expiring: 4, expired: 1 },
+  { month: 'May', expiring: 2, expired: 0 },
+  { month: 'Jun', expiring: 3, expired: 1 },
 ];
-const expiryChartConfig = {
-  count: { label: "Count" },
-  Expired: { label: "Expired", color: "hsl(var(--danger-hsl))" },
-  Expiring: { label: "Expiring Soon", color: "hsl(var(--warning-hsl))" },
-  Safe: { label: "Safe", color: "hsl(var(--primary-hsl))" },
-} satisfies ChartConfig;
 
 const recordsTrendData = [
-  // TODO: Replace with data fetched from API for records trend (scoped by clinicId)
-  { month: 'Jan', count: 15 }, { month: 'Feb', count: 20 }, { month: 'Mar', count: 18 },
-  { month: 'Apr', count: 25 }, { month: 'May', count: 22 }, { month: 'Jun', count: 30 },
+  { month: 'Jan', records: 45 },
+  { month: 'Feb', records: 52 },
+  { month: 'Mar', records: 38 },
+  { month: 'Apr', records: 61 },
+  { month: 'May', records: 47 },
+  { month: 'Jun', records: 55 },
 ];
-const recordsChartConfig = {
-  count: { label: "Records Added", color: "hsl(var(--primary-hsl))" },
+
+const chartConfig = {
+  expiring: {
+    label: "Expiring Soon",
+    color: "hsl(var(--chart-1))",
+  },
+  expired: {
+    label: "Expired",
+    color: "hsl(var(--chart-2))",
+  },
+  records: {
+    label: "Patient Records",
+    color: "hsl(var(--chart-3))",
+  },
 } satisfies ChartConfig;
 
-function DashboardPageInner() {
-  const { user, profile, loading } = useAuth();
-  const { metrics, loading: metricsLoading } = useDashboardMetrics(profile?.clinicId ?? undefined);
-  const { toast } = useToast();
+export default function DashboardPage() {
+  const { profile } = useAuth();
+  const { data: metrics, isLoading: metricsLoading } = useDashboardMetrics();
+  const { data: medicines = [] } = useMedicines();
 
-  // Show welcome back toast on mount
-  React.useEffect(() => {
-    if (!loading) {
-      toast({ title: 'Welcome back', description: 'Glad to see you again!' });
-    }
-  }, [loading, toast]);
+  const welcomeCopy = `Welcome back${profile?.name ? `, ${profile.name}` : ''}. Keep tabs on stock, shipments, and patient activity in seconds.`;
 
-  // Combined loading state for page content (auth already handled by AuthProvider)
-  const isLoadingContent = metricsLoading;
+  const header = (
+    <PageHeader
+      eyebrow="Today"
+      title="Operations Pulse"
+      description={welcomeCopy}
+      actions={
+        <Button asChild variant="outline" size="sm">
+          <Link href="/settings">Team preferences</Link>
+        </Button>
+      }
+    />
+  );
 
-  const getWelcomeMessage = () => {
-    if (profile?.name) return `Welcome back, ${profile.name}!`;
-    return "Welcome back!";
-  };
-
-
-  if (isLoadingContent) { // Show skeleton if metrics are loading (auth is handled by AuthProvider)
+  if (metricsLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-6">
-        <div className="space-y-12 w-full">
-           {/* Welcome Banner Skeleton */}
-           <Card className="panel-primary relative overflow-hidden">
-             <CardHeader className="pl-8 pt-6 pb-6"><Skeleton className="h-8 w-1/2 bg-muted" /></CardHeader>
-           </Card>
-           {/* Metric Cards Skeleton */}
-           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-             {Array.from({ length: 6 }).map((_, index) => (
-               <Card key={index} className="panel-secondary">
-                 <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 pt-4 px-4">
-                   <Skeleton className="h-5 w-1/3 bg-muted" />
-                   <Skeleton className="h-5 w-5 rounded-full bg-muted" />
-                 </CardHeader>
-                 <CardContent className="pb-4 px-4">
-                    <Skeleton className="h-10 w-1/4 mt-1 mb-1 bg-muted" />
-                    <Skeleton className="h-3 w-1/2 bg-muted" />
-                 </CardContent>
-                  <CardFooter className="pt-0 pb-4 px-4"><Skeleton className="h-4 w-1/3 bg-muted" /></CardFooter>
-               </Card>
-             ))}
-           </div>
-           {/* Charts Skeleton */}
-           <div className="grid gap-6 lg:grid-cols-2">
-             <Card className="panel-primary col-span-1">
-               <CardHeader><Skeleton className="h-6 w-3/4 bg-muted" /></CardHeader>
-               <CardContent className="h-[300px] p-4"><Skeleton className="w-full h-full bg-muted" /></CardContent>
-             </Card>
-             <Card className="panel-primary col-span-1">
-               <CardHeader><Skeleton className="h-6 w-3/4 bg-muted" /></CardHeader>
-               <CardContent className="h-[300px] p-4"><Skeleton className="w-full h-full bg-muted" /></CardContent>
-             </Card>
-           </div>
+      <PageShell>
+        {header}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div
+              key={index}
+              className="h-32 rounded-2xl border border-border/60 bg-background/90 p-5 shadow-sm"
+            >
+              <Skeleton className="mb-4 h-3 w-20" />
+              <Skeleton className="h-6 w-24" />
+              <Skeleton className="mt-4 h-3 w-32" />
+            </div>
+          ))}
         </div>
-      </div>
+      </PageShell>
     );
   }
 
-  // Actual data for cards, derived after loading is complete
-  const metricCardsData = [
-    { title: "Total Medicines", value: metrics.totalMeds, icon: Boxes, href: "/inventory", color: "text-primary", iconColor: "text-primary" },
-    { title: "Expiring Soon", value: metrics.expiringSoon, icon: AlertTriangle, href: "/inventory?filter=expiring", color: "text-warning", iconColor: "text-warning" },
-    { title: "Expired Medicines", value: metrics.expired, icon: CalendarOff, href: "/inventory?filter=expired", color: "text-danger", iconColor: "text-danger" },
-    { title: "Cold-Chain Breaches", value: metrics.coldChainBreaches, icon: ThermometerSnowflake, href: "/inventory?filter=coldchain", color: "text-danger", iconColor: "text-danger" },
-    { title: "Active Shipments", value: metrics.activeShipments, icon: Truck, href: "/shipments", color: "text-info", iconColor: "text-info" },
-    { title: "Patient Records Added (6 mo)", value: recordsTrendData.reduce((sum, d) => sum + d.count, 0), icon: ClipboardList, href: "/history", color: "text-info", iconColor: "text-info" },
+  const metricCards = [
+    {
+      title: 'Total Medicines',
+      value: metrics?.totalMeds ?? 0,
+      helper: 'Items currently stocked',
+      indicator: <Boxes className="h-4 w-4" />,
+    },
+    {
+      title: 'Expiring Soon',
+      value: metrics?.expiringSoon ?? 0,
+      helper: 'Within the next 30 days',
+      indicator: <CalendarOff className="h-4 w-4" />,
+    },
+    {
+      title: 'Expired',
+      value: metrics?.expired ?? 0,
+      helper: 'Requires removal',
+      indicator: <AlertTriangle className="h-4 w-4" />,
+    },
+    {
+      title: 'Active Shipments',
+      value: metrics?.activeShipments ?? 0,
+      helper: 'In transit right now',
+      indicator: <Truck className="h-4 w-4" />,
+    },
   ];
 
   return (
-    <div className="space-y-12 animate-fadeIn p-6">
-      <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 auto-rows-fr" style={{ gridAutoRows: '1fr' }}>
-        {metricCardsData.map((metric, index) => (
-          <Card key={index} className="panel-secondary flex flex-col h-full min-h-[140px]">
-            <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 pt-4 px-4">
-              <CardTitle className="text-sm font-medium text-muted-foreground">{metric.title}</CardTitle>
-              <metric.icon className={`h-5 w-5 ${metric.iconColor}`} />
-            </CardHeader>
-            <CardContent className="pb-4 px-4 flex-1 flex flex-col justify-center">
-              <div className={`text-2xl font-bold ${metric.color}`}>{metric.value}</div>
-              <p className="text-xs text-muted-foreground">
-                {metric.title === 'Expiring Soon' ? 'Within 7 days' :
-                  metric.title === 'Cold-Chain Breaches' ? 'Incidents recorded' :
-                  metric.title === 'Total Medicines' ? 'Items in stock' :
-                  metric.title === 'Expired Medicines' ? 'Items past date' :
-                  metric.title === 'Active Shipments' ? 'Currently tracked' :
-                  metric.title.includes('Patient Records') ? 'Past 6 months' : 'Details'}
-              </p>
-            </CardContent>
-            <CardFooter className="pt-0 pb-4 px-4">
-              <Button variant="link" size="sm" className="p-0 h-auto text-xs text-primary" asChild>
-                <Link href={metric.href}>View Details</Link>
-              </Button>
-            </CardFooter>
-          </Card>
-        ))}
-      </div>
-      <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
-        <Card className="panel-primary col-span-1 flex flex-col h-full min-h-[340px]">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2"><LineChart className="text-info" /> Patient Records Trend (6 Mo)</CardTitle>
-            <CardDescription>Number of patient records added monthly. {/* TODO: Fetch this data based on clinicId */}</CardDescription>
-          </CardHeader>
-          <CardContent className="h-[300px] p-4 flex-1">
-            <ChartContainer config={recordsChartConfig} className="h-full w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <RechartsLineChartComponent data={recordsTrendData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fill: 'hsl(var(--foreground-hsl))' }} />
-                  <YAxis tickLine={false} axisLine={false} tick={{ fill: 'hsl(var(--foreground-hsl))' }} />
-                  <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="line" />} />
-                  <RechartsLineElement type="monotone" dataKey="count" stroke="hsl(var(--primary-hsl))" strokeWidth={2} dot={{ fill: 'hsl(var(--primary-hsl))', r: 4 }} activeDot={{ r: 6 }} />
-                  <ChartLegend content={<ChartLegendContent />} />
-                </RechartsLineChartComponent>
-              </ResponsiveContainer>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-        <Card className="panel-primary col-span-1 flex flex-col h-full min-h-[340px]">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg"><Activity className="h-5 w-5 text-primary" /> Recent Activity</CardTitle>
-            <CardDescription>Overview of recent inventory changes and alerts. {/* TODO: Fetch this data based on clinicId */}</CardDescription>
-          </CardHeader>
-          <CardContent className="pl-4 pr-4 flex-1 overflow-y-auto">
-            {/* TODO: Replace with real recent activity data from API */}
-            <ul className="space-y-2">
-              <li className="text-sm text-muted-foreground">No recent activity to display. {/* TODO: Implement recent activity feed */}</li>
-            </ul>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  );
-}
+    <PageShell>
+      {header}
 
-export default function DashboardPageWrapper() {
-  return (
-    <AuthProvider>
-      <DashboardPageInner />
-    </AuthProvider>
+      <div className="grid gap-8">
+        <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {metricCards.map((card) => (
+            <StatCard
+              key={card.title}
+              indicator={card.indicator}
+              title={card.title}
+              value={card.value}
+              helper={card.helper}
+            />
+          ))}
+        </section>
+
+        <div className="grid gap-4 lg:grid-cols-2">
+          <PageSection
+            title="Medicine expiry trends"
+            description="Track where inventory is approaching its use-by window."
+          >
+            <ChartContainer config={chartConfig}>
+              <RechartsBarChart data={expiryChartData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis />
+                <Tooltip content={<ChartTooltipContent />} />
+                <Legend content={<ChartLegendContent />} />
+                <Bar dataKey="expiring" fill="var(--color-expiring)" />
+                <Bar dataKey="expired" fill="var(--color-expired)" />
+              </RechartsBarChart>
+            </ChartContainer>
+          </PageSection>
+
+          <PageSection
+            title="Patient records trend"
+            description="Monitor how many clinical notes are being filed each month."
+          >
+            <ChartContainer config={chartConfig}>
+              <RechartsLineChartComponent data={recordsTrendData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis />
+                <Tooltip content={<ChartTooltipContent />} />
+                <Legend content={<ChartLegendContent />} />
+                <RechartsLineElement
+                  type="monotone"
+                  dataKey="records"
+                  stroke="var(--color-records)"
+                  strokeWidth={2}
+                />
+              </RechartsLineChartComponent>
+            </ChartContainer>
+          </PageSection>
+        </div>
+
+        <PageSection
+          title="Quick actions"
+          description="Jump straight into the tools your team uses most."
+        >
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <Link
+              href="/inventory"
+              className="group flex flex-col gap-3 rounded-2xl border border-border/60 bg-background/95 p-4 shadow-sm transition hover:border-primary/40"
+            >
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <Boxes className="h-5 w-5 text-primary" />
+                  Inventory
+                </span>
+                <span className="text-xs font-semibold text-primary opacity-0 transition group-hover:opacity-100">
+                  Open →
+                </span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Review stock levels, batch details, and expiry exposure.
+              </p>
+            </Link>
+
+            <Link
+              href="/shipments"
+              className="group flex flex-col gap-3 rounded-2xl border border-border/60 bg-background/95 p-4 shadow-sm transition hover:border-primary/40"
+            >
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <Truck className="h-5 w-5 text-primary" />
+                  Shipments
+                </span>
+                <span className="text-xs font-semibold text-primary opacity-0 transition group-hover:opacity-100">
+                  Track →
+                </span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Check routing status and manage cold-chain compliance.
+              </p>
+            </Link>
+
+            <Link
+              href="/rxai"
+              className="group flex flex-col gap-3 rounded-2xl border border-border/60 bg-background/95 p-4 shadow-sm transition hover:border-primary/40"
+            >
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <BrainCircuit className="h-5 w-5 text-primary" />
+                  RxAI Assistant
+                </span>
+                <span className="text-xs font-semibold text-primary opacity-0 transition group-hover:opacity-100">
+                  Launch →
+                </span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Submit symptoms for instant clinical insights powered by AI.
+              </p>
+            </Link>
+          </div>
+        </PageSection>
+
+        <PageSection
+          title="Recent activity"
+          description="Latest moves across inventory and patient tracking."
+        >
+          <div className="space-y-4">
+            {medicines.slice(0, 4).map((medicine) => (
+              <div
+                key={medicine.id}
+                className="flex items-center gap-4 rounded-xl border border-border/40 bg-muted/40 p-4"
+              >
+                <span className="flex h-10 w-10 items-center justify-center rounded-full border border-primary/20 bg-primary/10 text-sm font-semibold text-primary">
+                  {medicine.name.charAt(0).toUpperCase()}
+                </span>
+                <div className="flex-1 space-y-1">
+                  <p className="text-sm font-semibold text-foreground">{medicine.name}</p>
+                  <p className="text-xs text-muted-foreground">Added to inventory</p>
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  {medicine.createdAt ? new Date(medicine.createdAt).toLocaleDateString() : '—'}
+                </span>
+              </div>
+            ))}
+            {medicines.length === 0 && (
+              <div className="rounded-xl border border-dashed border-border/60 bg-background/80 p-6 text-center">
+                <p className="text-sm text-muted-foreground">
+                  No recent updates yet. Add medicines to see activity here.
+                </p>
+              </div>
+            )}
+          </div>
+        </PageSection>
+      </div>
+    </PageShell>
   );
 }
