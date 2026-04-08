@@ -21,7 +21,7 @@ const SheetOverlay = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SheetPrimitive.Overlay
     className={cn(
-      "backdrop", // Apply backdrop class
+      "bg-black/60 backdrop-blur-sm",
       "fixed inset-0 z-50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
       className
     )}
@@ -63,9 +63,9 @@ const SheetContent = React.forwardRef<
     <SheetPrimitive.Content
       ref={ref}
       className={cn(
-        "panel-primary", // Apply primary panel class
-         sheetVariants({ side }),
-         className
+        "bg-background border-border shadow-xl",
+        sheetVariants({ side }),
+        className
       )}
       {...props}
     >

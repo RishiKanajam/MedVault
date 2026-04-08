@@ -1,57 +1,63 @@
 steps:
-# Step 1: Access secrets and store them in files
-- name: 'gcr.io/cloud-builders/gcloud'
-  entrypoint: 'bash'
-  args:
-    - -c
-    - |
-      gcloud secrets versions access latest --secret="FIREBASE_API_KEY" --project="$PROJECT_ID" > /workspace/firebase_api_key.txt
-      gcloud secrets versions access latest --secret="GOOGLE_AI_API_KEY" --project="$PROJECT_ID" > /workspace/google_ai_api_key.txt
+  # ── Step 1: Fetch secrets from Secret Manager ──────────────────────────
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        gcloud secrets versions access latest --secret="FIREBASE_API_KEY"       --project="$PROJECT_ID" > /workspace/firebase_api_key.txt
+        gcloud secrets versions access latest --secret="GOOGLE_AI_API_KEY"      --project="$PROJECT_ID" > /workspace/google_ai_api_key.txt
+        gcloud secrets versions access latest --secret="FIREBASE_CLIENT_EMAIL"  --project="$PROJECT_ID" > /workspace/firebase_client_email.txt
+        gcloud secrets versions access latest --secret="FIREBASE_PRIVATE_KEY"   --project="$PROJECT_ID" > /workspace/firebase_private_key.txt
 
-# Step 2: Build the Docker image with secrets
-- name: 'gcr.io/cloud-builders/docker'
-  args:
-    - 'build'
-    - '--build-arg'
-    - 'NEXT_PUBLIC_FIREBASE_API_KEY=$(cat /workspace/firebase_api_key.txt)'
-    - '--build-arg'
-    - 'GOOGLE_AI_API_KEY=$(cat /workspace/google_ai_api_key.txt)'
-    - '--build-arg'
-    - 'NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=apacsolutionchallenge-460009.firebaseapp.com'
-    - '--build-arg'
-    - 'NEXT_PUBLIC_FIREBASE_PROJECT_ID=apacsolutionchallenge-460009'
-    - '--build-arg'
-    - 'NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=apacsolutionchallenge-460009.appspot.com'
-    - '--build-arg'
-    - 'NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=200280322925'
-    - '--build-arg'
-    - 'NEXT_PUBLIC_FIREBASE_APP_ID=1:200280322925:web:d93f0f3b70c4f59211e064'
-    - '--build-arg'
-    - 'NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=G-XCLS8JGY2G'
-    - '-t'
-    - 'gcr.io/$PROJECT_ID/medvault'
-    - '.'
+  # ── Step 2: Build Docker image ─────────────────────────────────────────
+  # NEXT_PUBLIC_* vars must be present at build time (they are baked into
+  # the JS bundle by Next.js). Pass them as --build-arg; the Dockerfile
+  # declares the matching ARG/ENV pair in the builder stage.
+  - name: 'gcr.io/cloud-builders/docker'
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        docker build \
+          --build-arg NEXT_PUBLIC_FIREBASE_API_KEY=$(cat /workspace/firebase_api_key.txt) \
+          --build-arg NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=apacsolutionchallenge-460009.firebaseapp.com \
+          --build-arg NEXT_PUBLIC_FIREBASE_PROJECT_ID=apacsolutionchallenge-460009 \
+          --build-arg NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=apacsolutionchallenge-460009.appspot.com \
+          --build-arg NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=200280322925 \
+          --build-arg NEXT_PUBLIC_FIREBASE_APP_ID=1:200280322925:web:d93f0f3b70c4f59211e064 \
+          --build-arg NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=G-XCLS8JGY2G \
+          -t gcr.io/$PROJECT_ID/medvault \
+          .
 
-# Step 3: Push the image to Container Registry
-- name: 'gcr.io/cloud-builders/docker'
-  args: ['push', 'gcr.io/$PROJECT_ID/medvault']
+  # ── Step 3: Push image to Container Registry ───────────────────────────
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/medvault']
 
-# Step 4: Deploy to Cloud Run
-- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-  entrypoint: gcloud
-  args:
-    - 'run'
-    - 'deploy'
-    - 'medvault'
-    - '--image'
-    - 'gcr.io/$PROJECT_ID/medvault'
-    - '--region'
-    - 'us-central1'
-    - '--platform'
-    - 'managed'
-    - '--allow-unauthenticated'
-    - '--set-env-vars'
-    - 'NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=apacsolutionchallenge-460009.firebaseapp.com,NEXT_PUBLIC_FIREBASE_PROJECT_ID=apacsolutionchallenge-460009,NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=apacsolutionchallenge-460009.appspot.com,NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=200280322925,NEXT_PUBLIC_FIREBASE_APP_ID=1:200280322925:web:d93f0f3b70c4f59211e064,NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=G-XCLS8JGY2G'
+  # ── Step 4: Deploy to Cloud Run ────────────────────────────────────────
+  # Server-side secrets are injected at runtime via --update-secrets.
+  # They are NOT baked into the image — Cloud Run fetches them from
+  # Secret Manager on each instance start.
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        gcloud run deploy medvault \
+          --image gcr.io/$PROJECT_ID/medvault \
+          --region us-central1 \
+          --platform managed \
+          --allow-unauthenticated \
+          --set-env-vars "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=apacsolutionchallenge-460009.firebaseapp.com,\
+        NEXT_PUBLIC_FIREBASE_PROJECT_ID=apacsolutionchallenge-460009,\
+        NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=apacsolutionchallenge-460009.appspot.com,\
+        NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=200280322925,\
+        NEXT_PUBLIC_FIREBASE_APP_ID=1:200280322925:web:d93f0f3b70c4f59211e064,\
+        NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=G-XCLS8JGY2G" \
+          --update-secrets "FIREBASE_PROJECT_ID=FIREBASE_PROJECT_ID:latest,\
+        FIREBASE_CLIENT_EMAIL=FIREBASE_CLIENT_EMAIL:latest,\
+        FIREBASE_PRIVATE_KEY=FIREBASE_PRIVATE_KEY:latest,\
+        GOOGLE_AI_API_KEY=GOOGLE_AI_API_KEY:latest"
 
 images:
-- 'gcr.io/$PROJECT_ID/medvault' 
+  - 'gcr.io/$PROJECT_ID/medvault'

@@ -70,7 +70,7 @@ export function Sidebar() {
   return (
     <div className="flex h-screen w-64 flex-col border-r border-border bg-sidebar text-sidebar-foreground">
       <div className="flex h-14 items-center border-b border-sidebar-border px-4">
-        <span className="text-lg font-semibold">MediSync Pro</span>
+        <span className="text-lg font-semibold">MedVault</span>
       </div>
       
       <nav className="flex-1 space-y-1 p-2">

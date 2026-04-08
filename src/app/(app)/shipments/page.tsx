@@ -339,7 +339,7 @@ export default function ShipmentsPage() {
         </div>
       </PageHeader>
 
-      <div className="space-y-6 animate-fadeIn">
+      <div className="space-y-6 animate-fade-in">
       {/* Bulk action bar */}
       {selectedIds.length > 0 && (
         <div className="mb-2 flex items-center gap-4 bg-muted/60 p-3 rounded-lg border border-border">
@@ -348,7 +348,7 @@ export default function ShipmentsPage() {
           <Button size="sm" variant="ghost" onClick={() => setSelectedIds([])}>Clear</Button>
         </div>
       )}
-      <Card className="panel-primary">
+      <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div className="space-y-1">
             <CardTitle>Shipment Tracking</CardTitle>
@@ -369,7 +369,7 @@ export default function ShipmentsPage() {
                   <PlusCircle className="mr-2 h-4 w-4" /> Create Shipment
                 </Button>
               </DialogTrigger>
-              <DialogContent className="panel-primary sm:max-w-[450px]">
+              <DialogContent className="sm:max-w-[450px]">
                 <DialogHeader>
                   <DialogTitle>Create New Shipment</DialogTitle>
                   <DialogDescription>Select medicine and provide shipment details.</DialogDescription>
@@ -386,7 +386,7 @@ export default function ShipmentsPage() {
                         <SelectTrigger id="medicineId" className="col-span-3" disabled={isLoadingMedStubs}>
                           <SelectValue placeholder={isLoadingMedStubs ? "Loading..." : "Select medicine"} />
                         </SelectTrigger>
-                        <SelectContent className="overlay-tertiary">
+                        <SelectContent>
                           {medicineStubs.map(med => (
                             <SelectItem key={med.id} value={med.id}>{med.name}</SelectItem>
                           ))}
@@ -487,7 +487,7 @@ export default function ShipmentsPage() {
                         <PopoverTrigger asChild>
                           <Button variant="ghost" size="sm">Details</Button>
                         </PopoverTrigger>
-                        <PopoverContent className="overlay-secondary w-60">
+                        <PopoverContent className="w-60">
                           <div className="space-y-1 text-sm">
                             <p><strong>Medicine:</strong> {shipment.medicineName || shipment.medicineId}</p>
                             <p><strong>Tracking:</strong> {shipment.trackingNo || 'N/A'}</p>
@@ -530,7 +530,7 @@ export default function ShipmentsPage() {
               {/* Popover/modal for selected shipment on map */}
               {viewMode === 'map' && selectedShipment && (
                 <Dialog open={!!selectedShipment} onOpenChange={() => setSelectedShipment(null)}>
-                  <DialogContent className="panel-primary max-w-md">
+                  <DialogContent className="max-w-md">
                     <DialogHeader>
                       <DialogTitle>Shipment Details</DialogTitle>
                     </DialogHeader>
@@ -562,7 +562,7 @@ export default function ShipmentsPage() {
       </Card>
       {/* Detail Drawer (Sheet) for selected shipment */}
       <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
-        <SheetContent side="right" className="max-w-lg w-full panel-primary">
+        <SheetContent side="right" className="max-w-lg w-full">
           <div>
             <SheetHeader>
               <SheetTitle>Shipment Details</SheetTitle>

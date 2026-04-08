@@ -62,7 +62,7 @@ export default function ProfilePage() {
         description="Refresh your display details so teammates know who’s behind every action."
       />
       <div className="mx-auto flex min-h-[40vh] w-full max-w-md items-center justify-center">
-        <Card className="w-full panel-primary">
+        <Card className="w-full">
         <CardHeader>
           <CardTitle>Profile</CardTitle>
           <CardDescription>Manage your personal information</CardDescription>

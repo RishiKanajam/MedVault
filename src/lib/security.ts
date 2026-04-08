@@ -43,6 +43,18 @@ export class SecurityService {
       .slice(0, 1000); // Limit length
   }
 
+  // Prompt injection mitigation for LLM inputs.
+  // Strips null bytes, removes angle brackets that could embed fake system turns,
+  // and truncates to a safe length. Not a perfect defence but raises the bar significantly.
+  static sanitizeForPrompt(input: string, maxLength = 2000): string {
+    return input
+      .replace(/\x00/g, '') // null bytes
+      .replace(/[<>]/g, '') // angle brackets (fake XML/HTML injection into prompt)
+      .replace(/[\u0000-\u001F\u007F]/g, ' ') // other ASCII control chars → space
+      .trim()
+      .slice(0, maxLength);
+  }
+
   // SQL injection prevention (for any raw queries)
   static sanitizeForQuery(input: string): string {
     return input
@@ -241,3 +253,6 @@ export function withSecurity(
     }
   };
 }
+
+// Convenience export so API routes can import without going through the class.
+export const sanitizeForPrompt = SecurityService.sanitizeForPrompt;

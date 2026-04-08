@@ -3,12 +3,15 @@
 export const dynamic = 'force-dynamic';
 
 import React, { useState, useEffect } from 'react';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { SymptomInputForm } from '@/components/rxai/SymptomInputForm';
 import { SuggestionCard } from '@/components/rxai/SuggestionCard';
-import { Calendar, FileText } from 'lucide-react';
+import { Calendar, FileText, TriangleAlert } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { PageShell, PageHeader, PageSection } from '@/components/layout/page';
 
 interface RecentActivity {
@@ -33,42 +36,44 @@ export default function RxAIPage() {
   const [isLoadingActivity, setIsLoadingActivity] = useState(false);
 
   const handlePhotoUpload = async (file: File) => {
-    try {
-      // Upload photo to storage and get URL
-      const formData = new FormData();
-      formData.append('image', file);
+    if (!storage) {
+      throw new Error('Firebase Storage is not initialized');
+    }
 
-      const response = await fetch('/api/rxai/classify-rash', {
-        method: 'POST',
-        body: formData,
-      });
+    // 1. Upload to Firebase Storage first to get a permanent, shareable URL.
+    const storageRef = ref(storage, `rash-photos/${Date.now()}-${file.name}`);
+    await uploadBytes(storageRef, file);
+    const permanentUrl = await getDownloadURL(storageRef);
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Failed to classify rash: ${response.status}`);
-      }
+    // 2. Send the file bytes to the classify-rash API for Gemini analysis.
+    const formData = new FormData();
+    formData.append('image', file);
 
-      const data = await response.json();
-      
-      if (!data || !data.classification) {
-        throw new Error('Invalid response format from classification API');
-      }
+    const response = await fetch('/api/rxai/classify-rash', {
+      method: 'POST',
+      credentials: 'include',
+      body: formData,
+    });
 
-      const classificationText: string = typeof data.classification === 'string'
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `Failed to classify rash: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (!data || !data.classification) {
+      throw new Error('Invalid response format from classification API');
+    }
+
+    const classificationText: string =
+      typeof data.classification === 'string'
         ? data.classification
         : JSON.stringify(data.classification);
 
-      setRashClassification(classificationText);
-      
-      // TODO: Implement actual photo upload to storage
-      // For now, we'll just use a placeholder URL
-      const objectUrl = URL.createObjectURL(file);
-      setPhotoUrl(objectUrl);
-      return { photoUrl: objectUrl, classification: classificationText };
-    } catch (error) {
-      console.error('Error uploading photo:', error);
-      throw error; // Re-throw to be handled by the caller
-    }
+    setRashClassification(classificationText);
+    setPhotoUrl(permanentUrl);
+    return { photoUrl: permanentUrl, classification: classificationText };
   };
 
   const handleSubmit = async (formData: any) => {
@@ -287,6 +292,13 @@ export default function RxAIPage() {
   return (
     <PageShell>
       {header}
+
+      <Alert variant="destructive" className="border-amber-200 bg-amber-50 text-amber-800">
+        <TriangleAlert className="h-4 w-4 !text-amber-600" />
+        <AlertDescription>
+          <strong>Clinical decision support only.</strong> AI-generated suggestions are not a substitute for professional medical judgment. All recommendations must be reviewed and approved by a licensed physician before being acted upon.
+        </AlertDescription>
+      </Alert>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-6">

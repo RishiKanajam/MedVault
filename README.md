@@ -1,23 +1,26 @@
-# MedVault: Modern Medical Management Platform
+# MedVault — Modern Medical Management Platform
 
 MedVault is a full-stack medical management platform built with Next.js, Firebase, and Python. It provides modules for RxAI (AI-powered medication suggestions), PharmaNet, Inventory, Shipments, Patient History, and more. The platform supports real-time data, secure authentication, and integration with simulated sensor/GPS data.
 
-Frontend:  https://medvault-frontend-596655096468.us-central1.run.app
+**Live frontend:** [medvault-frontend-596655096468.us-central1.run.app](https://medvault-frontend-596655096468.us-central1.run.app)
+
 ---
 
 ## Features
+
 - **User & Clinic Management:** Secure authentication, custom claims, and role-based access.
-- **RxAI:** AI-powered medication suggestions using Google Gemini and Gamma models.
+- **RxAI:** AI-powered medication suggestions using Google Gemini (clinical decision support only).
 - **PharmaNet:** Drug lookup, verification, and clinical trial summaries.
 - **Inventory & Shipments:** Track medicines, shipments, and cold chain with live sensor/GPS data.
 - **Patient History:** Store and retrieve patient records and consultation history.
 - **Settings:** Centralized user and clinic settings (theme, language, modules, profile, sync, etc.).
-- **Offline Support:** AsyncStorage for settings and data caching.
+- **Offline Support:** IndexedDB persistence for settings and data caching.
 - **Python Backend:** Simulates sensor and GPS data for integration with inventory and shipments.
 
 ---
 
 ## Requirements
+
 - **Node.js** (v18+ recommended)
 - **Python 3.7+** (for sensor backend)
 - **Firebase Project** (Firestore, Auth, Storage enabled)
@@ -29,18 +32,22 @@ Frontend:  https://medvault-frontend-596655096468.us-central1.run.app
 ## Setup
 
 ### 1. Clone the Repository
+
 ```bash
 git clone <your-repo-url>
-cd MedVault-main 2
+cd MedVault
 ```
 
 ### 2. Install Dependencies
+
 ```bash
 npm install
 ```
 
 ### 3. Environment Variables
+
 Create a `.env.local` file in the root directory with the following:
+
 ```env
 FIREBASE_PROJECT_ID=your-firebase-project-id
 FIREBASE_CLIENT_EMAIL=your-firebase-adminsdk-email
@@ -53,36 +60,43 @@ NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your-firebase-messaging-sender-id
 NEXT_PUBLIC_FIREBASE_APP_ID=your-firebase-app-id
 GOOGLE_AI_API_KEY=your-gemini-api-key
 ```
+
 > **Note:** For multiline private keys, use `\n` for newlines or wrap in double quotes.
 
 ### 4. Firebase Configuration
+
 - Set up your Firebase project with Firestore, Auth, and Storage.
 - Update `src/firebase.ts` and `src/lib/firebase.ts` with your config if needed.
 - Deploy Firestore security rules:
-  ```bash
-  firebase deploy --only firestore:rules
-  ```
+
+```bash
+firebase deploy --only firestore:rules
+```
 
 ### 5. Run the Next.js App
+
 ```bash
 npm run dev
 ```
-App will be available at `http://localhost:3000`.
+
+App will be available at `http://localhost:9002` (Turbopack dev server).
 
 ### 6. Run the Python Sensor Backend
+
 ```bash
 cd src/backend
 pip install flask
 python sensor_data_service.py
 ```
+
 Sensor API will be available at `http://localhost:5001`.
 
 ---
 
 ## Project Structure
 
-```
-MedVault-main 2/
+```text
+MedVault/
 ├── src/
 │   ├── app/           # Next.js app directory
 │   │   ├── (app)/     # Main app modules (rxai, pharmanet, inventory, history, etc.)
@@ -96,8 +110,7 @@ MedVault-main 2/
 │   └── backend/       # Python backend for sensor data
 ├── firestore.rules    # Firestore security rules
 ├── .env.local         # Environment variables (not committed)
-├── README.md          # This file
-└── ...
+└── README.md          # This file
 ```
 
 ---
@@ -105,29 +118,39 @@ MedVault-main 2/
 ## Key Modules & Integration
 
 ### RxAI (AI Medication Suggestions)
-- Uses Google Gemini and Gamma models for suggestions.
+
+> **Disclaimer:** RxAI is a clinical decision-support tool only. All AI-generated suggestions must be reviewed and approved by a licensed physician before being acted upon.
+
+- Uses Google Gemini for multimodal analysis (text + image).
 - Integrates with Firestore for history and patient records.
 - Requires valid `GOOGLE_AI_API_KEY` in `.env.local`.
 
 ### Inventory & Shipments
-- Fetches live sensor and GPS data from the Python backend:
-  - `/api/inventory/sensors` for temperature, humidity, pressure
-  - `/api/shipments/gps` for GPS and temperature
-- Sensor backend must be running for real-time data.
+
+Fetches live sensor and GPS data from the Python backend:
+
+- `/api/inventory/sensors` — temperature, humidity, pressure
+- `/api/shipments/gps` — GPS and temperature
+
+Sensor backend must be running for real-time data.
 
 ### Settings
-- Centralized page for user and clinic settings (theme, language, modules, profile, sync, etc.).
-- Settings are stored in Firestore and AsyncStorage for offline support.
+
+Centralized page for user and clinic settings (theme, language, modules, profile, sync, etc.). Settings are stored in Firestore with IndexedDB offline support.
 
 ### Authentication & Security
-- Uses Firebase Auth with custom claims for clinic access.
+
+- Firebase Auth with custom claims for clinic access.
+- Session cookies verified server-side on every API request.
 - Firestore security rules enforce access based on `clinicId` claim.
 - After signup or claim changes, users must sign out and sign in again to refresh their session.
 
 ---
 
 ## Firestore Security Rules
+
 See `firestore.rules` for details. Example:
+
 ```js
 match /clinics/{clinicId} {
   allow read, write: if request.auth != null && request.auth.token.clinicId == clinicId;
@@ -140,11 +163,13 @@ match /clinics/{clinicId} {
 ---
 
 ## Sensor Data Service (Python Backend)
+
 See [`src/backend/README.md`](src/backend/README.md) for full details.
 
 ---
 
 ## Troubleshooting
+
 - **Permission errors:** Ensure custom claims are set and session is refreshed.
 - **.env issues:** Double-check all required variables and formatting.
 - **Sensor data not available:** Make sure the Python backend is running.
@@ -153,4 +178,5 @@ See [`src/backend/README.md`](src/backend/README.md) for full details.
 ---
 
 ## License
+
 MIT

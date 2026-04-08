@@ -11,12 +11,12 @@ export default function Home() {
 
     return (
         <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
-            <Card className="panel-primary w-full max-w-md text-center animate-fadeIn">
+            <Card className="w-full max-w-md text-center animate-fade-in">
             <CardHeader>
                 <div className="flex justify-center mb-4">
                 <Pill className="w-12 h-12 text-primary" />
                 </div>
-                <CardTitle className="text-3xl font-bold">Welcome to MediSync Pro</CardTitle>
+                <CardTitle className="text-3xl font-bold">Welcome to MedVault</CardTitle>
                 <CardDescription>Your integrated solution for medical management and clinical support.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">

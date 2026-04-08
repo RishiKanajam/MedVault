@@ -24,7 +24,7 @@ export function ThemeToggle() {
           <span className="sr-only">Toggle theme</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="overlay-tertiary"> {/* Use tertiary overlay */}
+      <DropdownMenuContent align="end">
         <DropdownMenuItem onClick={() => setTheme("light")} className="focus:bg-accent/10 focus:text-accent-foreground">
           Light
         </DropdownMenuItem>

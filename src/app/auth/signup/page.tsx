@@ -1,32 +1,80 @@
-// Signup Page for MediSync Pro
-// Purpose: Handles user registration with email/password and full name.
-// Data Flow: Creates Firebase Auth user, updates displayName, and creates Firestore profile document.
-// TODO: Add redirect to original page if redirectedFrom param exists.
-// TODO: Add password strength meter and validation.
-// TODO: Replace dummy data with real API calls where marked.
-
-'use client'; // Required for hooks and event handlers
+'use client';
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Pill, Loader2 } from 'lucide-react';
-import { auth, db } from '@/firebase'; // Correct import path
+import { Pill, Loader2, Check } from 'lucide-react';
+import { auth, db } from '@/firebase';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore'; // Import serverTimestamp
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 
+// ── Brand panel ─────────────────────────────────────────────────────────────
+const highlights = [
+  { text: 'Role-based access for multi-clinician teams' },
+  { text: 'Real-time Firestore sync across all devices' },
+  { text: 'End-to-end session security with Firebase Auth' },
+];
+
+function BrandPanel() {
+  return (
+    <div
+      className="relative hidden flex-col justify-between overflow-hidden p-12 text-white lg:flex"
+      style={{
+        background:
+          'linear-gradient(155deg, hsl(162 63% 30%) 0%, hsl(162 63% 38%) 55%, hsl(168 55% 44%) 100%)',
+      }}
+    >
+      <div className="dot-grid absolute inset-0" aria-hidden />
+      <div
+        aria-hidden
+        className="absolute -left-24 top-1/3 h-64 w-64 rounded-full bg-white/5 blur-3xl"
+      />
+      <div
+        aria-hidden
+        className="absolute right-8 bottom-32 h-48 w-48 rounded-full bg-emerald-400/10 blur-2xl"
+      />
+
+      <div className="relative flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15 ring-1 ring-white/20 backdrop-blur-sm">
+          <Pill className="h-5 w-5 text-white" />
+        </div>
+        <span className="text-lg font-semibold tracking-tight">MedVault</span>
+      </div>
+
+      <div className="relative space-y-8">
+        <div className="space-y-3">
+          <h2 className="text-4xl font-semibold leading-tight tracking-tight">
+            Your clinic&apos;s command<br />center starts here.
+          </h2>
+          <p className="max-w-sm text-base leading-relaxed text-white/70">
+            Set up in minutes. Bring your team, inventory, and patient records together in a single secure workspace.
+          </p>
+        </div>
+
+        <ul className="space-y-3">
+          {highlights.map(({ text }) => (
+            <li key={text} className="flex items-center gap-3">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/15 ring-1 ring-white/20">
+                <Check className="h-3.5 w-3.5 text-white" />
+              </div>
+              <span className="text-sm text-white/85">{text}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <p className="relative text-xs text-white/35">
+        Supporting UN SDG 3 — Good Health and Well-Being
+      </p>
+    </div>
+  );
+}
+
+// ── Signup form ─────────────────────────────────────────────────────────────
 export default function SignupPage() {
   const router = useRouter();
   const { toast } = useToast();
@@ -38,12 +86,10 @@ export default function SignupPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // TODO: Add password strength meter
-  // TODO: Add redirect-back logic after signup
-
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
     if (!fullName || !clinicId || !email || !password || !confirmPassword) {
       setError('All fields are required.');
       return;
@@ -52,123 +98,197 @@ export default function SignupPage() {
       setError('Passwords do not match.');
       return;
     }
+
     setIsLoading(true);
     try {
-      // 1. Create Firebase Auth user
-      if (!auth) {
-        throw new Error('Firebase auth is not initialized');
-      }
+      if (!auth) throw new Error('Firebase auth is not initialized');
+
       const userCred = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCred.user;
-      // 2. Update Firebase Auth Profile (Display Name)
       await updateProfile(user, { displayName: fullName });
-      // 3. Create Firestore user document for profile info
-      const dbInstance = db;
-      if (!dbInstance) {
-        throw new Error('Firestore is not initialized');
-      }
-      await setDoc(doc(dbInstance, 'users', user.uid), {
+
+      if (!db) throw new Error('Firestore is not initialized');
+      await setDoc(doc(db, 'users', user.uid), {
         name: fullName,
         email,
         clinicId,
         createdAt: serverTimestamp(),
       });
-      // 4. Set custom claims for the user
+
+      // Pass the freshly minted ID token so the server can verify the caller's identity.
+      const idToken = await user.getIdToken();
       const response = await fetch('/api/auth/set-custom-claims', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${idToken}`,
         },
-        body: JSON.stringify({
-          uid: user.uid,
-          clinicId,
-        }),
+        body: JSON.stringify({ uid: user.uid, clinicId }),
       });
-      
-      if (!response.ok) {
-        throw new Error('Failed to set user permissions');
-      }
 
-      toast({ title: 'Account Created', description: 'Welcome to MediSync Pro! Please log in.' });
+      if (!response.ok) throw new Error('Failed to set user permissions');
+
+      toast({ title: 'Account created', description: 'Welcome to MedVault. Please sign in.' });
       router.push('/auth/login');
     } catch (err: any) {
-      let message = 'An unknown error occurred during sign up.';
+      let message = 'An error occurred during sign up.';
       if (err.code) {
         switch (err.code) {
           case 'auth/email-already-in-use':
             message = 'This email address is already registered.';
             break;
           case 'auth/weak-password':
-            message = 'Password should be at least 6 characters long.';
+            message = 'Password must be at least 6 characters.';
             break;
           case 'auth/invalid-email':
             message = 'Please enter a valid email address.';
             break;
           default:
             message = err.message || message;
-            break;
         }
       } else if (err.message) {
         message = err.message;
       }
       setError(message);
-      toast({ title: 'Signup Failed', description: message, variant: 'destructive' });
+      toast({ title: 'Signup failed', description: message, variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/40 px-4 py-10">
-      <div className="w-full max-w-md space-y-6">
-        <div className="text-center space-y-2">
-          <Pill className="mx-auto h-10 w-10 text-primary" />
-          <h1 className="text-2xl font-semibold text-foreground">Create your MedVault account</h1>
-          <p className="text-sm text-muted-foreground">
-            Set up access for your clinic in just a minute.
-          </p>
-        </div>
-        <Card className="w-full rounded-3xl border border-border/60 bg-background/95 shadow-xl">
-          <CardHeader>
-            <CardTitle className="text-xl font-semibold text-foreground">Tell us about you</CardTitle>
-            <CardDescription>We’ll use these details to configure your workspace.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <form onSubmit={handleSignup} className="space-y-4" autoComplete="off">
-              <div className="space-y-2 text-left">
-                <Label htmlFor="fullName">Full Name</Label>
-                <Input id="fullName" value={fullName} onChange={e => setFullName(e.target.value)} required disabled={isLoading} autoComplete="name" />
+    <div className="grid min-h-screen lg:grid-cols-2">
+      <BrandPanel />
+
+      {/* Form panel */}
+      <div className="flex items-center justify-center bg-background px-6 py-12 lg:px-10">
+        <div className="w-full max-w-sm animate-slide-up space-y-8">
+          {/* Mobile logo */}
+          <div className="flex items-center gap-2 lg:hidden">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+              <Pill className="h-4 w-4 text-primary" />
+            </div>
+            <span className="text-base font-semibold text-foreground">MedVault</span>
+          </div>
+
+          <div className="space-y-1.5">
+            <h1 className="text-2xl font-semibold tracking-tight">Create your account</h1>
+            <p className="text-sm text-muted-foreground">
+              Set up access for your clinic in just a minute.
+            </p>
+          </div>
+
+          <form onSubmit={handleSignup} className="space-y-4" autoComplete="off">
+            <div className="space-y-1.5">
+              <Label htmlFor="fullName" className="text-sm font-medium">Full name</Label>
+              <Input
+                id="fullName"
+                value={fullName}
+                onChange={e => setFullName(e.target.value)}
+                placeholder="Dr. Jane Smith"
+                required
+                disabled={isLoading}
+                autoComplete="name"
+                className="h-10 rounded-xl"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="clinicId" className="text-sm font-medium">Clinic ID</Label>
+              <Input
+                id="clinicId"
+                value={clinicId}
+                onChange={e => setClinicId(e.target.value)}
+                placeholder="e.g. central-health-clinic"
+                required
+                disabled={isLoading}
+                autoComplete="organization"
+                className="h-10 rounded-xl"
+              />
+              <p className="text-xs text-muted-foreground">
+                All staff in your clinic must use the same ID.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="email" className="text-sm font-medium">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="you@clinic.com"
+                required
+                disabled={isLoading}
+                autoComplete="email"
+                className="h-10 rounded-xl"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="password" className="text-sm font-medium">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  required
+                  disabled={isLoading}
+                  autoComplete="new-password"
+                  className="h-10 rounded-xl"
+                />
               </div>
-            <div className="space-y-2 text-left">
-              <Label htmlFor="clinicId">Clinic ID</Label>
-              <Input id="clinicId" value={clinicId} onChange={e => setClinicId(e.target.value)} required disabled={isLoading} autoComplete="organization" />
+              <div className="space-y-1.5">
+                <Label htmlFor="confirmPassword" className="text-sm font-medium">Confirm</Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)}
+                  required
+                  disabled={isLoading}
+                  autoComplete="new-password"
+                  className="h-10 rounded-xl"
+                />
+              </div>
             </div>
-            <div className="space-y-2 text-left">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} required disabled={isLoading} autoComplete="email" />
-            </div>
-            <div className="space-y-2 text-left">
-              <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" value={password} onChange={e => setPassword(e.target.value)} required disabled={isLoading} autoComplete="new-password" />
-            </div>
-            <div className="space-y-2 text-left">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
-              <Input id="confirmPassword" type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required disabled={isLoading} autoComplete="new-password" />
-            </div>
-            {error && <p className="text-sm text-destructive text-center" aria-live="polite">{error}</p>}
-            <Button type="submit" className="w-full" disabled={isLoading} aria-busy={isLoading} aria-live="polite">
-              {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              {isLoading ? 'Creating Account...' : 'Sign Up'}
+
+            {error && (
+              <div
+                className="rounded-lg border border-destructive/30 bg-destructive/8 px-3 py-2 text-sm text-destructive"
+                aria-live="polite"
+              >
+                {error}
+              </div>
+            )}
+
+            <Button
+              type="submit"
+              className="h-10 w-full rounded-xl font-medium"
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating account…
+                </>
+              ) : (
+                'Create account'
+              )}
             </Button>
           </form>
-          </CardContent>
-          <CardFooter className="flex flex-col items-center gap-2 text-center text-sm text-muted-foreground">
+
+          <p className="text-center text-sm text-muted-foreground">
             Already have an account?{' '}
-            <Button variant="link" asChild className="h-auto p-0 text-primary">
-              <Link href="/auth/login">Log in</Link>
-            </Button>
-          </CardFooter>
-        </Card>
+            <Link
+              href="/auth/login"
+              className="font-medium text-primary underline-offset-4 hover:underline"
+            >
+              Sign in
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );

@@ -7,11 +7,16 @@ import Providers from './providers'; // For React Query
 import { ThemeProvider } from "@/components/theme-provider";
 import { AuthProvider } from '@/providers/AuthProvider';
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-sans',
+  display: 'swap',
+  weight: ['400', '500', '600', '700'],
+});
 
 export const metadata: Metadata = {
-  title: 'MediSync Pro',
-  description: 'Integrated Medical Management & Clinical Support',
+  title: 'MedVault — Clinical Command Center',
+  description: 'AI-powered medical management: inventory, shipments, and clinical decision support for modern clinics.',
 };
 
 export default function RootLayout({
@@ -25,8 +30,8 @@ export default function RootLayout({
       <body suppressHydrationWarning className={`${inter.variable} font-sans antialiased`}>
          <ThemeProvider
              attribute="class"
-             defaultTheme="system" // Default to system theme preference
-             enableSystem
+             defaultTheme="light"
+             forcedTheme="light"
              disableTransitionOnChange
          >
             <AuthProvider>

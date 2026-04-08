@@ -1,13 +1,11 @@
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
-  // Remove error ignoring - let TypeScript errors show
-  typescript: {
-    // Remove ignoreBuildErrors: true
-  },
-  eslint: {
-    // Remove ignoreDuringBuilds: true
-  },
+  // Required for Docker/Cloud Run deployment — produces a self-contained server bundle.
+  output: 'standalone',
+
+  typescript: {},
+  eslint: {},
   images: {
     remotePatterns: [
       {

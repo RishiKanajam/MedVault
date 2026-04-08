@@ -1,7 +1,6 @@
 import { NextRequest } from 'next/server';
 import { verifySession, ensureFirebaseAdmin } from '@/lib/auth';
 import { ApiHandler } from '@/lib/api-handler';
-import { PatientService, RecordService } from '@/lib/firestore';
 import { getFirestore } from 'firebase-admin/firestore';
 import { z } from 'zod';
 
@@ -54,57 +53,68 @@ export async function POST(req: NextRequest) {
       throw new Error('Clinic ID not found in user profile');
     }
 
-    // Find or create patient by name
+    // Find or create patient by name (using Admin SDK — safe on the server)
+    const patientsRef = db.collection(`clinics/${clinicId}/patients`);
+    const patientsSnap = await patientsRef.orderBy('createdAt', 'desc').get();
+
     let patientId: string;
-    const patients = await PatientService.getPatients(clinicId);
-    const existingPatient = patients.find(p => p.name.toLowerCase() === data.patientName.toLowerCase());
+    const matchedDoc = patientsSnap.docs.find(
+      (d) => (d.data().name as string).toLowerCase() === data.patientName.toLowerCase()
+    );
 
-    if (existingPatient) {
-      patientId = existingPatient.id;
+    if (matchedDoc) {
+      patientId = matchedDoc.id;
     } else {
-      // Create new patient
-      // Calculate approximate date of birth from age (using current year)
       const currentYear = new Date().getFullYear();
-      const birthYear = currentYear - data.patientAge;
-      const approximateDOB = `${birthYear}-01-01`; // Approximate DOB
+      const approximateDOB = `${currentYear - data.patientAge}-01-01`;
+      const normalizedDateOfBirth =
+        data.dateOfBirth && data.dateOfBirth.trim().length > 0
+          ? data.dateOfBirth
+          : approximateDOB;
 
-      patientId = await PatientService.addPatient(clinicId, {
+      const newPatientData: Record<string, unknown> = {
         name: data.patientName,
-        email: data.patientEmail || undefined,
-        phone: data.patientPhone || undefined,
-        dateOfBirth: data.dateOfBirth || approximateDOB,
+        dateOfBirth: normalizedDateOfBirth,
         medicalHistory: [],
         allergies: [],
-      });
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      if (data.patientEmail) newPatientData.email = data.patientEmail;
+      if (data.patientPhone) newPatientData.phone = data.patientPhone;
+
+      const newPatientRef = await patientsRef.add(newPatientData);
+      patientId = newPatientRef.id;
     }
 
-    // Create record summary
-    const today = new Date().toISOString().split('T')[0];
-    const summaryParts = [
-      `AI-Powered Medication Suggestion`,
+    // Build record summary
+    const isoString = new Date().toISOString();
+    const today = isoString.split('T')[0] ?? isoString;
+    const summary = [
+      'AI-Powered Medication Suggestion',
       `Drug Class: ${data.drugClass}`,
       data.dosage ? `Dosage: ${data.dosage}` : '',
       data.duration ? `Duration: ${data.duration}` : '',
       `Confidence: ${data.confidence}%`,
       data.symptoms ? `Symptoms: ${data.symptoms}` : '',
-    ].filter(Boolean);
-    
-    const summary = summaryParts.join('. ');
+    ].filter(Boolean).join('. ');
 
-    // Prepare files array
-    const files = data.photoUrl ? [{
-      name: 'Rash Photo',
-      url: data.photoUrl,
-    }] : [];
+    const files: Array<{ name: string; url: string }> = [];
+    if (data.photoUrl) files.push({ name: 'Rash Photo', url: data.photoUrl });
 
-    // Add record
-    const recordId = await RecordService.addRecord(clinicId, patientId, {
-      patientId,
-      date: today,
-      type: 'prescription',
-      summary,
-      files,
-    });
+    // Write record via Admin SDK
+    const recordRef = await db
+      .collection(`clinics/${clinicId}/patients/${patientId}/records`)
+      .add({
+        patientId,
+        date: today,
+        type: 'prescription',
+        summary,
+        files,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+    const recordId = recordRef.id;
 
     return {
       recordId,
@@ -113,4 +123,3 @@ export async function POST(req: NextRequest) {
     };
   });
 }
-

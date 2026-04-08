@@ -1,10 +1,10 @@
 'use client';
+
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   LayoutDashboard,
   Boxes,
-  // Ship, // Consider Truck icon from previous version if 'Ship' is not ideal
   BrainCircuit,
   FlaskConical,
   Settings,
@@ -13,9 +13,9 @@ import {
   ChevronRight,
   User,
   LogOut,
-  Truck, // Added Truck icon as an alternative
+  Truck,
   Loader2,
-  Pill
+  Pill,
 } from 'lucide-react';
 import {
   SidebarContent,
@@ -30,39 +30,65 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 import { Separator } from '@/components/ui/separator';
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from "@/components/ui/collapsible"
-import { cn } from "@/lib/utils";
+} from '@/components/ui/collapsible';
+import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { usePathname } from 'next/navigation';
-import { Skeleton } from "@/components/ui/skeleton";
-import { useAuth } from '@/providers/AuthProvider'; // Use the consolidated AuthContext hook
+import { useAuth } from '@/providers/AuthProvider';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/firebase';
 
+type ModuleKey =
+  | 'medTrack'
+  | 'shipment'
+  | 'rxAI'
+  | 'pharmaNet'
+  | 'patientHistory'
+  | 'reports'
+  | 'dashboard';
 
-// Define Module Keys explicitly for type safety
-type ModuleKey = 'medTrack' | 'shipment' | 'rxAI' | 'pharmaNet' | 'patientHistory' | 'reports' | 'dashboard';
-
-// Interface for sidebar items, including module key
 interface SidebarItemConfig {
-    href?: string;
-    icon: React.ElementType;
-    label: string;
-    moduleKey: ModuleKey;
-    submenu?: SubmenuItemConfig[];
+  href?: string;
+  icon: React.ElementType;
+  label: string;
+  moduleKey: ModuleKey;
+  submenu?: SubmenuItemConfig[];
 }
 
 interface SubmenuItemConfig {
-    href: string;
-    label: string;
+  href: string;
+  label: string;
 }
 
+const navSections: Array<{ title: string; items: SidebarItemConfig[] }> = [
+  {
+    title: 'Overview',
+    items: [
+      { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', moduleKey: 'dashboard' },
+    ],
+  },
+  {
+    title: 'Operations',
+    items: [
+      { href: '/inventory', icon: Boxes,  label: 'Inventory',  moduleKey: 'medTrack' },
+      { href: '/shipments', icon: Truck,  label: 'Shipments',  moduleKey: 'shipment' },
+    ],
+  },
+  {
+    title: 'Intelligence',
+    items: [
+      { href: '/rxai',     icon: BrainCircuit,  label: 'RxAI Support',    moduleKey: 'rxAI' },
+      { href: '/pharmanet', icon: FlaskConical,  label: 'PharmaNet',       moduleKey: 'pharmaNet' },
+      { href: '/history',   icon: ClipboardList, label: 'Patient History', moduleKey: 'patientHistory' },
+    ],
+  },
+];
 
 export function AppSidebar() {
   const { state: sidebarState, setOpen } = useSidebar();
@@ -71,286 +97,228 @@ export function AppSidebar() {
   const pathname = usePathname();
   const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({});
 
-   // Extract module settings from the profile
-   // const moduleSettings = profile?.settings?.modules; 
-   const modulesLoading = authLoading || profileLoading; // Loading state depends on auth context loading
+  const isLoading = (authLoading || profileLoading) && !user;
+  const expanded = sidebarState === 'expanded';
+
+  useEffect(() => {
+    if (sidebarState === 'collapsed') setOpen(true);
+  }, [sidebarState, setOpen]);
 
   const handleLogout = async () => {
     if (!auth) return;
     try {
       await signOut(auth);
-      toast({
-        title: 'Logged out successfully',
-        description: 'You have been logged out of your account.',
-      });
-    } catch (error) {
-      console.error('Error logging out:', error);
-      toast({
-        title: 'Error logging out',
-        description: 'There was a problem logging out. Please try again.',
-        variant: 'destructive',
-      });
+      toast({ title: 'Signed out', description: 'You have been signed out.' });
+    } catch {
+      toast({ title: 'Error', description: 'Could not sign out.', variant: 'destructive' });
     }
   };
 
-   const toggleSubmenu = (key: string) => {
-    setOpenSubmenus(prev => ({ ...prev, [key]: !prev[key] }));
-  };
+  const toggleSubmenu = (key: string) =>
+    setOpenSubmenus((prev) => ({ ...prev, [key]: !prev[key] }));
 
-  const navSections: Array<{
-    title: string;
-    items: SidebarItemConfig[];
-  }> = [
-    {
-      title: "Overview",
-      items: [{ href: "/dashboard", icon: LayoutDashboard, label: "Dashboard", moduleKey: "dashboard" }],
-    },
-    {
-      title: "Operations",
-      items: [
-        { href: "/inventory", icon: Boxes, label: "Inventory", moduleKey: "medTrack" },
-        { href: "/shipments", icon: Truck, label: "Shipments", moduleKey: "shipment" },
-      ],
-    },
-    {
-      title: "Intelligence",
-      items: [
-        { href: "/rxai", icon: BrainCircuit, label: "RxAI Support", moduleKey: "rxAI" },
-        { href: "/pharmanet", icon: FlaskConical, label: "PharmaNet", moduleKey: "pharmaNet" },
-        { href: "/history", icon: ClipboardList, label: "Patient History", moduleKey: "patientHistory" },
-      ],
-    },
-  ];
+  const displayName  = profile?.name || user?.displayName || 'User';
+  const displayEmail = user?.email || '';
+  const initials     = displayName
+    .split(' ')
+    .map((w: string) => w[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
 
-  const isLoading = modulesLoading && !user;
-  const visibleSections = user ? navSections : [];
-
-  const getDisplayName = () => {
-    return profile?.name || user?.displayName || "User";
-  };
-
-  const getDisplayEmail = () => {
-    return user?.email || "";
-  }
-
-  const getAvatarFallback = () => {
-    const name = profile?.name || user?.displayName;
-    return name ? name.charAt(0).toUpperCase() : <User className="h-5 w-5" />;
-  }
-
-  useEffect(() => {
-    if (sidebarState === 'collapsed') {
-      setOpen(true);
-    }
-  }, [sidebarState, setOpen]);
-
-  // If we're still loading auth state, show a loading indicator
   if (isLoading) {
     return (
       <div className="flex h-full w-full items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        <Loader2 className="h-5 w-5 animate-spin text-primary/50" />
       </div>
     );
   }
 
-  // If we're not authenticated, don't show the sidebar
-  if (!user || !profile) {
-    return null;
-  }
+  if (!user || !profile) return null;
 
   return (
-    <div className="flex h-full flex-col">
-      <SidebarHeader className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-primary/30 bg-primary/10 text-primary">
-            <Pill className="h-4 w-4" />
+    <div className="flex h-full flex-col bg-white">
+      {/* ── Logo ─────────────────────────────────────────────────────── */}
+      <SidebarHeader className="px-4 py-4">
+        <div className={cn('flex items-center', expanded ? 'gap-3' : 'justify-center')}>
+          {/* Icon badge */}
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary shadow-sm shadow-primary/20">
+            <Pill className="h-4.5 w-4.5 text-white" />
           </div>
-          {sidebarState === 'expanded' && (
-            <div className="space-y-0.5">
-              <p className="text-sm font-semibold text-foreground">MedVault</p>
-              <p className="text-xs text-muted-foreground">Care Workspace</p>
+          {expanded && (
+            <div>
+              <p className="text-sm font-bold leading-none tracking-tight text-foreground">
+                MedVault
+              </p>
+              <p className="mt-0.5 text-[10px] font-medium text-muted-foreground">
+                Care Workspace
+              </p>
             </div>
           )}
         </div>
       </SidebarHeader>
 
-      <Separator className="bg-border/60" />
+      <Separator className="bg-border" />
 
-      <SidebarContent className="flex-1 overflow-y-auto px-2 py-4">
-        <nav className="space-y-6">
-          {isLoading && !user ? (
-            <SidebarMenu>
-              {Array.from({ length: 6 }).map((_, index) => (
-                <SidebarMenuItem key={index}>
-                  <div
-                    className={cn(
-                      "flex h-11 items-center gap-2 rounded-xl border border-border/30 bg-background/70 px-3",
-                      sidebarState === "collapsed" && "h-10 w-10 justify-center border-transparent px-0"
-                    )}
-                  >
-                    <Skeleton
-                      className={cn(
-                        "h-5 w-5 rounded-full bg-muted",
-                        sidebarState === "collapsed" && "h-5 w-5"
+      {/* ── Nav ──────────────────────────────────────────────────────── */}
+      <SidebarContent className="flex-1 overflow-y-auto px-3 py-4">
+        <nav className="space-y-5">
+          {navSections.map((section, sectionIndex) => (
+            <div key={section.title} className="space-y-0.5">
+              {expanded && (
+                <p className="mb-1.5 px-2.5 text-[10px] font-bold uppercase tracking-[0.22em] text-muted-foreground/60">
+                  {section.title}
+                </p>
+              )}
+              <SidebarMenu>
+                {section.items.map((item) => {
+                  const isActive = item.href ? pathname === item.href : false;
+                  const isSubmenuActive = item.submenu?.some((s) => pathname === s.href) ?? false;
+
+                  return (
+                    <SidebarMenuItem key={item.label}>
+                      {item.submenu ? (
+                        <Collapsible
+                          open={Boolean(openSubmenus[item.label])}
+                          onOpenChange={() => toggleSubmenu(item.label)}
+                        >
+                          <CollapsibleTrigger asChild>
+                            <SidebarMenuButton
+                              variant="ghost"
+                              className={cn(
+                                'w-full justify-between rounded-xl px-2.5 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+                                isSubmenuActive && 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
+                              )}
+                            >
+                              <span className="flex items-center gap-2.5">
+                                <item.icon className="h-4 w-4 shrink-0" />
+                                {expanded && <span className="text-sm">{item.label}</span>}
+                              </span>
+                              {expanded && (
+                                openSubmenus[item.label]
+                                  ? <ChevronDown className="h-3.5 w-3.5 opacity-40" />
+                                  : <ChevronRight className="h-3.5 w-3.5 opacity-40" />
+                              )}
+                            </SidebarMenuButton>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent className="mt-0.5">
+                            <SidebarMenuSub className="ml-2 space-y-0.5 border-l border-border/60 pl-3">
+                              {item.submenu.map((sub) => (
+                                <SidebarMenuSubItem key={sub.label}>
+                                  <SidebarMenuSubButton asChild isActive={pathname === sub.href}>
+                                    <Link href={sub.href}>
+                                      <span className="text-sm">{sub.label}</span>
+                                    </Link>
+                                  </SidebarMenuSubButton>
+                                </SidebarMenuSubItem>
+                              ))}
+                            </SidebarMenuSub>
+                          </CollapsibleContent>
+                        </Collapsible>
+                      ) : (
+                        <SidebarMenuButton
+                          asChild
+                          isActive={isActive}
+                          variant="ghost"
+                          className={cn(
+                            'rounded-xl px-2.5 py-2 text-sidebar-foreground transition-all hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+                            isActive && 'bg-primary text-white shadow-sm shadow-primary/25 hover:bg-primary/90 hover:text-white font-medium'
+                          )}
+                        >
+                          <Link href={item.href!} className="flex w-full items-center gap-2.5">
+                            <item.icon className="h-4 w-4 shrink-0" />
+                            {expanded && <span className="text-sm">{item.label}</span>}
+                          </Link>
+                        </SidebarMenuButton>
                       )}
-                    />
-                    {sidebarState === "expanded" && <Skeleton className="h-4 w-24 rounded bg-muted" />}
-                  </div>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          ) : (
-            visibleSections.map((section, index) => (
-              <div key={section.title} className="space-y-2">
-                {sidebarState === "expanded" && (
-                  <p className="px-3 text-[11px] font-semibold uppercase tracking-[0.3em] text-muted-foreground/80">
-                    {section.title}
-                  </p>
-                )}
-                <SidebarMenu>
-                  {section.items.map((item) => {
-                    const isActive = item.href ? pathname === item.href : false;
-                    const isSubmenuActive = item.submenu?.some((sub) => pathname === sub.href) ?? false;
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
 
-                    return (
-                      <SidebarMenuItem key={item.label}>
-                        {item.submenu ? (
-                          <Collapsible
-                            open={Boolean(openSubmenus[item.label])}
-                            onOpenChange={() => toggleSubmenu(item.label)}
-                          >
-                            <CollapsibleTrigger asChild>
-                              <SidebarMenuButton
-                                variant="ghost"
-                                className={cn(
-                                  "w-full justify-between rounded-xl border border-transparent px-3",
-                                  isSubmenuActive && "border-primary/30 bg-primary/10 text-primary"
-                                )}
-                                data-state={openSubmenus[item.label] ? "open" : "closed"}
-                                asChild
-                                {...(sidebarState === "collapsed" ? { tooltip: item.label } : {})}
-                              >
-                                <span className="flex items-center gap-2">
-                                  <item.icon className={cn(isSubmenuActive && "text-primary")} />
-                                  {sidebarState === "expanded" && <span className="text-sm font-medium">{item.label}</span>}
-                                </span>
-                                {sidebarState === "expanded" &&
-                                  (openSubmenus[item.label] ? (
-                                    <ChevronDown className="h-4 w-4" />
-                                  ) : (
-                                    <ChevronRight className="h-4 w-4" />
-                                  ))}
-                              </SidebarMenuButton>
-                            </CollapsibleTrigger>
-                            <CollapsibleContent className="mt-2 space-y-1">
-                              <SidebarMenuSub className="space-y-1 rounded-xl border border-border/40 bg-background/80 p-1.5">
-                                {item.submenu.map((subItem) => {
-                                  const isSubItemActive = pathname === subItem.href;
-                                  return (
-                                    <SidebarMenuSubItem key={subItem.label}>
-                                      <SidebarMenuSubButton asChild isActive={isSubItemActive}>
-                                        <Link href={subItem.href}>
-                                          <span className="text-sm">{subItem.label}</span>
-                                        </Link>
-                                      </SidebarMenuSubButton>
-                                    </SidebarMenuSubItem>
-                                  );
-                                })}
-                              </SidebarMenuSub>
-                            </CollapsibleContent>
-                          </Collapsible>
-                        ) : (
-                          <SidebarMenuButton
-                            asChild
-                            isActive={isActive}
-                            variant="ghost"
-                            className={cn(
-                              "rounded-xl border border-transparent px-3",
-                              isActive && "border-primary/30 bg-primary/10 text-primary"
-                            )}
-                            {...(sidebarState === "collapsed" ? { tooltip: item.label } : {})}
-                          >
-                            <Link href={item.href!} className="flex w-full items-center gap-3">
-                              <item.icon className={cn("h-4 w-4", isActive && "text-primary")} />
-                              {sidebarState === "expanded" && <span className="text-sm font-medium">{item.label}</span>}
-                            </Link>
-                          </SidebarMenuButton>
-                        )}
-                      </SidebarMenuItem>
-                    );
-                  })}
-                </SidebarMenu>
-                {sidebarState === "expanded" && index !== visibleSections.length - 1 ? (
-                  <Separator className="mx-3 bg-border/40" />
-                ) : null}
-              </div>
-            ))
-          )}
+              {sectionIndex !== navSections.length - 1 && (
+                <div className="mt-3" />
+              )}
+            </div>
+          ))}
         </nav>
       </SidebarContent>
 
-      <Separator className="mt-auto bg-border/60" />
+      <Separator className="bg-border" />
 
-      <SidebarFooter className="p-4">
-        <div className="space-y-3">
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                isActive={pathname === "/settings"}
-                variant="ghost"
-                className={cn(
-                  "rounded-xl border border-transparent px-3",
-                  pathname === "/settings" && "border-primary/30 bg-primary/10 text-primary"
+      {/* ── Footer ───────────────────────────────────────────────────── */}
+      <SidebarFooter className="p-3">
+        {/* Settings */}
+        <SidebarMenu className="mb-2">
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
+              isActive={pathname === '/settings'}
+              variant="ghost"
+              className={cn(
+                'rounded-xl px-2.5 py-2 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+                pathname === '/settings' && 'bg-primary text-white hover:bg-primary/90 hover:text-white font-medium'
+              )}
+            >
+              <Link href="/settings" className="flex items-center gap-2.5">
+                <Settings className="h-4 w-4 shrink-0" />
+                {expanded && <span className="text-sm">Settings</span>}
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+
+        {/* User row */}
+        <div
+          className={cn(
+            'flex items-center gap-2.5 rounded-xl border border-border bg-muted/40 p-2.5',
+            !expanded && 'flex-col justify-center gap-2'
+          )}
+        >
+          <Avatar className="h-8 w-8 shrink-0 ring-2 ring-primary/15">
+            <AvatarImage
+              src={user?.isAnonymous ? undefined : profile?.photoURL || user?.photoURL || undefined}
+              alt={displayName}
+            />
+            <AvatarFallback className="bg-primary/10 text-[10px] font-bold text-primary">
+              {initials || <User className="h-3.5 w-3.5" />}
+            </AvatarFallback>
+          </Avatar>
+
+          {expanded && (
+            <>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold leading-none text-foreground">
+                  {displayName}
+                </p>
+                {displayEmail && (
+                  <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{displayEmail}</p>
                 )}
-                {...(sidebarState === "collapsed" ? { tooltip: "Settings" } : {})}
-              >
-                <Link href="/settings" className="flex w-full items-center gap-3">
-                  <Settings className="h-4 w-4" />
-                  {sidebarState === "expanded" && <span className="text-sm font-medium">Settings</span>}
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-
-          <div
-            className={cn(
-              "flex items-center gap-3 rounded-2xl border border-border/50 bg-background/90 px-3 py-3",
-              sidebarState === "collapsed" && "flex-col border-border/20 px-2 py-4 text-center"
-            )}
-          >
-            <Avatar className="h-10 w-10 border border-border/40">
-              <AvatarImage
-                src={
-                  user?.isAnonymous
-                    ? undefined
-                    : profile?.photoURL || user?.photoURL || undefined
-                }
-                alt={getDisplayName()}
-                data-ai-hint="user avatar placeholder"
-              />
-              <AvatarFallback className="bg-muted text-foreground">
-                {getAvatarFallback()}
-              </AvatarFallback>
-            </Avatar>
-            {sidebarState === "expanded" ? (
-              <div className="flex-1 truncate">
-                <p className="truncate text-sm font-medium text-foreground">{getDisplayName()}</p>
-                <p className="truncate text-xs text-muted-foreground">{getDisplayEmail()}</p>
               </div>
-            ) : null}
-            {sidebarState === "expanded" ? (
-              <Button variant="ghost" size="sm" className="h-8 px-3" onClick={handleLogout}>
-                <LogOut className="mr-2 h-4 w-4" />
-                Sign out
-              </Button>
-            ) : (
-              <Button variant="ghost" size="icon" className="h-9 w-9" onClick={handleLogout}>
-                <LogOut className="h-4 w-4" />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
+                onClick={handleLogout}
+                title="Sign out"
+              >
+                <LogOut className="h-3.5 w-3.5" />
                 <span className="sr-only">Sign out</span>
               </Button>
-            )}
-          </div>
+            </>
+          )}
+
+          {!expanded && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-muted-foreground hover:text-foreground"
+              onClick={handleLogout}
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              <span className="sr-only">Sign out</span>
+            </Button>
+          )}
         </div>
       </SidebarFooter>
     </div>

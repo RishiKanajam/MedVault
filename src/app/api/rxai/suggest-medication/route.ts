@@ -3,6 +3,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { verifySession } from '@/lib/auth';
 import { ApiHandler } from '@/lib/api-handler';
 import { rxaiSchema } from '@/lib/validation';
+import { sanitizeForPrompt } from '@/lib/security';
 
 export async function POST(req: NextRequest) {
   return ApiHandler.handleRequest(req, rxaiSchema, async (data, req) => {
@@ -26,44 +27,43 @@ export async function POST(req: NextRequest) {
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
+    // Sanitize all user-supplied strings before interpolating into the prompt
+    // to mitigate prompt injection attacks.
+    const safeName = sanitizeForPrompt(data.name, 100);
+    const safeSymptoms = sanitizeForPrompt(data.symptoms, 2000);
+    const safeBloodPressure = data.bloodPressure ? sanitizeForPrompt(data.bloodPressure, 20) : 'Not measured';
+    const safeRashClassification = data.rashClassification
+      ? sanitizeForPrompt(data.rashClassification, 500)
+      : null;
+
     // Construct the prompt for Gemini
-    const prompt = `
-      As a medical AI assistant, analyze the following patient information and suggest appropriate medication:
-      
-      Patient Information:
-      - Name: ${data.name}
-      - Age: ${data.age} years
-      - Weight: ${data.weight || 'Not specified'} kg
-      - Blood Pressure: ${data.bloodPressure || 'Not measured'}
-      - Temperature: ${data.temperature || 'Not measured'}°C
-      - Symptoms: ${data.symptoms}
-      ${data.photoUrl ? `- Photo Analysis: ${data.photoUrl}` : ''}
-      ${data.rashClassification ? `- Rash Classification: ${data.rashClassification}` : ''}
-      
-      Please provide a structured response with:
-      1. Recommended medication(s)
-      2. Dosage instructions
-      3. Potential side effects
-      4. Drug interactions to watch for
-      5. Follow-up recommendations
-      
-      Format your response as JSON with the following structure:
-      {
-        "drugClass": "string",
-        "recommendedMedications": [
-          {
-            "name": "string",
-            "dosage": "string",
-            "frequency": "string",
-            "duration": "string"
-          }
-        ],
-        "sideEffects": ["string"],
-        "interactions": ["string"],
-        "followUp": "string",
-        "confidence": "number (0-100)"
-      }
-    `;
+    const prompt = `You are a clinical decision-support assistant providing medication suggestions for review by a licensed physician. This output must NOT be acted upon without professional medical oversight.
+
+Patient Information:
+- Name: ${safeName}
+- Age: ${data.age} years
+- Weight: ${data.weight ?? 'Not specified'} kg
+- Blood Pressure: ${safeBloodPressure}
+- Temperature: ${data.temperature ?? 'Not measured'}°C
+- Symptoms: ${safeSymptoms}
+${safeRashClassification ? `- Rash Classification: ${safeRashClassification}` : ''}
+
+Provide a structured clinical decision-support response. Respond with JSON only (no markdown fences):
+{
+  "drugClass": "string",
+  "recommendedMedications": [
+    {
+      "name": "string",
+      "dosage": "string",
+      "frequency": "string",
+      "duration": "string"
+    }
+  ],
+  "sideEffects": ["string"],
+  "interactions": ["string"],
+  "followUp": "string",
+  "confidence": number
+}`;
 
     try {
       const result = await model.generateContent(prompt);
@@ -73,9 +73,8 @@ export async function POST(req: NextRequest) {
       // Try to parse JSON response
       let jsonResponse;
       try {
-        // Extract JSON from markdown code block if present
-        const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/);
-        const jsonString = jsonMatch?.[1] ?? text;
+        // Strip optional markdown code fences before parsing.
+        const jsonString = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
         jsonResponse = JSON.parse(jsonString);
       } catch (parseError) {
         // Fallback to text parsing

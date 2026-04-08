@@ -57,22 +57,24 @@ export default function PatientHistoryPage() {
 
   // Transform patients to match PatientListItem interface
   // Note: lastVisit will be calculated when records are loaded for each patient
-  const patientListItems: PatientListItem[] = patients.map((patient: Patient) => {
-    return {
-      id: patient.id,
-      name: patient.name,
-      dob: patient.dateOfBirth,
-      lastVisit: patient.dateOfBirth || new Date().toISOString().split('T')[0], // Placeholder until records are loaded
-    };
-  });
+  const today = new Date().toISOString().split('T')[0];
+  const patientListItems: PatientListItem[] = patients.map((patient: Patient) => ({
+    id: patient.id ?? `patient-${Math.random().toString(36).slice(2)}`,
+    name: patient.name ?? 'Unknown Patient',
+    dob: patient.dateOfBirth ?? today,
+    lastVisit: patient.dateOfBirth ?? today, // Placeholder until records are loaded
+  }));
 
   // Update lastVisit for selected patient if records are available
-  const updatedPatientListItems = patientListItems.map(patient => {
-    if (patient.id === selectedPatient?.id && patientRecords.length > 0) {
-      return {
-        ...patient,
-        lastVisit: patientRecords[0].date, // Most recent record date
-      };
+  const updatedPatientListItems: PatientListItem[] = patientListItems.map((patient): PatientListItem => {
+    if (patient.id === selectedPatient?.id) {
+      const mostRecentRecord = patientRecords?.[0];
+      if (mostRecentRecord?.date) {
+        return {
+          ...patient,
+          lastVisit: mostRecentRecord.date, // Most recent record date
+        };
+      }
     }
     return patient;
   });
@@ -131,7 +133,6 @@ export default function PatientHistoryPage() {
       console.log(`Adding record to Firestore in clinics/${profile.clinicId}/patients/${selectedPatient.id}/records :`, newRecord);
       // await addDoc(collection(db, `clinics/${profile.clinicId}/patients/${selectedPatient.id}/records`), newRecord);
 
-      setPatientRecords(prev => [...prev, newRecord]);
       toast({ title: "Record Added", description: "Patient record saved successfully." });
       setIsAddRecordSheetOpen(false);
       setNewRecordData({ date: '', type: '', summary: '' });
@@ -165,7 +166,7 @@ export default function PatientHistoryPage() {
       <div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
         {/* Patient List Column */}
       <div className="lg:col-span-1 flex flex-col gap-6">
-        <Card className="panel-primary">
+        <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <User className="w-5 h-5 text-primary" /> Patients
@@ -201,7 +202,6 @@ export default function PatientHistoryPage() {
                         key={patient.id}
                         onClick={() => handleSelectPatient(patient)}
                         className={`cursor-pointer ${selectedPatient?.id === patient.id ? 'bg-muted' : ''}`}
-                        role="button"
                         tabIndex={0}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' || e.key === ' ') {
@@ -231,7 +231,7 @@ export default function PatientHistoryPage() {
 
       {/* Patient Records Column */}
       <div className="lg:col-span-2">
-        <Card className="panel-primary sticky top-[76px]">
+        <Card className="sticky top-[76px]">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
@@ -252,7 +252,7 @@ export default function PatientHistoryPage() {
                   <PlusCircle className="mr-2 h-4 w-4" /> Add Record
                 </Button>
               </SheetTrigger>
-              <SheetContent className="panel-primary">
+              <SheetContent>
                 <SheetHeader>
                   <SheetTitle>Add New Record for {selectedPatient?.name}</SheetTitle>
                   <SheetDescription>Fill in the details and upload any relevant files.</SheetDescription>
@@ -350,7 +350,7 @@ export default function PatientHistoryPage() {
                     .map((record) => {
                       const primaryFile = record.files?.[0];
                       return (
-                        <Card key={record.id} className="overflow-hidden panel-secondary">
+                        <Card key={record.id} className="overflow-hidden">
                           <CardHeader className="p-4 bg-muted/30 border-b flex flex-row justify-between items-center">
                             <div>
                               <CardTitle className="text-base flex items-center gap-2">
@@ -387,7 +387,7 @@ export default function PatientHistoryPage() {
             )}
             {!isLoadingRecords && selectedPatient && patientRecords.length === 0 && (
               <div className="p-6 text-center text-muted-foreground">
-                No records found for this patient. Use 'Add Record' to start.
+                No records found for this patient. Use the Add Record button to start.
               </div>
             )}
             {!isLoadingRecords && !selectedPatient && (

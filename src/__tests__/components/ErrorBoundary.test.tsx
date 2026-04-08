@@ -1,5 +1,6 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 // Component that throws an error
@@ -8,6 +9,24 @@ const ThrowError = ({ shouldThrow }: { shouldThrow: boolean }) => {
     throw new Error('Test error');
   }
   return <div>No error</div>;
+};
+
+const setNodeEnv = (value: string) => {
+  const originalValue = process.env.NODE_ENV;
+  Object.defineProperty(process.env, 'NODE_ENV', {
+    configurable: true,
+    enumerable: true,
+    value,
+    writable: true,
+  });
+  return () => {
+    Object.defineProperty(process.env, 'NODE_ENV', {
+      configurable: true,
+      enumerable: true,
+      value: originalValue,
+      writable: true,
+    });
+  };
 };
 
 describe('ErrorBoundary', () => {
@@ -27,7 +46,7 @@ describe('ErrorBoundary', () => {
       </ErrorBoundary>
     );
 
-    expect(screen.getByText('No error')).toBeInTheDocument();
+    expect(screen.getByText('No error')).toBeTruthy();
   });
 
   it('should render error UI when there is an error', () => {
@@ -37,8 +56,8 @@ describe('ErrorBoundary', () => {
       </ErrorBoundary>
     );
 
-    expect(screen.getByText('Something went wrong')).toBeInTheDocument();
-    expect(screen.getByText('Test error')).toBeInTheDocument();
+    expect(screen.getByText('Something went wrong')).toBeTruthy();
+    expect(screen.getByText('Test error')).toBeTruthy();
   });
 
   it('should show retry button', () => {
@@ -48,8 +67,8 @@ describe('ErrorBoundary', () => {
       </ErrorBoundary>
     );
 
-    expect(screen.getByText('Try again')).toBeInTheDocument();
-    expect(screen.getByText('Reload page')).toBeInTheDocument();
+    expect(screen.getByText('Try again')).toBeTruthy();
+    expect(screen.getByText('Reload page')).toBeTruthy();
   });
 
   it('should call onError callback when error occurs', () => {
@@ -69,31 +88,32 @@ describe('ErrorBoundary', () => {
     );
   });
 
-  it('should reset error state when retry is clicked', () => {
+  it('should reset error state when retry is clicked', async () => {
     const { rerender } = render(
       <ErrorBoundary>
         <ThrowError shouldThrow={true} />
       </ErrorBoundary>
     );
 
-    expect(screen.getByText('Something went wrong')).toBeInTheDocument();
+    expect(screen.getByText('Something went wrong')).toBeTruthy();
 
-    // Click retry
-    fireEvent.click(screen.getByText('Try again'));
-
-    // Rerender with no error
+    // Prepare next render without errors
     rerender(
       <ErrorBoundary>
         <ThrowError shouldThrow={false} />
       </ErrorBoundary>
     );
 
-    expect(screen.getByText('No error')).toBeInTheDocument();
+    // Click retry to reset the boundary
+    fireEvent.click(screen.getByText('Try again'));
+
+    await waitFor(() => {
+      expect(screen.getByText('No error')).toBeTruthy();
+    });
   });
 
   it('should show error details in development mode', () => {
-    const originalEnv = process.env.NODE_ENV;
-    process.env.NODE_ENV = 'development';
+    const restoreEnv = setNodeEnv('development');
 
     render(
       <ErrorBoundary>
@@ -101,14 +121,13 @@ describe('ErrorBoundary', () => {
       </ErrorBoundary>
     );
 
-    expect(screen.getByText('Error details')).toBeInTheDocument();
+    expect(screen.getByText('Error details')).toBeTruthy();
 
-    process.env.NODE_ENV = originalEnv;
+    restoreEnv();
   });
 
   it('should not show error details in production mode', () => {
-    const originalEnv = process.env.NODE_ENV;
-    process.env.NODE_ENV = 'production';
+    const restoreEnv = setNodeEnv('production');
 
     render(
       <ErrorBoundary>
@@ -116,8 +135,8 @@ describe('ErrorBoundary', () => {
       </ErrorBoundary>
     );
 
-    expect(screen.queryByText('Error details')).not.toBeInTheDocument();
+    expect(screen.queryByText('Error details')).toBeNull();
 
-    process.env.NODE_ENV = originalEnv;
+    restoreEnv();
   });
 });

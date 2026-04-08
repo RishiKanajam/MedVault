@@ -40,6 +40,33 @@ describe('Validation Schemas', () => {
     });
   });
 
+  describe('recordSchema', () => {
+    it('should validate correct record data', () => {
+      const validRecord = {
+        patientId: 'patient123',
+        date: '2024-01-10',
+        type: 'consultation' as const,
+        summary: 'Routine checkup notes',
+        files: [{ name: 'report.pdf', url: 'https://example.com/report.pdf' }],
+      };
+
+      const result = recordSchema.safeParse(validRecord);
+      expect(result.success).toBe(true);
+    });
+
+    it('should reject missing summary', () => {
+      const invalidRecord = {
+        patientId: 'patient123',
+        date: '2024-01-10',
+        type: 'consultation' as const,
+        summary: '',
+      };
+
+      const result = recordSchema.safeParse(invalidRecord);
+      expect(result.success).toBe(false);
+    });
+  });
+
   describe('shipmentSchema', () => {
     it('should validate correct shipment data', () => {
       const validShipment = {

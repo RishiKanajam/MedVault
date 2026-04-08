@@ -14,7 +14,7 @@ import { useAuth } from '@/providers/AuthProvider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
-import { PageShell, PageHeader, PageSection } from '@/components/layout/page';
+import { PageShell, PageHeader } from '@/components/layout/page';
 
 // Types for Settings module
 interface ClinicProfile {
@@ -168,7 +168,7 @@ export default function SettingsPage() {
           <Card>
             <CardHeader>
               <CardTitle>Clinic Information</CardTitle>
-              <CardDescription>Update your clinic's profile information.</CardDescription>
+              <CardDescription>Update your clinic profile information.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
@@ -229,7 +229,7 @@ export default function SettingsPage() {
           <Card>
             <CardHeader>
               <CardTitle>User Preferences</CardTitle>
-              <CardDescription>Customize your experience with MediSync Pro.</CardDescription>
+              <CardDescription>Customize your experience with MedVault.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">

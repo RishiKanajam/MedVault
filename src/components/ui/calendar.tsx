@@ -18,8 +18,7 @@ function Calendar({
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
-      // Apply tertiary overlay styles to the root Calendar element
-      className={cn("overlay-tertiary p-3", className)}
+      className={cn("p-3", className)}
       classNames={{
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
         month: "space-y-4",

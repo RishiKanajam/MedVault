@@ -1,13 +1,35 @@
 import '@testing-library/jest-dom'
 
 // Mock Firebase
-jest.mock('@/firebase', () => ({
-  auth: null,
-  db: null,
-  storage: null,
-  analytics: null,
-  isClient: false,
-}))
+jest.mock('@/firebase', () => {
+  const mockDb = {};
+  return {
+    auth: null,
+    db: mockDb,
+    storage: null,
+    analytics: null,
+    isClient: false,
+  };
+})
+
+const firestoreModuleMock = {
+  collection: jest.fn(),
+  doc: jest.fn(),
+  getDoc: jest.fn(),
+  getDocs: jest.fn(),
+  addDoc: jest.fn(),
+  updateDoc: jest.fn(),
+  deleteDoc: jest.fn(),
+  query: jest.fn(),
+  where: jest.fn(),
+  orderBy: jest.fn(),
+  serverTimestamp: jest.fn(() => ({ seconds: Date.now() / 1000, nanoseconds: 0 })),
+};
+
+jest.mock('firebase/firestore', () => firestoreModuleMock);
+
+// Expose mock for tests that need to adjust implementations
+globalThis.__FIRESTORE_MOCK__ = firestoreModuleMock;
 
 // Mock Next.js router
 jest.mock('next/navigation', () => ({
@@ -22,6 +44,19 @@ jest.mock('next/navigation', () => ({
   usePathname: () => '/',
   useSearchParams: () => new URLSearchParams(),
 }))
+
+jest.mock('lucide-react', () => {
+  const React = require('react')
+  return new Proxy(
+    {},
+    {
+      get: (_target, prop) => {
+        const Icon = (props) => React.createElement('svg', { 'data-icon': String(prop), ...props })
+        return Icon
+      },
+    }
+  )
+})
 
 // Mock environment variables
 process.env.NEXT_PUBLIC_FIREBASE_API_KEY = 'test-api-key'
