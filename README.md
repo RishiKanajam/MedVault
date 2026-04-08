@@ -2,7 +2,7 @@
 
 MedVault is a full-stack medical management platform built with Next.js, Firebase, and Python. It provides modules for RxAI (AI-powered medication suggestions), PharmaNet, Inventory, Shipments, Patient History, and more. The platform supports real-time data, secure authentication, and integration with simulated sensor/GPS data.
 
-**Live frontend:** [medvault-frontend-596655096468.us-central1.run.app](https://medvault-frontend-596655096468.us-central1.run.app)
+**Live frontend:** [medvault-frontend-596655096468.us-central1.run.app](https://medvault-596655096468.us-central1.run.app/)
 
 ---
 
