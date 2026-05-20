@@ -3,6 +3,7 @@
 export const dynamic = 'force-dynamic';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
@@ -13,6 +14,7 @@ import { Calendar, FileText, TriangleAlert } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { PageShell, PageHeader, PageSection } from '@/components/layout/page';
+import { ExternalLink } from 'lucide-react';
 
 interface RecentActivity {
   id: string;
@@ -29,6 +31,7 @@ export default function RxAIPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const [rateLimitError, setRateLimitError] = useState(false);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [rashClassification, setRashClassification] = useState<string | null>(null);
   const [formData, setFormData] = useState<any>(null);
@@ -78,6 +81,7 @@ export default function RxAIPage() {
 
   const handleSubmit = async (formData: any) => {
     setIsLoading(true);
+    setRateLimitError(false);
 
     try {
       let uploadedPhotoUrl = photoUrl;
@@ -172,11 +176,21 @@ export default function RxAIPage() {
       });
     } catch (error) {
       console.error('Error in handleSubmit:', error);
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to get AI suggestion. Please try again.',
-        variant: 'destructive',
-      });
+      const msg = error instanceof Error ? error.message : '';
+      const isRateLimit =
+        msg.includes('429') ||
+        msg.toLowerCase().includes('rate') ||
+        msg.toLowerCase().includes('quota') ||
+        msg.toLowerCase().includes('resource_exhausted');
+      if (isRateLimit) {
+        setRateLimitError(true);
+      } else {
+        toast({
+          title: 'Error',
+          description: msg || 'Failed to get AI suggestion. Please try again.',
+          variant: 'destructive',
+        });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -299,6 +313,25 @@ export default function RxAIPage() {
           <strong>Clinical decision support only.</strong> AI-generated suggestions are not a substitute for professional medical judgment. All recommendations must be reviewed and approved by a licensed physician before being acted upon.
         </AlertDescription>
       </Alert>
+
+      {rateLimitError && (
+        <Alert className="border-amber-200 bg-amber-50 text-amber-800">
+          <TriangleAlert className="h-4 w-4 !text-amber-600" />
+          <AlertDescription className="flex flex-wrap items-center gap-1">
+            <strong>High demand right now</strong> — please try again in a moment, or{' '}
+            <Link
+              href="/demo"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 font-semibold underline hover:text-amber-900"
+              onClick={() => setRateLimitError(false)}
+            >
+              Try Demo <ExternalLink className="h-3 w-3" />
+            </Link>{' '}
+            to see a sample interaction.
+          </AlertDescription>
+        </Alert>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-6">

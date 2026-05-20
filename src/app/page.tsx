@@ -2,7 +2,8 @@
 
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { LogIn, Pill } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { LogIn, Pill, Zap } from 'lucide-react';
 import Link from 'next/link';
 
 export default function Home() {
@@ -33,6 +34,24 @@ export default function Home() {
                     </Link>
                 </Button>
                 </div>
+                <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t border-border/40" />
+                    </div>
+                    <div className="relative flex justify-center text-xs">
+                        <span className="bg-card px-3 text-muted-foreground">or explore first</span>
+                    </div>
+                </div>
+                <Button asChild variant="ghost" className="w-full border border-dashed border-primary/40 hover:border-primary/70 hover:bg-primary/5">
+                    <Link href="/demo">
+                        <Zap className="mr-2 h-4 w-4 text-primary" />
+                        <span className="text-primary font-medium">Try Demo</span>
+                        <Badge variant="secondary" className="ml-2 text-[10px]">No login needed</Badge>
+                    </Link>
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                    See a full AI clinical analysis with sample patient data — no account required.
+                </p>
             </CardContent>
             </Card>
         </div>

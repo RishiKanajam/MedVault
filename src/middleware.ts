@@ -5,7 +5,7 @@ import { verifySession } from '@/lib/auth'
 // Run on Node.js runtime so Firebase Admin SDK is available for real token verification.
 export const runtime = 'nodejs'
 
-const PUBLIC_AUTH_PATHS = ['/auth/login', '/auth/signup', '/']
+const PUBLIC_AUTH_PATHS = ['/auth/login', '/auth/signup', '/', '/demo']
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
